@@ -13,33 +13,35 @@ import matplotlib.pyplot as plt
 import scipy.fftpack as sfft
 #import time
 import scipy.io as sio
-import h5py
-import collections as cl
+#import h5py
 import tables
+
 
 
 sourceDir = '/data/DataGen/wake_new/'
 
 
 
-#file = tables.openFile(sourceDir + 'wake-basics.mat')
+file1 = tables.open_file(sourceDir + 'wake-basics.mat')
 #lon = file.root.lon[:]
 #lat = file.root.lat[:]
 ## Alternate syntax if the variable name is in a string
 #varname = 'lon'
 #lon = file.getNode('/' + varname)[:]
 
-
-
-
-f =h5py.File(sourceDir + 'wake-basics.mat','r')
-data = f.get('basics') 
-data = np.array(data)
-
-
-for sub in range(0, 6):
-    sub_name = data[sub]
-    
+#f1 =h5py.File(sourceDir + 'wake-spikes.mat','r')
+#data1 = f1['spikes'] 
+##spikes = np.array(data1)
+#
+#
+#f =h5py.File(sourceDir + 'wake-basics.mat','r')
+#data = f.get('basics') 
+#data = np.array(data)
+#
+#
+#for sub in range(0, 6):
+#    sub_name = data[sub]
+#    
 
 
 
