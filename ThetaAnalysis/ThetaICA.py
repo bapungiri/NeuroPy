@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import scipy.fftpack as sfft
 #import time
 import scipy.io as sio
-#import h5py
+import h5py
 import tables
 
 
@@ -22,12 +22,27 @@ sourceDir = '/data/DataGen/wake_new/'
 
 
 
-file1 = tables.open_file(sourceDir + 'wake-basics.mat')
-#lon = file.root.lon[:]
+fle1 = tables.open_file(sourceDir + 'wake-basics.mat')
+#fg1 = fle1.root.basics
+#fg2 = fle1.get_node('/basics/RoyMaze1')[:]
+
+arrays = {}
+f= h5py.File(sourceDir + 'wake-basics.mat', 'r') 
+for k, v in f.items():
+    arrays[k] = np.array(v)
+    
+subjects = arrays['basics']
+
+for sub in range(0,7):
+    sub_name = subjects[sub]
+    print(sub_name)
+#subnames = [x['Group'] for x in fle1.root.basics]
+#fg = sio.loadmat()
+#bg = fle1.root.basics[:]
 #lat = file.root.lat[:]
 ## Alternate syntax if the variable name is in a string
-#varname = 'lon'
-#lon = file.getNode('/' + varname)[:]
+#varname = 'basics'
+#lon = fle1.get_node('/' + varname)
 
 #f1 =h5py.File(sourceDir + 'wake-spikes.mat','r')
 #data1 = f1['spikes'] 
@@ -56,14 +71,14 @@ file1 = tables.open_file(sourceDir + 'wake-basics.mat')
 
 #end = time.time()
 #print(end - start)
-
-N = 600
-# sample spacing
-T = 1.0 / 800.0
-x = np.linspace(0.0, N*T, N)
-y = np.sin(50.0 * 2.0*np.pi*x) + 0.5*np.sin(80.0 * 2.0*np.pi*x)
-yf = sfft.fft(y)
-xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
+#
+#N = 600
+## sample spacing
+#T = 1.0 / 800.0
+#x = np.linspace(0.0, N*T, N)
+#y = np.sin(50.0 * 2.0*np.pi*x) + 0.5*np.sin(80.0 * 2.0*np.pi*x)
+#yf = sfft.fft(y)
+#xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
 
 #fig, ax = plt.subplots()
 #ax.plot(xf, 2.0/N * np.abs(yf[:N//2]))
