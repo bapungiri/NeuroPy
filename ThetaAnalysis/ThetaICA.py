@@ -26,7 +26,7 @@ for k, v in f.items():
     arrays[k] = np.array(v)
 
 #spks = {}
-spikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
+fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
 #for k, v in f1.items():
 #    spks[k] = np.array(v)
     
@@ -34,14 +34,16 @@ subjects = arrays['basics']
 #spikes = spks['spikes']
 
 
-a1 = np.array(spikes['spikes']['KevinMaze1']['time'])
+#a1 = np.array(spikes['spikes']['KevinMaze1']['time'][0])
 for sub in range(0,1):
     sub_name = subjects[sub]
     print(sub_name)
     
-    celltype = spikes['spikes'][sub_name]['time']
+    celltype = fspikes[fspikes['spikes'][sub_name]['time'][1,0]].value
     
-    print(len(celltype))
+    fr = np.histogram(celltype)
+    
+    plt.plot(fr[0])
 
 
 
