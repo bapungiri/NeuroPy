@@ -10,32 +10,50 @@ Created on Fri Dec 14 13:36:34 2018
 
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.fftpack as sfft
+#import scipy.fftpack as sfft
 #import time
 import scipy.io as sio
 import h5py
-import tables
+#import tables
 
 
 
 sourceDir = '/data/DataGen/wake_new/'
 
-
-
-fle1 = tables.open_file(sourceDir + 'wake-basics.mat')
-#fg1 = fle1.root.basics
-#fg2 = fle1.get_node('/basics/RoyMaze1')[:]
-
 arrays = {}
 f= h5py.File(sourceDir + 'wake-basics.mat', 'r') 
 for k, v in f.items():
     arrays[k] = np.array(v)
+
+#spks = {}
+spikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
+#for k, v in f1.items():
+#    spks[k] = np.array(v)
     
 subjects = arrays['basics']
+#spikes = spks['spikes']
 
-for sub in range(0,7):
+
+a1 = np.array(spikes['spikes']['KevinMaze1']['time'])
+for sub in range(0,1):
     sub_name = subjects[sub]
     print(sub_name)
+    
+    celltype = spikes['spikes'][sub_name]['time']
+    
+    print(len(celltype))
+
+
+
+
+
+
+
+#fle1 = tables.open_file(sourceDir + 'wake-basics.mat')
+#fg1 = fle1.root.basics
+#fg2 = fle1.get_node('/basics/RoyMaze1')[:]
+
+
 #subnames = [x['Group'] for x in fle1.root.basics]
 #fg = sio.loadmat()
 #bg = fle1.root.basics[:]
