@@ -55,20 +55,32 @@ for sub in range(1,2):
     cellpyr= [celltype[a] for a in pyrid]
     
     ThetaChannel = 50
-    fid = open('/data/EEGData/' + sub_name + '.eeg', 'rb')
-    dim = np.fromfile(fid, dtype='>u4')
-    fid.seek(int(frames[2,1]*65*2+1*(ThetaChannel-1)*2),0)
-#    flCont = fid.read(30)
-#    fg = struct.unpack(fid,4)
     
-    Maze = []
+#    fid = open('/data/EEGData/' + sub_name + '.eeg', 'rb')
+#    fid.seek(int(frames[2,1]*65*2+1*(ThetaChannel-1)*2),0)
+    
+    nMazeFrames = int(np.diff(frames[2,:]))
+    b = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(frames[2,1]*65*2+1*(ThetaChannel-1)*2)
+                ,shape=(1,65*nMazeFrames))
+    eegMaze = b[0,:]
+    eegMaze = eegMaze[ThetaChannel-1::65]
+#    print a[1,5]
+#    fid = open('/data/EEGData/' + sub_name + '.eeg', 'rb')
+#    dim = np.fromfile(fid, dtype='>u4')
+#    fid.seek(int(frames[2,1]*65*2+1*(ThetaChannel-1)*2),0)
+##    flCont = fid.read(30)
+##    fg = struct.unpack(fid,4)
+#    
+#    Maze = []
+#    nMazeFrames = np.diff(frames[2,:])
+#    checkE  = np.fromfile(fid, dtype='int16', count=int(nMazeFrames))
+#    plt.clf()
+#    while True:
+#        Maze = np.append(Maze,np.fromfile(fid, dtype='int16', count=1))
+#        fid.seek((65-1)*2,1)
+#        if len(Maze)>nMazeFrames: break
     plt.clf()
-    while True:
-        Maze = np.append(Maze,np.fromfile(fid, dtype='int16', count=1))
-        fid.seek((65-1)*2,1)
-        if len(Maze)>1400: break
-    
-    plt.plot(Maze)
+    plt.plot(eegMaze[1:2000])
 
 #    
     
