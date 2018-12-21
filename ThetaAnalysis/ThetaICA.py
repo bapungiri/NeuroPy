@@ -12,13 +12,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 #import scipy.fftpack as sfft
 #import time
+import scipy.stats as stat
 import scipy.signal as sg
 import h5py
 #import tables
 #import struct
 from PyEMD import EEMD
 
-eemd = EEMD(10)
+eemd = EEMD()
 emd = eemd.EMD
 emd.extrema_detection="parabol"
 
@@ -33,6 +34,7 @@ for k, v in f.items():
 #spks = {}
 fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
+fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 
 #for k, v in f1.items():
 #    spks[k] = np.array(v)
     
@@ -55,7 +57,9 @@ for sub in range(1,2):
         stability[i] = fspikes[fspikes['spikes'][sub_name]['StablePrePost'][i,0]].value
     
     behav = np.transpose(fbehav['behavior'][sub_name]['time'][:])
+    states = np.transpose(fbehav['behavior'][sub_name]['list'][:])
     frames = np.transpose(fbehav['behavior'][sub_name]['eegFrame'][:])
+    ICA_strength = np.array(np.transpose(fICAStrength['ActStrength']['subjects'][sub_name]['wake'][:]))
     pyrid = [i for i in range(0,nUnits) if quality[i] < 4 and stability[i] == 1]
     cellpyr= [celltype[a] for a in pyrid]
     
@@ -73,6 +77,45 @@ for sub in range(1,2):
     
     f, t, Sxx = sg.spectrogram(eegMaze,fs=1250,nperseg=2*1250, noverlap=400) 
     
+    tICA = np.linspace(0,np.diff(behav[2,:])/1e6,np.shape(ICA_strength)[1])
+    ica_zsc = stat.zscore(ICA_strength,axis=1)
+    ica_zsc_= ica_zsc < 3
+    ica_zsc[ica_zsc_]=0
+    ica_zsc_= ica_zsc >= 3
+    ica_zsc[ica_zsc_]=1
+    
+    wakeID = [i for i in range(0,len(states)) if states[i,0] > behav[1,0] and states[i,0]<behav[1,1] and states[i,2]==4]
+#    wakeTheta = states[states[:,0]>behav[1,0] and states[:,0]<behav[1,1]]
+    wakeTheta = states[wakeID,:]
+    
+    ThetaDur = np.diff(wakeTheta[:,[0,1]],axis=1)/1e6
+    
+    
+    firstTheta = (wakeTheta[0,[0,1]] - behav[1,0])/1e6
+    firstTheta = np.transpose([378,381])
+    eegfirstFrame = firstTheta*1250
+    eegfirstepoch = eegMaze[int(eegfirstFrame[0]):int(eegfirstFrame[1])]
+    ThetaTime = np.linspace(0,3,len(eegfirstepoch))
+    
+   
+    
+    eIMFs = eemd.eemd(eegfirstepoch, ThetaTime)
+    nIMFs = eIMFs.shape[0]
+    
+    plt.clf()
+    plt.subplot(nIMFs+1, 1, 1)
+    plt.plot(ThetaTime,eegfirstepoch)
+    
+    
+    
+    for n in range(nIMFs):
+        plt.subplot(nIMFs+1, 1, n+2)
+        plt.plot(ThetaTime, eIMFs[n], 'g')
+        plt.ylabel("eIMF %i" %(n+1))
+        plt.locator_params(axis='y', nbins=5)
+    
+    
+    
 #    emd
     
 #    t1 = np.linspace(0,7.2,9000-1)
@@ -85,7 +128,9 @@ for sub in range(1,2):
 ##    plt.imshow(Sxx)
 #    plt.ylabel('Frequency [Hz]')
 #    plt.xlabel('Time [sec]')
-#    plt.show()
+##    plt.show()
+#    plt.subplot(4, 1, 2)
+#    plt.pcolormesh(tICA, np.linspace(1,20,20),ica_zsc,cmap = plt.cm.get_cmap("hot"))
 ##
 #    for n in range(4):
 #        plt.subplot(4, 1, n+2)
