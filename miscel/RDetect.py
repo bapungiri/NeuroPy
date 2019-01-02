@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as sg
 import scipy.stats as stats
+from scipy.signal import hilbert, chirp
 import h5py
 
 
@@ -31,17 +32,23 @@ eegMaze = b[0,:]
 eegMaze = eegMaze[ThetaChannel-1::65]
 
 
-testData = eegMaze[:10000]
-sos = sg.butter(3, [140/1250, 250/1250], 'bandpass', output='sos')
+testData = eegMaze[:1000000]
+sos = sg.butter(3, [140, 250], 'bandpass', fs=1250,output='sos')
 filteredSig = sg.sosfilt(sos, testData)
 
+
+
+
 zscSig = stats.zscore(filteredSig)
-rip = np.diff(np.where(zscSig > Thresh,1,0) )
+envSig = hilbert(zscSig)
+amplitude_envelope = np.abs(envSig)
+
+rip = np.diff(np.where(amplitude_envelope > Thresh,1,0)) 
 rip_begin = np.where(rip>0)
 rip_end = np.where(rip<0)
-
-rip_dur = rip_end-rip_begin
-
+#
+rip_dur = rip_end[0]-rip_begin[0]
+#
 
 nRow = 3
 
@@ -49,4 +56,5 @@ plt.clf()
 plt.subplot(nRow, 1, 1)
 plt.plot(testData)
 plt.subplot(nRow, 1, 2)
-plt.plot(filteredSig)
+plt.plot(rip)
+plt.plot(amplitude_envelope)
