@@ -56,7 +56,7 @@ maxRipSize = 450*1000/1250
 
 ripple = rip_all[0,:]
 mrgRipple = []
-for i in range(0,len(rip_all)):
+for i in range(len(rip_all)):
     if rip_all[i,0]-ripple[1] < interDist:
         ripple = [ripple[0],rip_all[i,1]]
     else:
@@ -77,9 +77,9 @@ DiscardRip = np.where((RipDur < minRipSize) | (RipDur > maxRipSize))[0]
  
 ripl_peak = np.delete(ripl_peak,DiscardRip, axis=0)
 
+alltog = np.concatenate([testData[x:y] for x,y in zip(ripl_peak[:,0], ripl_peak[:,1])], axis=0)
 
-
-nRow = 3
+nRow = 4
 
 plt.clf()
 plt.subplot(nRow, 1, 1)
@@ -87,3 +87,5 @@ plt.plot(testData)
 plt.subplot(nRow, 1, 2)
 plt.plot(stats.zscore(np.square(filteredSig)))
 plt.plot(amplitude_envelope)
+plt.subplot(nRow, 1, 3)
+plt.plot(alltog)
