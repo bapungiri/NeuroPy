@@ -75,3 +75,5 @@ for sub in range(0,7):
     plt.boxplot(fRate, labels = ['PRE','MAZE','POST'])
     plt.ylabel('Firing rate')
     plt.title(sub_name)
+    
+plt.savefig('FRate.pdf')    
