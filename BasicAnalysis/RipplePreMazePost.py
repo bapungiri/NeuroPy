@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jan  9 12:31:15 2019
+Created on Thu Jan 10 10:21:03 2019
 
 @author: bapung
 """
@@ -26,6 +26,7 @@ for k, v in f.items():
 fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
 fpos= h5py.File(sourceDir + 'wake-position.mat', 'r') 
+fripples= h5py.File(sourceDir + 'wake-ripple.mat', 'r') 
 fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 
 
 subjects = arrays['basics']
@@ -50,6 +51,7 @@ for sub in range(0,7):
     
     behav = np.transpose(fbehav['behavior'][sub_name]['time'][:])
     states = np.transpose(fbehav['behavior'][sub_name]['list'][:])
+    ripples = np.transpose(fripples['ripple'][sub_name]['time'][:])
     
     NCells = len(pyrid) 
     binS = behav.reshape(np.size(behav),1).squeeze() 
