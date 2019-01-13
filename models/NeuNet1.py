@@ -33,7 +33,7 @@ Im = 5e-9;
 for t in range (len(T)-1):
     
     I0[t+1] = Ic - Itheta*np.cos(2.0*np.pi*0.008*T[t])
-    Iext[t+1]=Ie0*np.exp(-(abs(pos[t]-200))^2/(2*40^2))
+    Iext[t+1]=Ie0*np.exp(-(abs(pos[t]-200))**2/(2*40^2))
     g[t+1]= -g[t]/tauI + w_j 
     if T[i] > t_restI:
         g[i]=g[i-1]+(-g[i-1]/tauI+val)*dt
