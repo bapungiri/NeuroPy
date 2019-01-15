@@ -53,7 +53,7 @@ for sub in range(5,6):
 #    grp = [np.ones(len(cellpyr[0])),np.ones(len(cellpyr[1]))]
     t = time.time()
 # do stuff
-
+    
     for cell1 in range(0,1):
         for cell2 in range(1,2):
             spk1 = cellpyr[cell1].squeeze()
