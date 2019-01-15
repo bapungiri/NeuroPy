@@ -27,7 +27,7 @@ for k, v in f.items():
 fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
 fpos= h5py.File(sourceDir + 'wake-position.mat', 'r') 
-fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 
+#fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 
 
 subjects = arrays['basics']
 #spikes = spks['spikes']
