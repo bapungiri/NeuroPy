@@ -64,7 +64,7 @@ for sub in range(1,2):
     b = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(frames[2,0]*65*2+1*(ThetaChannel-1)*2)
                 ,shape=(1,65*nMazeFrames))
     eegMaze = b[0,:]
-    eegMaze = eegMaze[ThetaChannel-1::65]
+    eegMaze = eegMaze[0::65]
     
     eegTime = np.linspace(behav[2,0],behav[2,1],len(eegMaze))
     
@@ -78,7 +78,7 @@ for sub in range(1,2):
 
     
     
-    sos = sg.butter(3, 50, btype = 'low', fs=1250, output='sos')
+    sos = sg.butter(3, 100, btype = 'low', fs=1250, output='sos')
     
     yf = sg.sosfilt(sos,eeg1st)
     yL = sg.sosfilt(sos,eegLast)
@@ -86,22 +86,23 @@ for sub in range(1,2):
     yf = ft.fft(yf)/len(eeg1st)
     yL = ft.fft(yL)/len(eegLast)
     
-    xf = np.linspace(0.0, 1250/2, len(eeg1st)/2)
-    xL = np.linspace(0.0, 1250/2, len(eegLast)/2)
+    xf = np.linspace(0.0, 1250/2, len(eeg1st)//2)
+    xL = np.linspace(0.0, 1250/2, len(eegLast)//2)
     
     
-    y1 = 2.0/(len(xf)/2) * np.abs(yf[:10000])
-    y2 = 2.0/(len(xL)/2) * np.abs(yL[:80000])
+    y1 = 2.0/(len(xf)) * np.abs(yf[:len(eeg1st)//2])
+    y2 = 2.0/(len(xL)) * np.abs(yL[:len(eegLast)//2])
     
-    y1 = smth.gaussian_filter(y1,8)
-    y2 = smth.gaussian_filter(y2,8)
+    y1 = smth.gaussian_filter(y1,16)
+    y2 = smth.gaussian_filter(y2,16)
     
 
 #    fig, ax = plt.subplots()
     plt.clf()
-    plt.plot(xf[:10000], y1)
-    plt.plot(xL[:80000], y2,'r')
+    plt.plot(xf[::20], y1[::20])
+    plt.plot(xL[::40], y2[::40],'r')
     plt.yscale('log')
+    plt.xlim(0.5,20)
     
     
     
