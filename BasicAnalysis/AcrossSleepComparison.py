@@ -82,47 +82,7 @@ for sub in range(1,2):
         
         return y1,xf
     
-#    b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(frames[2,0]*65*2+1*(ThetaChannel-1)*2)
-#                ,shape=(1,65*1250))
-#    b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(offset1)*65*2+ 1*(50-1)*2
-#                ,shape=(1,65*1250*100))
-#    b2 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(offset2)*65*2+ 1*(50-1)*2
-#                ,shape=(1,65*1250*100))
-#    
-#    eegnrem1 = b1[0,::65]
-#    eegnrem2 = b2[0,::65]
-#    
-#    
-#    
-##    eegTime = np.linspace(behav[2,0],behav[2,1],len(eegMaze))
-##    
-##    
-##    
-###    a = np.where((eegTime > POSTNREM[0,0]) & (eegTime < POSTNREM[0,1]))
-##    
-##    eeg1st = eegMaze[np.where((eegTime > POSTNREM[0,0]) & (eegTime < POSTNREM[0,0]+100e6))]
-##    eegLast = eegMaze[np.where((eegTime > POSTNREM[-1,0]) & (eegTime < POSTNREM[-1,0]+100e6))]
-##    
-#
-#    
-#    
-#    sos = sg.butter(3, 100, btype = 'low', fs=1250, output='sos')
-#    
-#    yf = sg.sosfilt(sos,eegnrem1)
-#    yL = sg.sosfilt(sos,eegnrem2)
-#    
-#    yf = ft.fft(yf)/len(eegnrem1)
-#    yL = ft.fft(yL)/len(eegnrem2)
-#    
-#    xf = np.linspace(0.0, 1250/2, len(eegnrem1)//2)
-#    xL = np.linspace(0.0, 1250/2, len(eegnrem2)//2)
-#    
-#    
-#    y1 = 2.0/(len(xf)) * np.abs(yf[:len(eegnrem1)//2])
-#    y2 = 2.0/(len(xL)) * np.abs(yL[:len(eegnrem2)//2])
-#    
-#    y1 = smth.gaussian_filter(y1,8)
-#    y2 = smth.gaussian_filter(y2,8)
+
     
     y1,xf = lfpSpect(sub_name,offset1)
     y2,xL = lfpSpect(sub_name,offset2)
