@@ -16,8 +16,6 @@ import scipy.fftpack as ft
 import scipy.stats as stat
 import scipy.signal as sg
 import h5py
-#import tables
-#import struct
 
 
 
@@ -32,7 +30,7 @@ for k, v in f.items():
 fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
 slpbehav= sio.loadmat(sourceDir2 + 'sleep-behavior.mat') 
-#fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 
+
 lastNrem = np.array([1.26586295e+11, 1.27128997e+11]).reshape(1,2)
     
 subjects = arrays['basics']
@@ -54,22 +52,16 @@ for sub in range(1,2):
     behav = np.transpose(fbehav['behavior'][sub_name]['time'][:])
     states = np.transpose(fbehav['behavior'][sub_name]['list'][:])
     frames = np.transpose(fbehav['behavior'][sub_name]['eegFrame'][:])
-#    ICA_strength = np.array(np.transpose(fICAStrength['ActStrength']['subjects'][sub_name]['wake'][:]))
     pyrid = [i for i in range(0,nUnits) if quality[i] < 4 and stability[i] == 1]
     cellpyr= [celltype[a] for a in pyrid]
     
     ThetaChannel = 50
-    
-#    fid = open('/data/EEGData/' + sub_name + '.eeg', 'rb')
-#    fid.seek(int(frames[2,1]*65*2+1*(ThetaChannel-1)*2),0)
-    
     nMazeFrames = int(np.diff(frames[2,:]))
     POSTNREM = states[(states[:,0]>behav[2,0]) & (states[:,2]==1),:]
     
-    offset1 = ((POSTNREM[0,0]-behav[2,0])//1e6)*1250 +int(np.diff(frames[0,:]))+ int(np.diff(frames[1,:]))
-    offset2 = ((lastNrem[0,0]-behav[2,0])//1e6)*1250+ int(np.diff(frames[0,:]))+int(np.diff(frames[1,:]))
     
-    def lfpSpect(sub_name,offsetP):
+    def lfpSpect(sub_name,nREMPeriod):
+        offsetP = ((nREMPeriod-behav[2,0])//1e6)*1250+ int(np.diff(frames[0,:]))+int(np.diff(frames[1,:]))
         b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(offsetP)*65*2+ 1*(50-1)*2
                 ,shape=(1,65*1250*100))
         eegnrem1 = b1[0,::65]
@@ -84,14 +76,15 @@ for sub in range(1,2):
     
 
     
-    y1,xf = lfpSpect(sub_name,offset1)
-    y2,xL = lfpSpect(sub_name,offset2)
+    y1,xf = lfpSpect(sub_name,POSTNREM[0,0])
+    y2,xL = lfpSpect(sub_name,POSTNREM[15,0])
 
 #    fig, ax = plt.subplots()
     plt.clf()
     plt.plot(xf, y1)
     plt.plot(xL, y2,'r')
-    plt.xlabel('')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Power (db)')
     plt.yscale('log')
     plt.xlim(0.5,100)
     
