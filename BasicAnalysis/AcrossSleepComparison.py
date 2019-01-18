@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 #import scipy.fftpack as sfft
 #import time
+import scipy.io as sio
 import scipy.ndimage.filters as smth
 import scipy.fftpack as ft
 import scipy.stats as stat
@@ -21,6 +22,7 @@ import h5py
 
 
 sourceDir = '/data/DataGen/wake_new/'
+sourceDir2 = '/data/DataGen/sleep/'
 
 arrays = {}
 f= h5py.File(sourceDir + 'wake-basics.mat', 'r') 
@@ -29,8 +31,9 @@ for k, v in f.items():
 
 fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
-fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 
-
+slpbehav= sio.loadmat(sourceDir2 + 'sleep-behavior.mat') 
+#fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 
+lastNrem = np.array([1.26586295e+11, 1.27128997e+11]).reshape(1,2)
     
 subjects = arrays['basics']
 
@@ -51,7 +54,7 @@ for sub in range(1,2):
     behav = np.transpose(fbehav['behavior'][sub_name]['time'][:])
     states = np.transpose(fbehav['behavior'][sub_name]['list'][:])
     frames = np.transpose(fbehav['behavior'][sub_name]['eegFrame'][:])
-    ICA_strength = np.array(np.transpose(fICAStrength['ActStrength']['subjects'][sub_name]['wake'][:]))
+#    ICA_strength = np.array(np.transpose(fICAStrength['ActStrength']['subjects'][sub_name]['wake'][:]))
     pyrid = [i for i in range(0,nUnits) if quality[i] < 4 and stability[i] == 1]
     cellpyr= [celltype[a] for a in pyrid]
     
@@ -61,51 +64,78 @@ for sub in range(1,2):
 #    fid.seek(int(frames[2,1]*65*2+1*(ThetaChannel-1)*2),0)
     
     nMazeFrames = int(np.diff(frames[2,:]))
-    b = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(frames[2,0]*65*2+1*(ThetaChannel-1)*2)
-                ,shape=(1,65*nMazeFrames))
-    eegMaze = b[0,:]
-    eegMaze = eegMaze[0::65]
-    
-    eegTime = np.linspace(behav[2,0],behav[2,1],len(eegMaze))
-    
     POSTNREM = states[(states[:,0]>behav[2,0]) & (states[:,2]==1),:]
     
-#    a = np.where((eegTime > POSTNREM[0,0]) & (eegTime < POSTNREM[0,1]))
+    offset1 = ((POSTNREM[0,0]-behav[2,0])//1e6)*1250 +int(np.diff(frames[0,:]))+ int(np.diff(frames[1,:]))
+    offset2 = ((lastNrem[0,0]-behav[2,0])//1e6)*1250+ int(np.diff(frames[0,:]))+int(np.diff(frames[1,:]))
     
-    eeg1st = eegMaze[np.where((eegTime > POSTNREM[0,0]) & (eegTime < POSTNREM[0,1]))]
-    eegLast = eegMaze[np.where((eegTime > POSTNREM[-1,0]) & (eegTime < POSTNREM[-1,1]))]
+    def lfpSpect(sub_name,offsetP):
+        b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(offsetP)*65*2+ 1*(50-1)*2
+                ,shape=(1,65*1250*100))
+        eegnrem1 = b1[0,::65]
+        sos = sg.butter(3, 100, btype = 'low', fs=1250, output='sos')
+        yf = sg.sosfilt(sos,eegnrem1)
+        yf = ft.fft(yf)/len(eegnrem1)
+        xf = np.linspace(0.0, 1250/2, len(eegnrem1)//2)
+        y1 = 2.0/(len(xf)) * np.abs(yf[:len(eegnrem1)//2])
+        y1 = smth.gaussian_filter(y1,8)
+        
+        return y1,xf
     
-
+#    b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(frames[2,0]*65*2+1*(ThetaChannel-1)*2)
+#                ,shape=(1,65*1250))
+#    b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(offset1)*65*2+ 1*(50-1)*2
+#                ,shape=(1,65*1250*100))
+#    b2 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(offset2)*65*2+ 1*(50-1)*2
+#                ,shape=(1,65*1250*100))
+#    
+#    eegnrem1 = b1[0,::65]
+#    eegnrem2 = b2[0,::65]
+#    
+#    
+#    
+##    eegTime = np.linspace(behav[2,0],behav[2,1],len(eegMaze))
+##    
+##    
+##    
+###    a = np.where((eegTime > POSTNREM[0,0]) & (eegTime < POSTNREM[0,1]))
+##    
+##    eeg1st = eegMaze[np.where((eegTime > POSTNREM[0,0]) & (eegTime < POSTNREM[0,0]+100e6))]
+##    eegLast = eegMaze[np.where((eegTime > POSTNREM[-1,0]) & (eegTime < POSTNREM[-1,0]+100e6))]
+##    
+#
+#    
+#    
+#    sos = sg.butter(3, 100, btype = 'low', fs=1250, output='sos')
+#    
+#    yf = sg.sosfilt(sos,eegnrem1)
+#    yL = sg.sosfilt(sos,eegnrem2)
+#    
+#    yf = ft.fft(yf)/len(eegnrem1)
+#    yL = ft.fft(yL)/len(eegnrem2)
+#    
+#    xf = np.linspace(0.0, 1250/2, len(eegnrem1)//2)
+#    xL = np.linspace(0.0, 1250/2, len(eegnrem2)//2)
+#    
+#    
+#    y1 = 2.0/(len(xf)) * np.abs(yf[:len(eegnrem1)//2])
+#    y2 = 2.0/(len(xL)) * np.abs(yL[:len(eegnrem2)//2])
+#    
+#    y1 = smth.gaussian_filter(y1,8)
+#    y2 = smth.gaussian_filter(y2,8)
     
-    
-    sos = sg.butter(3, 100, btype = 'low', fs=1250, output='sos')
-    
-    yf = sg.sosfilt(sos,eeg1st)
-    yL = sg.sosfilt(sos,eegLast)
-    
-    yf = ft.fft(yf)/len(eeg1st)
-    yL = ft.fft(yL)/len(eegLast)
-    
-    xf = np.linspace(0.0, 1250/2, len(eeg1st)//2)
-    xL = np.linspace(0.0, 1250/2, len(eegLast)//2)
-    
-    
-    y1 = 2.0/(len(xf)) * np.abs(yf[:len(eeg1st)//2])
-    y2 = 2.0/(len(xL)) * np.abs(yL[:len(eegLast)//2])
-    
-    y1 = smth.gaussian_filter(y1,16)
-    y2 = smth.gaussian_filter(y2,16)
-    
+    y1,xf = lfpSpect(sub_name,offset1)
+    y2,xL = lfpSpect(sub_name,offset2)
 
 #    fig, ax = plt.subplots()
     plt.clf()
-    plt.plot(xf[::20], y1[::20])
-    plt.plot(xL[::40], y2[::40],'r')
+    plt.plot(xf, y1)
+    plt.plot(xL, y2,'r')
+    plt.xlabel('')
     plt.yscale('log')
-    plt.xlim(0.5,20)
+    plt.xlim(0.5,100)
     
-    
-    
+
     
     
     
