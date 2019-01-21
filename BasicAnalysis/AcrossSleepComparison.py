@@ -15,6 +15,7 @@ import scipy.ndimage.filters as smth
 import scipy.fftpack as ft
 import scipy.stats as stat
 import scipy.signal as sg
+from SpectralAnalysis import lfpSpect
 import h5py
 
 
@@ -55,39 +56,33 @@ for sub in range(1,2):
     pyrid = [i for i in range(0,nUnits) if quality[i] < 4 and stability[i] == 1]
     cellpyr= [celltype[a] for a in pyrid]
     
-    ThetaChannel = 50
+    
+    
+    BasicInfo = {'samplingFrequency': 1250}
+    BasicInfo['behavFrames'] = frames
+    BasicInfo['behav'] = behav
+    BasicInfo['numChannels'] = 65
+    BasicInfo['SpectralChannel'] = 50
+    
     nMazeFrames = int(np.diff(frames[2,:]))
     POSTNREM = states[(states[:,0]>behav[2,0]) & (states[:,2]==1),:]
     
     
-    def lfpSpect(sub_name,nREMPeriod):
-        offsetP = ((nREMPeriod-behav[2,0])//1e6)*1250+ int(np.diff(frames[0,:]))+int(np.diff(frames[1,:]))
-        b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(offsetP)*65*2+ 1*(50-1)*2
-                ,shape=(1,65*1250*100))
-        eegnrem1 = b1[0,::65]
-        sos = sg.butter(3, 100, btype = 'low', fs=1250, output='sos')
-        yf = sg.sosfilt(sos,eegnrem1)
-        yf = ft.fft(yf)/len(eegnrem1)
-        xf = np.linspace(0.0, 1250/2, len(eegnrem1)//2)
-        y1 = 2.0/(len(xf)) * np.abs(yf[:len(eegnrem1)//2])
-        y1 = smth.gaussian_filter(y1,8)
-        
-        return y1,xf
-    
-
-    
-    y1,xf = lfpSpect(sub_name,POSTNREM[0,0])
-    y2,xL = lfpSpect(sub_name,POSTNREM[15,0])
+    y1,xf = lfpSpect(sub_name,POSTNREM[15,0],BasicInfo)
+    y2,xL = lfpSpect(sub_name,lastNrem[0,0],BasicInfo)
 
 #    fig, ax = plt.subplots()
     plt.clf()
+    ax0 = plt.subplot(1,1,1)
     plt.plot(xf, y1)
     plt.plot(xL, y2,'r')
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Power (db)')
     plt.yscale('log')
     plt.xlim(0.5,100)
-    
+    ax0.spines['right'].set_visible(False)
+    ax0.spines['top'].set_visible(False)
+        
 
     
     
