@@ -23,7 +23,7 @@ def lfpSpect(sub_name,nREMPeriod,RecInfo):
     
     offsetP = ((nREMPeriod-behav[2,0])//1e6)*SampFreq+ int(np.diff(frames[0,:]))+int(np.diff(frames[1,:]))
     b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r', offset=int(offsetP)*nChans*2+ 1*(ReqChan-1)*2
-            ,shape=(1,nChans*SampFreq*100))
+            ,shape=(1,nChans*SampFreq*5))
     eegnrem1 = b1[0,::nChans]
     sos = sg.butter(3, 100, btype = 'low', fs=SampFreq, output='sos')
     yf = sg.sosfilt(sos,eegnrem1)

@@ -20,6 +20,7 @@ import h5py
 
 
 
+
 sourceDir = '/data/DataGen/wake_new/'
 sourceDir2 = '/data/DataGen/sleep/'
 
@@ -30,9 +31,10 @@ for k, v in f.items():
 
 fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
-slpbehav= sio.loadmat(sourceDir2 + 'sleep-behavior.mat') 
+slpbehav= h5py.File(sourceDir2 + 'sleep-behavior.mat') 
 
-lastNrem = np.array([1.26586295e+11, 1.27128997e+11]).reshape(1,2)
+#savech = np.load(sourceDir2 + 'sleepPy-behavior')
+
     
 subjects = arrays['basics']
 
@@ -57,6 +59,9 @@ for sub in range(1,2):
     cellpyr= [celltype[a] for a in pyrid]
     
     
+    sleepPeriods = ((slpbehav['behavior'][sub_name.replace('Maze','Sleep')]['list']).value).T
+    slpNrem = np.where((sleepPeriods[:,2]==1) & (sleepPeriods[:,1]<behav[2,0]+10*3600e6))[0]
+    lastNrem = sleepPeriods[slpNrem[-1],0:2]
     
     BasicInfo = {'samplingFrequency': 1250}
     BasicInfo['behavFrames'] = frames
@@ -68,18 +73,19 @@ for sub in range(1,2):
     POSTNREM = states[(states[:,0]>behav[2,0]) & (states[:,2]==1),:]
     
     
-    y1,xf = lfpSpect(sub_name,POSTNREM[15,0],BasicInfo)
-    y2,xL = lfpSpect(sub_name,lastNrem[0,0],BasicInfo)
+    y1,xf = lfpSpect(sub_name,POSTNREM[0,0],BasicInfo)
+    y2,xL = lfpSpect(sub_name,lastNrem[0],BasicInfo)
 
 #    fig, ax = plt.subplots()
     plt.clf()
     ax0 = plt.subplot(1,1,1)
-    plt.plot(xf, y1)
-    plt.plot(xL, y2,'r')
+    plt.plot(xf, y1,label = 'first NREM')
+    plt.plot(xL, y2,'r',label = 'last NREM')
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Power (db)')
     plt.yscale('log')
     plt.xlim(0.5,100)
+    plt.legend()
     ax0.spines['right'].set_visible(False)
     ax0.spines['top'].set_visible(False)
         
