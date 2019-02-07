@@ -16,13 +16,14 @@ Created on Tue Jan  8 10:00:45 2019
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
+from OsCheck import DataDirPath
 #import scipy.signal as sg
 #import scipy.stats as stats
 #from scipy.signal import hilbert
 import h5py
 
 
-sourceDir = '../../DataGen/wake_new/'
+sourceDir = DataDirPath() + 'wake_new/'
 
 arrays = {}
 f= h5py.File(sourceDir + 'wake-basics.mat', 'r') 
@@ -30,7 +31,7 @@ for k, v in f.items():
     arrays[k] = np.array(v)
 
 #spks = {}
-fspikes= h5py.File(sourceDir + 'wake-spikes.mat', 'r') 
+fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
 fpos= h5py.File(sourceDir + 'wake-position.mat', 'r') 
 fspeed= h5py.File(sourceDir + 'wake-speed.mat', 'r') 

@@ -29,7 +29,7 @@ from scipy.ndimage import gaussian_filter
 import h5py
 
 
-sourceDir = '../../DataGen/wake_new/'
+sourceDir = '/data/DataGen/wake_new/'
 
 arrays = {}
 f= h5py.File(sourceDir + 'wake-basics.mat', 'r') 
@@ -37,7 +37,7 @@ for k, v in f.items():
     arrays[k] = np.array(v)
 
 #spks = {}
-fspikes= h5py.File(sourceDir + 'wake-spikes.mat', 'r') 
+fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
 fpos= h5py.File(sourceDir + 'wake-position.mat', 'r') 
 #fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 

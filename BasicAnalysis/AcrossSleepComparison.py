@@ -37,7 +37,7 @@ slpbehav= h5py.File(sourceDir2 + 'sleep-behavior.mat')
 
     
 subjects = arrays['basics']
-
+OsCheck
 
 for sub in range(1,2):
     sub_name = subjects[sub]
