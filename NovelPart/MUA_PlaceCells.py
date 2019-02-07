@@ -44,8 +44,8 @@ fpos= h5py.File(sourceDir + 'wake-position.mat', 'r')
 
 subjects = arrays['basics']
 #spikes = spks['spikes']
-
-for sub in range(5,6):
+plt.clf()
+for sub in range(0,7):
     sub_name = subjects[sub]
     print(sub_name)
     
@@ -78,9 +78,12 @@ for sub in range(5,6):
     ycoord = np.arange(min(posy_mz),max(posy_mz)+1,2)
     xx,yy = np.meshgrid(xcoord,ycoord)
     
-    plt.clf()
-    for cell in range(len(pyrid)):
-        spkt = cellpyr[cell].squeeze()
+#    flat_list = [item for sublist in cellpyr for item in sublist]
+    f2 = np.concatenate(cellpyr, axis =0)
+    
+    
+    for cell in [0]:
+        spkt = f2.squeeze()
         spktx = np.interp(spkt,post_mz,posx_mz)
         spkty = np.interp(spkt,post_mz,posy_mz)
             
@@ -97,12 +100,12 @@ for sub in range(5,6):
     
         
     #    plt.plot(posx_mz,posy_mz,'.')
-        plt.subplot(5,8,cell+1)
-        plt.imshow(pfRate_smooth)
-        
-        plt.xticks([])
-        plt.yticks([])
+    plt.subplot(3,3,sub+1)
+    plt.imshow(pfRate_smooth,vmin = 2,vmax = 38, cmap='jet')
+    
+    plt.xticks([])
+    plt.yticks([])
 #        plt.subplot(1,2,2)
 #        plt.imshow(pfRate_smooth)
-    plt.suptitle(sub_name)
+    plt.title(sub_name)
     

@@ -33,6 +33,7 @@ for k, v in f.items():
 fspikes= h5py.File(sourceDir + 'wake-spikes.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
 fpos= h5py.File(sourceDir + 'wake-position.mat', 'r') 
+fspeed= h5py.File(sourceDir + 'wake-speed.mat', 'r') 
 #fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 
 
 subjects = arrays['basics']
@@ -61,6 +62,9 @@ for sub in range(5,6):
     posy = (fpos['position'][sub_name]['y'][:])
     post = (fpos['position'][sub_name]['t'][:])
     
+    speed = (fspeed['speed'][sub_name]['v'][:]).squeeze()
+    spdt = (fspeed['speed'][sub_name]['t'][:]).squeeze()
+    
     
     
     posx_mz = posx[np.where((post > behav[1,0]) & (post < behav[1,1]))] 
@@ -74,8 +78,14 @@ for sub in range(5,6):
     plt.clf()
     for cell in range(len(pyrid)):
         spkt = cellpyr[cell].squeeze()
+        spd_spk = np.interp(spkt,spdt,speed)
+        
+        spkt = spkt[spkt > 20]
+        
         spktx = np.interp(spkt,post_mz,posx_mz)
         spkty = np.interp(spkt,post_mz,posy_mz)
+        
+        
             
         pf, xe, ye = np.histogram2d(spktx,spkty,bins = [xcoord,ycoord])
         pft = pf*(1/30)
