@@ -21,7 +21,7 @@ from OsCheck import DataDirPath
 #import scipy.stats as stats
 #from scipy.signal import hilbert
 import h5py
-
+        
 
 sourceDir = DataDirPath() + 'wake_new/'
 
@@ -40,7 +40,7 @@ fspeed= h5py.File(sourceDir + 'wake-speed.mat', 'r')
 subjects = arrays['basics']
 #spikes = spks['spikes']
 
-for sub in range(5,6):
+for sub in range(0,7):
     sub_name = subjects[sub]
     print(sub_name)
     
@@ -81,7 +81,7 @@ for sub in range(5,6):
         spkt = cellpyr[cell].squeeze()
         spd_spk = np.interp(spkt,spdt,speed)
         
-        spkt = spkt[spkt > 20]
+        spkt = spkt[spkt > 5]   #only selecting spikes where rat's speed is  > 5 cm/s
         
         spktx = np.interp(spkt,post_mz,posx_mz)
         spkty = np.interp(spkt,post_mz,posy_mz)
