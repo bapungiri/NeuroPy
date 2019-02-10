@@ -31,7 +31,7 @@ with PdfPages('multipage_pdf.pdf') as pdf:
     plt.close()
 
     # if LaTeX is not installed or error caught, change to `usetex=False`
-    plt.rc('text', usetex=False)
+#    plt.rc('text', usetex=False)
     plt.figure(figsize=(8, 6))
     x = np.arange(0, 5, 0.1)
     plt.plot(x, np.sin(x), 'b-')
@@ -41,7 +41,7 @@ with PdfPages('multipage_pdf.pdf') as pdf:
     pdf.savefig()
     plt.close()
 
-    plt.rc('text', usetex=False)
+#    plt.rc('text', usetex=False)
     fig = plt.figure(figsize=(4, 5))
     plt.plot(x, x ** 2, 'ko')
     plt.title('Page Three')

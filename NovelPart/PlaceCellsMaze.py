@@ -14,6 +14,7 @@ Created on Tue Jan  8 10:00:45 2019
 """
 
 import numpy as np
+from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from OsCheck import DataDirPath
@@ -31,7 +32,7 @@ for k, v in f.items():
     arrays[k] = np.array(v)
 
 #spks = {}
-fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
+fspikes= h5py.File(sourceDir + 'wake-spikes.mat', 'r') 
 fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
 fpos= h5py.File(sourceDir + 'wake-position.mat', 'r') 
 fspeed= h5py.File(sourceDir + 'wake-speed.mat', 'r') 
@@ -39,6 +40,9 @@ fspeed= h5py.File(sourceDir + 'wake-speed.mat', 'r')
 
 subjects = arrays['basics']
 #spikes = spks['spikes']
+
+figFilename = 'Try.pdf'
+pdf = PdfPages(figFilename)
 
 for sub in range(0,7):
     sub_name = subjects[sub]
@@ -55,6 +59,7 @@ for sub in range(0,7):
     
     
     pyrid = [i for i in range(0,nUnits) if quality[i] < 4 and stability[i] == 1]
+    nPyr = len(pyrid)
     cellpyr= [celltype[a] for a in pyrid]
     
     behav = np.transpose(fbehav['behavior'][sub_name]['time'][:])
@@ -97,11 +102,13 @@ for sub in range(0,7):
         pfRate_smooth= gaussian_filter(pfRate, sigma=2)
 
 #    ICA_strength = np.array(np.transpose(fICAStrength['ActStrength']['subjects'][sub_name]['wake'][:]))
-
+        
+        nRows = np.ceil(np.sqrt(nPyr))
+        nCols = np.ceil(np.sqrt(nPyr))
     
         
     #    plt.plot(posx_mz,posy_mz,'.')
-        plt.subplot(5,8,cell+1)
+        plt.subplot(nRows,nCols,cell+1)
         plt.imshow(pfRate_smooth)
         
         plt.xticks([])
@@ -109,4 +116,7 @@ for sub in range(0,7):
 #        plt.subplot(1,2,2)
 #        plt.imshow(pfRate_smooth)
     plt.suptitle(sub_name)
+    pdf.savefig(dpi=300)
+
+pdf.close()    
     
