@@ -21,3 +21,18 @@ def DataDirPath():
         DataPath = '../../DataGen/'
         
     return DataPath
+
+
+def figDirPath():
+    
+    comp = sys.platform
+    
+    if comp == 'linux':
+        
+        figPath = '/data/DataGen/figuresGen/'
+        
+    else:
+        
+        figPath = '../../DataGen/figuresGen/'
+        
+    return figPath

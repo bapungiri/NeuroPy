@@ -85,7 +85,7 @@ for sub in range(0,7):
     for cell in [0]:
         spkt = f2.squeeze()
         spktx = np.interp(spkt,post_mz,posx_mz)
-        spkty = np.interp(spkt,post_mz,posy_mz)
+        spkty = np.interp(spkt,post_mz,posy_mz)l
             
         pf, xe, ye = np.histogram2d(spktx,spkty,bins = [xcoord,ycoord])
         pft = pf*(1/30)
