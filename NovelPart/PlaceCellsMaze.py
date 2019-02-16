@@ -116,6 +116,7 @@ for sub in range(0,7):
 #        plt.subplot(1,2,2)
 #        plt.imshow(pfRate_smooth)
     plt.suptitle(sub_name)
+    plt.tight_layout()
     pdf.savefig(dpi=300)
 
 pdf.close()    
