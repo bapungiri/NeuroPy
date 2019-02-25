@@ -40,9 +40,10 @@ for entry in fileDir:
 
 
 
-for sub_name in filePosNames:
+for sub in [1]:
 
-    PosFile = sub_name
+    PosFile = filePosNames[sub]
+    sub_name= PosFile[0:4]
 #    tbegin = datetime.datetime(2019, 2, 18, 17, 23, 21,0)
 #    datetime_object = datetime.datetime.strptime(PosFile[20:-7], '%Y-%m-%d %I.%M.%S')
     tbegin = datetime.datetime.strptime(PosFile[20:-7]+'.0', '%Y-%m-%d %I.%M.%S.%f')
@@ -54,12 +55,48 @@ for sub_name in filePosNames:
                 file1 = sourceDir / entry
     file2 = sourceDir / PosFile
     
+    mazeCoord = [72,112, 168, 283, 325]
+
     
     opti = pd.read_csv(file2,skiprows=range(0, 6))
+    numColData = opti.columns.tolist() 
     t = opti['Time (Seconds)']
-    x = opti.X
-    y = opti.Y
-    z = opti.Z
+    
+    x=opti.X
+    y=opti.Y
+    z=opti.Z
+    for i in range(1,int((len(numColData)-2)/3)):
+        
+        if i < int((len(numColData)-2)/3)-1:
+            x1 = opti['X.'+str(i)]
+            x2 = opti['X.'+str(i+1)]
+            valx1 = pd.Series.first_valid_index(x1)
+            valx2 = pd.Series.first_valid_index(x2)        
+            x = pd.concat([x[0:valx1],x1[valx1:valx2]])
+            
+            z1 = opti['Z.'+str(i)]
+            z2 = opti['Z.'+str(i+1)]
+            valz1 = pd.Series.first_valid_index(z1)
+            valz2 = pd.Series.first_valid_index(z2)        
+            z = pd.concat([z[0:valz1],z1[valz1:valz2]])
+        
+        if i == int((len(numColData)-2)/3)-1:
+            x1 = opti['X.'+str(i)]
+            valx1 = pd.Series.first_valid_index(x1)
+            x = pd.concat([x[0:valx1],x1[valx1:len(x1)+1]])
+            
+            z1 = opti['Z.'+str(i)]
+            valz1 = pd.Series.first_valid_index(z1)
+            z = pd.concat([z[0:valx1],z1[valx1:len(z1)+1]])
+            
+#        y1 = opti['Y.'+str(i)]
+#        valy = pd.Series.first_valid_index(y1)        
+#        y = pd.concat([y[0:valy],y1])
+#        
+#        z1 = opti['Z.'+str(i)]
+#        valz = pd.Series.first_valid_index(z1)
+#        z = pd.concat([z[0:valz],z1])
+
     
     xedges = np.linspace(min(x),max(x),200)
     yedges = np.linspace(min(z),max(z),200)
@@ -90,7 +127,7 @@ for sub_name in filePosNames:
     Thresh = np.where(radi > 0.5)
     angle = np.arctan2(z,x)
     
-    hist_angle = np.histogram(angle[~np.isnan(angle)])
+    hist_angle = np.histogram(angle[~np.isnan(angle)],np.linspace(-np.pi,np.pi,40))
     
     
     radi_thresh = radi-0.4
@@ -139,7 +176,7 @@ for sub_name in filePosNames:
     
     
     
-    over_time_false, edges = np.histogram([time_false,time_incorr_choice],np.linspace(0,2800,10))
+    over_time_false, edges = np.histogram(np.concatenate((time_false,time_incorr_choice),axis=0),np.linspace(0,2800,10))
     over_time_true, edges = np.histogram(time_corr_choice,np.linspace(0,2800,10))
     
     false_choice_t = np.cumsum(over_time_false)
@@ -154,11 +191,12 @@ for sub_name in filePosNames:
     plt.xlabel('time')
     plt.ylabel('Cummulative choices')
     plt.legend()
+    plt.title(sub_name)
     
-    #fig = plt.figure(1)
+    fig = plt.figure(1)
     ##plt.plot(hist_angle[0])
-    #ax = fig.add_subplot(121, projection='polar')
-    #c = ax.scatter(angle, radi)
+    ax = fig.add_subplot(121, projection='polar')
+    c = ax.scatter(angle, radi)
     ##ax = fig.add_subplot(122)
     ##c = ax.plot(radi-0.4)
     
