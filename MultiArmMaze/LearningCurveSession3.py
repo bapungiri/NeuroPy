@@ -37,7 +37,7 @@ for entry in fileDir:
 
 
 plt.clf()
-for sub in [0,2,3,4,5]:
+for sub in [1]:
 
     PosFile = filePosNames[sub]
     sub_name= PosFile[0:4]
