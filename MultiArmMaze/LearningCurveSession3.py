@@ -1,17 +1,12 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Feb 24 14:14:05 2019
-
-@author: Bapun
-"""
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb 18 15:43:54 2019
+Created on Mon Feb 25 15:23:42 2019
 
 @author: bapung
 """
+
+
 import datetime
 import time
 import os, fnmatch
@@ -28,10 +23,10 @@ import scipy.ndimage as filt
 
 data_folder = Path(DataDirPath())
 
-sourceDir = data_folder / 'MultiMazeData/session4/'
+sourceDir = data_folder / 'MultiMazeData/session3/'
 fileDir = os.listdir(sourceDir)
 pattern1 = '*Take*'
-pattern2 = '*Sess4.csv'  
+pattern2 = '*Sess3.csv'  
 filePosNames = [] 
 SensorNames = [] 
 for entry in fileDir:  
@@ -42,7 +37,7 @@ for entry in fileDir:
 
 
 plt.clf()
-for sub in [2,3,4,5]:
+for sub in [0,1,2]:
 
     PosFile = filePosNames[sub]
     sub_name= PosFile[0:4]
@@ -220,7 +215,7 @@ for sub in [2,3,4,5]:
     time_epoch = int(timeRecord/4)*120
     
     
-    for i in range(0,4):
+    for i in [3]:
         
         xt = x[i:time_epoch*(i+1)]
         zt = z[i:time_epoch*(i+1)]
