@@ -37,7 +37,7 @@ for entry in fileDir:
 
 
 plt.clf()
-for sub in [0,1,2]:
+for sub in [0,2,3,4,5]:
 
     PosFile = filePosNames[sub]
     sub_name= PosFile[0:4]
@@ -174,6 +174,56 @@ for sub in [0,1,2]:
     time_corr_choice =time_true[k]
     time_incorr_choice = time_true[np.where(reward_logic==0)]
     
+    
+    ##==== Running Avergae Calculation ===============
+    
+    run_avg = np.zeros(len(angle_degree))
+    for ang1 in range(0,len(angle_degree)):
+        
+        deg = angle_degree[ang1]
+        if (sum(run_avg)==0):
+            
+            if abs(deg-110)<10 or abs(deg-162)<10:
+                run_avg[ang1] = 1
+                temp = deg
+                
+        if (sum(run_avg)!=0):
+            
+            if abs(deg-110)<10 and abs(temp-deg)>10:
+                run_avg[ang1] = 1
+                temp=deg
+                
+        if abs(deg-162)<10 and abs(temp-deg)>10:
+                run_avg[ang1] = 1
+                temp=deg
+     
+        
+    mov_sum_reward=[]
+    wind_size = 10
+    for wind in range(0,len(run_avg)-wind_size+1):
+         
+         mov_sum_reward.append(sum(run_avg[wind:wind+wind_size]))
+         
+         
+    run_avg_t = np.arange(wind_size,len(run_avg)+1)     
+         
+     
+        
+        
+        
+#        
+#        if (ang1-110)<10:
+#            
+#            run_avg[ang1] = 1
+#            
+#        if (ang1-162)<10:
+#            
+#            run_avg[ang1] = -1
+            
+            
+    
+    
+    
     #for i in range(0,len(reward_arm_angle)-1):
     #    if (reward_arm_angle[i]*reward_arm_angle[i+1]<0):
     #        corr_choice  = corr_choice+1
@@ -202,13 +252,17 @@ for sub in [0,1,2]:
     true_sensor_t = np.cumsum(true_sensor)
     
     
-    plt.subplot(6,5,sub*5+1)
-    plt.plot(ti,false_choice_t,'r', label = 'Wrong Arm')
-    plt.plot(ti, correct_choice_t,'g',label = 'Correct Arm')
-    plt.plot(ti, true_sensor_t,'m',label = 'Sensor reward')
-    plt.xlabel('time')
-    plt.ylabel('Cummulative choices')
-    plt.legend()
+    plt.subplot(6,2,sub*2+1)
+#    plt.plot(ti,false_choice_t,'r', label = 'Wrong Arm')
+#    plt.plot(ti, correct_choice_t,'g',label = 'Correct Arm')
+#    plt.plot(ti, true_sensor_t,'m',label = 'Sensor reward')
+    plt.plot(run_avg_t,mov_sum_reward,label='Running avg.('+str(wind_size)+'runs)')
+    
+    plt.ylabel('# Correct choices')
+    
+    if sub==0:
+        plt.legend()
+        plt.xlabel('trial')
     plt.title(sub_name)
     
     
@@ -222,10 +276,10 @@ for sub in [0,1,2]:
         
         hist_pos= np.histogram2d(xt[~np.isnan(xt)],zt[~np.isnan(zt)],bins = (xedges,yedges)) 
         
-        dsf = filt.gaussian_filter(hist_pos[0],sigma=30, order=0)
+        dsf = filt.gaussian_filter(hist_pos[0],sigma=1.5, order=0)
         
-        plt.subplot(6,5,sub*5+1+i+1)
-        plt.imshow(hist_pos[0],cmap='viridis',vmin = 0,vmax=200)
+        plt.subplot(6,2,sub*2+2)
+        plt.imshow(dsf,cmap='viridis',vmin = 0,vmax=200)
     
     
     
