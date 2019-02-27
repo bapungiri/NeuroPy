@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb 25 15:23:42 2019
+Created on Tue Feb 26 17:59:55 2019
 
 @author: bapung
 """
@@ -17,23 +17,20 @@ import matplotlib.pyplot as plt
 from OsCheck import DataDirPath, figDirPath 
 import scipy.signal as sg
 #import scipy.ndimage as filt 
-
 import matplotlib as mpl
 
 
 mpl.rc('axes', linewidth=1.5)
 mpl.rc('font', size = 12)
-mpl.rc('axes.spines', top=False, right = False)
-
 
 
 data_folder = Path(DataDirPath())
-fig_name = figDirPath()+ 'MultiMazeFigures/' + 'Session3.pdf'
+fig_name = figDirPath()+ 'MultiMazeFigures/' + 'Session2.pdf'
 
-sourceDir = data_folder / 'MultiMazeData/session3/'
+sourceDir = data_folder / 'MultiMazeData/session2/'
 fileDir = os.listdir(sourceDir)
 pattern1 = '*Take*'
-pattern2 = '*Sess3.csv'  
+pattern2 = '*Sess2.csv'  
 filePosNames = [] 
 SensorNames = [] 
 for entry in fileDir:  
@@ -103,7 +100,7 @@ for sub in [0,1,2,3,4,5]:
 
 
         
-        if i == int((len(numColData)-2)/3)-1:
+        if i>1 and i == int((len(numColData)-2)/3)-1:
             x1 = opti['X.'+str(i)]
             valx1 = pd.Series.first_valid_index(x1)
             x = pd.concat([x[0:valx1],x1[valx1:len(x1)+1]])
@@ -165,6 +162,8 @@ for sub in [0,1,2,3,4,5]:
     
     radi_thresh = radi-0.4
     
+    radi_thresh= np.asarray(radi_thresh)
+    angle= np.asarray(angle)
     
     angle_cross = []
     time_cross=[]
@@ -181,7 +180,7 @@ for sub in [0,1,2,3,4,5]:
     
     angle_degree  = (angle_cross/np.pi)*180
     
-    run_logic = np.where([(angle_degree > 90) & (angle_degree <180)],1,0).squeeze()
+    run_logic = np.where([(angle_degree > 90) | (angle_degree < 0)],1,0).squeeze()
     time_false = time_cross[run_logic==0]
     time_true = time_cross[run_logic==1]
     
@@ -196,8 +195,7 @@ for sub in [0,1,2,3,4,5]:
     
     
     
-    time_corr_choice =time_true[k]
-    time_incorr_choice = time_true[np.where(reward_logic==0)]
+
     
     
     ##==== Running Avergae Calculation ===============
@@ -208,96 +206,68 @@ for sub in [0,1,2,3,4,5]:
         deg = angle_degree[ang1]
         if (sum(run_avg)==0):
             
-            if abs(deg-110)<10 or abs(deg-162)<10:
+            if abs(deg+87)<10 or abs(deg-96)<10:
                 run_avg[ang1] = 1
                 temp = deg
                 
         if (sum(run_avg)!=0):
             
-            if abs(deg-110)<10 and abs(temp-deg)>10:
+            if abs(deg+87)<10 and abs(temp-deg)>10:
                 run_avg[ang1] = 1
                 temp=deg
                 
-            if abs(deg-162)<10 and abs(temp-deg)>10:
+            if abs(deg-96)<10 and abs(temp-deg)>10:
                 run_avg[ang1] = 1
                 temp=deg
      
         
     mov_sum_reward=[]
     wind_size = 10
-    for wind in range(0,len(run_avg)-wind_size+1):
+    
+    
+    if len(run_avg)>10:
+        for wind in range(0,len(run_avg)-wind_size+1):
          
-         mov_sum_reward.append(sum(run_avg[wind:wind+wind_size]))
+            mov_sum_reward.append(sum(run_avg[wind:wind+wind_size]))
+            run_avg_t = np.arange(wind_size,len(run_avg)+1)
          
-         
-    run_avg_t = np.arange(wind_size,len(run_avg)+1)     
-         
-     
+    if len(run_avg)<=10:
         
+            mov_sum_reward.append(sum(run_avg))
+            run_avg_t = len(run_avg)
         
-        
-#        
-#        if (ang1-110)<10:
-#            
-#            run_avg[ang1] = 1
-#            
-#        if (ang1-162)<10:
-#            
-#            run_avg[ang1] = -1
-            
-            
     
     
-    
-    #for i in range(0,len(reward_arm_angle)-1):
-    #    if (reward_arm_angle[i]*reward_arm_angle[i+1]<0):
-    #        corr_choice  = corr_choice+1
-    #        time_corr_choice.append(time_true[i])
-    #        
-    #    if (reward_arm_angle[i]*reward_arm_angle[i+1]>0):
-    #        corr_choice  = corr_choice+1
-    #        time_corr_choice.append(time_true[i])
-    #
-    #time_corr_choice = np.asarray(time_corr_choice)
-     
-    
-    timeRecord = t[pd.Series.last_valid_index(x)]
-    
-    over_time_false, edges = np.histogram(np.concatenate((time_false,time_incorr_choice),axis=0),np.linspace(0,timeRecord,10))
-    over_time_true, edges = np.histogram(time_corr_choice,np.linspace(0,timeRecord,10))
-    
-    false_choice_t = np.cumsum(over_time_false)
-    correct_choice_t = np.cumsum(over_time_true)
-    
-    ti = (edges[0:-1]+5*60)/60
-    
+    timeRecord = t[pd.Series.last_valid_index(x)]    
     reward_sensor = np.where((Sensor1==4) | (Sensor1==6))[0]
     time_sensor_reward = time_n[reward_sensor[0::]]
     true_sensor, edges = np.histogram(time_sensor_reward,np.linspace(0,timeRecord,10))
     true_sensor_t = np.cumsum(true_sensor)
     
     
-    norm_x = run_avg_t-min(run_avg_t)
+
     
     percent_correct = [x / 10 for x in mov_sum_reward]
     
     
-    plt.subplot(1,1,1)
+    ax1 =plt.subplot(1,1,1)
 #    plt.plot(ti,false_choice_t,'r', label = 'Wrong Arm')
 #    plt.plot(ti, correct_choice_t,'g',label = 'Correct Arm')
 #    plt.plot(ti, true_sensor_t,'m',label = 'Sensor reward')
-    plt.plot(run_avg_t,percent_correct,label=sub_name,color= colmap[sub], linewidth = 3, alpha=0.95-sub/10, linestyle= '-')
+    
+    if len(percent_correct)>1:
+    
+        plt.plot(run_avg_t,percent_correct,label=sub_name,color= colmap[sub], linewidth = 3, alpha=0.95-sub/10, linestyle= '-')
+        
+    else:
+    
+        plt.scatter(run_avg_t,percent_correct,label=sub_name,color= colmap[sub], alpha=0.95-sub/10)
     
     plt.ylabel('Proportion correct')
     plt.xlabel('# Choices')
-#    if sub==0:
-#        plt.legend()
-#        plt.xlabel('trial')
-#        
-#    if sub < 3:    
-#        plt.title(sub_name+'(F)', x=-0.2, y = 0.5)
-#    else:
-#        plt.title(sub_name+'(M)', x=-0.2, y = 0.5)
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['top'].set_visible(False)
+
     
     
     time_epoch = int(timeRecord/4)*120
@@ -317,10 +287,9 @@ for sub in [0,1,2,3,4,5]:
 #        plt.imshow(dsf,cmap='viridis',vmin = 0,vmax=200)
     
     
-    
-    
 
 
-plt.title('Session 3',loc='left')
+plt.title('Session 2',loc='left')
 plt.legend(loc = 'lower right',ncol=2)
+
 plt.savefig(fig_name, dpi=150)

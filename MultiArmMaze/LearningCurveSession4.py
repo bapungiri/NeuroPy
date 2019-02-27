@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb 25 15:23:42 2019
+Created on Tue Feb 26 14:30:54 2019
 
 @author: bapung
 """
@@ -13,27 +13,32 @@ import os, fnmatch
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from matplotlib import cm
 import matplotlib.pyplot as plt
 from OsCheck import DataDirPath, figDirPath 
 import scipy.signal as sg
 #import scipy.ndimage as filt 
+import brewer2mpl
+
 
 import matplotlib as mpl
 
 
 mpl.rc('axes', linewidth=1.5)
 mpl.rc('font', size = 12)
-mpl.rc('axes.spines', top=False, right = False)
 
+
+bmap = brewer2mpl.get_map('Set2', 'qualitative', 6)
+#colmap = bmap.mpl_colors
 
 
 data_folder = Path(DataDirPath())
-fig_name = figDirPath()+ 'MultiMazeFigures/' + 'Session3.pdf'
+fig_name = figDirPath()+ 'MultiMazeFigures/' + 'Session4.pdf'
 
-sourceDir = data_folder / 'MultiMazeData/session3/'
+sourceDir = data_folder / 'MultiMazeData/session4/'
 fileDir = os.listdir(sourceDir)
 pattern1 = '*Take*'
-pattern2 = '*Sess3.csv'  
+pattern2 = '*Sess4.csv'  
 filePosNames = [] 
 SensorNames = [] 
 for entry in fileDir:  
@@ -43,6 +48,14 @@ for entry in fileDir:
             SensorNames.append(entry)
 
 filePosNames= np.sort(filePosNames)
+#colmap = cm.get_cmap('tab20c',6) 
+
+#colmap = [[0.482, 0.541, 0.937],[0.219, 0.309, 0.898],[0.074, 0.133, 0.525],[0.949, 0.470, 0.529],[0.898, 0.121, 0.219],[0.509, 0.070, 0.125]]
+
+#colmap = ['#e8a05c','#ed913b','#f27a09','#76bbe0','#44a8dd', '#048add']
+
+#colmap = ['#e8a05c','#ed913b','#f27a09','#76bbe0','#44a8dd', '#048add']
+          
 colmap = plt.cm.tab10(np.linspace(0,1,6))
 
 plt.clf()
@@ -96,10 +109,17 @@ for sub in [0,1,2,3,4,5]:
                 
             if valx1>last_ind1 and valx2 < last_ind2:
                 
-                x3 = opti['X.'+str(i+2)]
-                valx3 = pd.Series.first_valid_index(x3)
-                x = pd.concat([x[0:valx1],x1[valx1:valx3]])
-                z = pd.concat([z[0:valx1],z1[valx1:valx3]])
+                if i+2 > int((len(numColData)-2)/3)-1:
+                    x3 = opti['X.'+str(i+1)]
+                    valx3 = len(t)
+                    x = pd.concat([x[0:valx1],x1[valx1:valx3]])
+                    z = pd.concat([z[0:valx1],z1[valx1:valx3]])
+                else:
+                    x3 = opti['X.'+str(i+2)]
+                    valx3 = pd.Series.first_valid_index(x3)
+                    x = pd.concat([x[0:valx1],x1[valx1:valx3]])
+                    z = pd.concat([z[0:valx1],z1[valx1:valx3]])
+                    
 
 
         
@@ -169,12 +189,20 @@ for sub in [0,1,2,3,4,5]:
     angle_cross = []
     time_cross=[]
     outward= 0
+    
+    radi_thresh= np.asarray(radi_thresh)
+    angle= np.asarray(angle)
+    
     for i in range(0,len(radi_thresh)-1):
         if (radi_thresh[i]<0 and radi_thresh[i+1]>0):
             outward  = outward+1
             angle_cross.append(angle[i])
             time_cross.append(t[i])
-            
+     
+    
+    #=== Alternative =========
+    
+
     
     angle_cross = np.asarray(angle_cross)
     time_cross = np.asarray(time_cross)
@@ -282,7 +310,7 @@ for sub in [0,1,2,3,4,5]:
     percent_correct = [x / 10 for x in mov_sum_reward]
     
     
-    plt.subplot(1,1,1)
+    ax1 = plt.subplot(1,1,1)
 #    plt.plot(ti,false_choice_t,'r', label = 'Wrong Arm')
 #    plt.plot(ti, correct_choice_t,'g',label = 'Correct Arm')
 #    plt.plot(ti, true_sensor_t,'m',label = 'Sensor reward')
@@ -290,6 +318,10 @@ for sub in [0,1,2,3,4,5]:
     
     plt.ylabel('Proportion correct')
     plt.xlabel('# Choices')
+               
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['top'].set_visible(False)
+    
 #    if sub==0:
 #        plt.legend()
 #        plt.xlabel('trial')
@@ -321,6 +353,7 @@ for sub in [0,1,2,3,4,5]:
     
 
 
-plt.title('Session 3',loc='left')
-plt.legend(loc = 'lower right',ncol=2)
+plt.title('Session 4',loc='left')
+plt.legend(loc = 'upper right',ncol=2)
+
 plt.savefig(fig_name, dpi=150)
