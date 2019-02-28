@@ -85,52 +85,75 @@ for sub in [0,1,2,3,4,5]:
     x=opti.X
     y=opti.Y
     z=opti.Z
-    for i in range(1,int((len(numColData)-2)/3)):
+    
+    #====== Alternative correction ===========
+    i = 1
+    
+    while i <  int((len(numColData)-2)/3):
         
-        if i < int((len(numColData)-2)/3)-1:
+        last_ind1 = pd.Series.last_valid_index(x)
             
-            last_ind1 = pd.Series.last_valid_index(x)
-            
-            x1 = opti['X.'+str(i)]
-            x2 = opti['X.'+str(i+1)]
-            
-            last_ind2 = pd.Series.last_valid_index(x1)
-            
-            valx1 = pd.Series.first_valid_index(x1)
-            valx2 = pd.Series.first_valid_index(x2)
-            
-            z1 = opti['Z.'+str(i)]
-            z2 = opti['Z.'+str(i+1)]
-            
-            if valx1>last_ind1 and valx2> last_ind2:
-                
-                x = pd.concat([x[0:valx1],x1[valx1:valx2]])
-                z = pd.concat([z[0:valx1],z1[valx1:valx2]])
-                
-            if valx1>last_ind1 and valx2 < last_ind2:
-                
-                if i+2 > int((len(numColData)-2)/3)-1:
-                    x3 = opti['X.'+str(i+1)]
-                    valx3 = len(t)
-                    x = pd.concat([x[0:valx1],x1[valx1:valx3]])
-                    z = pd.concat([z[0:valx1],z1[valx1:valx3]])
-                else:
-                    x3 = opti['X.'+str(i+2)]
-                    valx3 = pd.Series.first_valid_index(x3)
-                    x = pd.concat([x[0:valx1],x1[valx1:valx3]])
-                    z = pd.concat([z[0:valx1],z1[valx1:valx3]])
-                    
-
-
+        x1 = opti['X.'+str(i)]
+        z1 = opti['Z.'+str(i)]
+        valx1 = pd.Series.first_valid_index(x1)
         
-        if i == int((len(numColData)-2)/3)-1:
-            x1 = opti['X.'+str(i)]
-            valx1 = pd.Series.first_valid_index(x1)
-            x = pd.concat([x[0:valx1],x1[valx1:len(x1)+1]])
+        if valx1 > last_ind1:
             
-            z1 = opti['Z.'+str(i)]
-            valz1 = pd.Series.first_valid_index(z1)
-            z = pd.concat([z[0:valx1],z1[valx1:len(z1)+1]])
+            x = pd.concat([x[0:valx1],x1[valx1:]])
+            z = pd.concat([z[0:valx1],z1[valx1:]])
+        
+        i=i+1
+        
+        
+        
+        
+        
+#    for i in range(1,int((len(numColData)-2)/3)):
+#        
+#        if i < int((len(numColData)-2)/3)-1:
+#            
+#            last_ind1 = pd.Series.last_valid_index(x)
+#            
+#            x1 = opti['X.'+str(i)]
+#            x2 = opti['X.'+str(i+1)]
+#            
+#            last_ind2 = pd.Series.last_valid_index(x1)
+#            
+#            valx1 = pd.Series.first_valid_index(x1)
+#            valx2 = pd.Series.first_valid_index(x2)
+#            
+#            z1 = opti['Z.'+str(i)]
+#            z2 = opti['Z.'+str(i+1)]
+#            
+#            if valx1>last_ind1 and valx2> last_ind2:
+#                
+#                x = pd.concat([x[0:valx1],x1[valx1:valx2]])
+#                z = pd.concat([z[0:valx1],z1[valx1:valx2]])
+#                
+#            if valx1>last_ind1 and valx2 < last_ind2:
+#                
+#                if i+2 > int((len(numColData)-2)/3)-1:
+#                    x3 = opti['X.'+str(i+1)]
+#                    valx3 = len(t)
+#                    x = pd.concat([x[0:valx1],x1[valx1:valx3]])
+#                    z = pd.concat([z[0:valx1],z1[valx1:valx3]])
+#                else:
+#                    x3 = opti['X.'+str(i+2)]
+#                    valx3 = pd.Series.first_valid_index(x3)
+#                    x = pd.concat([x[0:valx1],x1[valx1:valx3]])
+#                    z = pd.concat([z[0:valx1],z1[valx1:valx3]])
+#                    
+#
+#
+#        
+#        if i == int((len(numColData)-2)/3)-1:
+#            x1 = opti['X.'+str(i)]
+#            valx1 = pd.Series.first_valid_index(x1)
+#            x = pd.concat([x[0:valx1],x1[valx1:len(x1)+1]])
+#            
+#            z1 = opti['Z.'+str(i)]
+#            valz1 = pd.Series.first_valid_index(z1)
+#            z = pd.concat([z[0:valx1],z1[valx1:len(z1)+1]])
             
 #        y1 = opti['Y.'+str(i)]
 #        valy = pd.Series.first_valid_index(y1)        
@@ -315,7 +338,7 @@ for sub in [0,1,2,3,4,5]:
 #    plt.plot(ti, correct_choice_t,'g',label = 'Correct Arm')
 #    plt.plot(ti, true_sensor_t,'m',label = 'Sensor reward')
     plt.plot(run_avg_t,percent_correct,label=sub_name,color= colmap[sub], linewidth = 3, alpha=0.95-sub/10, linestyle= '-')
-    
+    plt.ylim(0, 1.1)
     plt.ylabel('Proportion correct')
     plt.xlabel('# Choices')
                
@@ -333,6 +356,8 @@ for sub in [0,1,2,3,4,5]:
     
     
     time_epoch = int(timeRecord/4)*120
+    
+    print(pd.Series.last_valid_index(x)-pd.Series.last_valid_index(t))
     
   ##==== Plotting occupancy map =================  
   

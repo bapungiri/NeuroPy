@@ -43,7 +43,7 @@ filePosNames= np.sort(filePosNames)
 colmap = plt.cm.tab10(np.linspace(0,1,6))
 
 plt.clf()
-for sub in [4]:
+for sub in [0,1,2,3,4,5]:
 
     PosFile = filePosNames[sub]
     sub_name= PosFile[0:4]
@@ -69,45 +69,89 @@ for sub in [4]:
     x=opti.X
     y=opti.Y
     z=opti.Z
-    for i in range(1,int((len(numColData)-2)/3)):
+    
+    #====== Alternative correction ===========
+    i = 1
+    
+    while i <  int((len(numColData)-2)/3):
         
-        if i < int((len(numColData)-2)/3)-1:
+        last_ind1 = pd.Series.last_valid_index(x)
             
-            last_ind1 = pd.Series.last_valid_index(x)
-            
-            x1 = opti['X.'+str(i)]
-            x2 = opti['X.'+str(i+1)]
-            
-            last_ind2 = pd.Series.last_valid_index(x1)
-            
-            valx1 = pd.Series.first_valid_index(x1)
-            valx2 = pd.Series.first_valid_index(x2)
-            
-            z1 = opti['Z.'+str(i)]
-            z2 = opti['Z.'+str(i+1)]
-            
-            if valx1>last_ind1 and valx2> last_ind2:
-                
-                x = pd.concat([x[0:valx1],x1[valx1:valx2]])
-                z = pd.concat([z[0:valx1],z1[valx1:valx2]])
-                
-            if valx1>last_ind1 and valx2 < last_ind2:
-                
-                x3 = opti['X.'+str(i+2)]
-                valx3 = pd.Series.first_valid_index(x3)
-                x = pd.concat([x[0:valx1],x1[valx1:valx3]])
-                z = pd.concat([z[0:valx1],z1[valx1:valx3]])
-
-
+        x1 = opti['X.'+str(i)]
+        z1 = opti['Z.'+str(i)]
+        valx1 = pd.Series.first_valid_index(x1)
         
-        if i>1 and i == int((len(numColData)-2)/3)-1:
-            x1 = opti['X.'+str(i)]
-            valx1 = pd.Series.first_valid_index(x1)
-            x = pd.concat([x[0:valx1],x1[valx1:len(x1)+1]])
+        if valx1 > last_ind1:
             
-            z1 = opti['Z.'+str(i)]
-            valz1 = pd.Series.first_valid_index(z1)
-            z = pd.concat([z[0:valx1],z1[valx1:len(z1)+1]])
+            x = pd.concat([x[0:valx1],x1[valx1:]])
+            z = pd.concat([z[0:valx1],z1[valx1:]])
+        
+        i=i+1
+        
+            
+            
+    print(pd.Series.last_valid_index(x)-pd.Series.last_valid_index(t))
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+#    for i in range(1,int((len(numColData)-2)/3)):
+#        
+#        if i < int((len(numColData)-2)/3)-1:
+#            
+#            last_ind1 = pd.Series.last_valid_index(x)
+#            
+#            x1 = opti['X.'+str(i)]
+#            x2 = opti['X.'+str(i+1)]
+#            
+#            last_ind2 = pd.Series.last_valid_index(x1)
+#            
+#            valx1 = pd.Series.first_valid_index(x1)
+#            valx2 = pd.Series.first_valid_index(x2)
+#            
+#            z1 = opti['Z.'+str(i)]
+#            z2 = opti['Z.'+str(i+1)]
+#            
+#            if valx1>last_ind1 and valx2> last_ind2:
+#                
+#                x = pd.concat([x[0:valx1],x1[valx1:valx2]])
+#                z = pd.concat([z[0:valx1],z1[valx1:valx2]])
+#                
+#            if valx1>last_ind1 and valx2 < last_ind2:
+#                
+#                x3 = opti['X.'+str(i+2)]
+#                valx3 = pd.Series.first_valid_index(x3)
+#                x = pd.concat([x[0:valx1],x1[valx1:valx3]])
+#                z = pd.concat([z[0:valx1],z1[valx1:valx3]])
+#
+#
+#        
+#        if i>1 and i == int((len(numColData)-2)/3)-1:
+#            x1 = opti['X.'+str(i)]
+#            valx1 = pd.Series.first_valid_index(x1)
+#            x = pd.concat([x[0:valx1],x1[valx1:len(x1)+1]])
+#            
+#            z1 = opti['Z.'+str(i)]
+#            valz1 = pd.Series.first_valid_index(z1)
+#            z = pd.concat([z[0:valx1],z1[valx1:len(z1)+1]])
             
 #        y1 = opti['Y.'+str(i)]
 #        valy = pd.Series.first_valid_index(y1)        
@@ -263,6 +307,8 @@ for sub in [4]:
     else:
     
         plt.scatter(run_avg_t,percent_correct,label=sub_name,color= colmap[sub], alpha=0.95-sub/10)
+        
+    plt.ylim(0, 1.1)
     
     plt.ylabel('Proportion correct')
     plt.xlabel('# Choices')
