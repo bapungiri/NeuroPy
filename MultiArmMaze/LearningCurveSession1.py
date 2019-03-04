@@ -273,7 +273,7 @@ for sub in [0, 1, 2, 3, 4, 5]:
 
     time_epoch = int(timeRecord/4)*120
 
-  # ==== Plotting occupancy map =================
+#  ==== Plotting occupancy map =================
 
 #    for i in [3]:
 #

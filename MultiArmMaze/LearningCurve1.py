@@ -42,7 +42,12 @@ for entry in fileDir:
 
 
 plt.clf()
-for sub in [2,3,4,5]:
+
+Time = []
+xcoord=[]
+zcoord=[]
+subjects=[]
+for sub in [2,3]:
 
     PosFile = filePosNames[sub]
     sub_name= PosFile[0:4]
@@ -207,33 +212,36 @@ for sub in [2,3,4,5]:
     true_sensor_t = np.cumsum(true_sensor)
     
     
-    plt.subplot(6,5,sub*5+1)
-    plt.plot(ti,false_choice_t,'r', label = 'Wrong Arm')
-    plt.plot(ti, correct_choice_t,'g',label = 'Correct Arm')
-    plt.plot(ti, true_sensor_t,'m',label = 'Sensor reward')
-    plt.xlabel('time')
-    plt.ylabel('Cummulative choices')
-    plt.legend()
-    plt.title(sub_name)
+#    plt.subplot(6,5,sub*5+1)
+#    plt.plot(ti,false_choice_t,'r', label = 'Wrong Arm')
+#    plt.plot(ti, correct_choice_t,'g',label = 'Correct Arm')
+#    plt.plot(ti, true_sensor_t,'m',label = 'Sensor reward')
+#    plt.xlabel('time')
+#    plt.ylabel('Cummulative choices')
+#    plt.legend()
+#    plt.title(sub_name)
+#    
+#    
+#    time_epoch = int(timeRecord/4)*120
+#    
+#    
+#    for i in range(0,4):
+#        
+#        xt = x[i:time_epoch*(i+1)]
+#        zt = z[i:time_epoch*(i+1)]
+#        
+#        hist_pos= np.histogram2d(xt[~np.isnan(xt)],zt[~np.isnan(zt)],bins = (xedges,yedges)) 
+#        
+#        dsf = filt.gaussian_filter(hist_pos[0],sigma=30, order=0)
+#        
+#        plt.subplot(6,5,sub*5+1+i+1)
+#        plt.imshow(hist_pos[0],cmap='viridis',vmin = 0,vmax=200)
     
     
-    time_epoch = int(timeRecord/4)*120
-    
-    
-    for i in range(0,4):
-        
-        xt = x[i:time_epoch*(i+1)]
-        zt = z[i:time_epoch*(i+1)]
-        
-        hist_pos= np.histogram2d(xt[~np.isnan(xt)],zt[~np.isnan(zt)],bins = (xedges,yedges)) 
-        
-        dsf = filt.gaussian_filter(hist_pos[0],sigma=30, order=0)
-        
-        plt.subplot(6,5,sub*5+1+i+1)
-        plt.imshow(hist_pos[0],cmap='viridis',vmin = 0,vmax=200)
-    
-    
-    
+    Time.append(t)
+    xcoord.append(x)
+    zcoord.append(z)
+    subjects.append(sub_name)
     
 #    fig = plt.figure(1)
     ##plt.plot(hist_angle[0])
@@ -249,25 +257,8 @@ for sub in [2,3,4,5]:
     
     numData = int(np.floor(len(x)/4))
     
-    #plt.clf()
-    #
-    #for i in range(0,4):
-    #    plt.subplot(1,4,i+1)
-    #    #plt.plot(time1,Sensor1,'.')
-    #    #plt.subplot(1,2,2)
-    #    plt.plot(x[i*numData:(i+1)*numData],z[i*numData:(i+1)*numData])
-    #    #plt.plot(sensorX,sensorZ,'r.')
-    ##    plt.title('RatC Session 1')
-    
-    #
-    
-    #with open(file1) as csvfile:
-    #    readCSV = csv.reader(csvfile, delimiter=',')
-    #    dates = []
-    #    colors = []
-    #    for row in readCSV:
-    #        color = row[1]
-    #        date = row[0]
-    #
-    #        dates.append(date)
-    #        colors.append(color)
+
+d = {'Subjects': subjects, 't' : Time , 'x': xcoord , 'z': zcoord}
+
+df = pd.DataFrame(data=d)
+
