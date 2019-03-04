@@ -48,17 +48,12 @@ for entry in fileDir:
             SensorNames.append(entry)
 
 filePosNames= np.sort(filePosNames)
-#colmap = cm.get_cmap('tab20c',6) 
 
-#colmap = [[0.482, 0.541, 0.937],[0.219, 0.309, 0.898],[0.074, 0.133, 0.525],[0.949, 0.470, 0.529],[0.898, 0.121, 0.219],[0.509, 0.070, 0.125]]
-
-#colmap = ['#e8a05c','#ed913b','#f27a09','#76bbe0','#44a8dd', '#048add']
-
-#colmap = ['#e8a05c','#ed913b','#f27a09','#76bbe0','#44a8dd', '#048add']
           
 colmap = plt.cm.tab10(np.linspace(0,1,6))
 
 plt.clf()
+t_track, x_track, z_track, subjects, runLogic = [], [], [],[], []
 for sub in [0,1,2,3,4,5]:
 
     PosFile = filePosNames[sub]
@@ -260,11 +255,10 @@ for sub in [0,1,2,3,4,5]:
     
     
     norm_x = run_avg_t-min(run_avg_t)
-    
-    percent_correct = [x / 10 for x in mov_sum_reward]    rand_val = np.random.random()*(3/100)
-    percent_correct = [x+rand_val for x in percent_correct]
     rand_val = np.random.random()*(3/100)
+    percent_correct = [x / 10 for x in mov_sum_reward]    
     percent_correct = [x+rand_val for x in percent_correct]
+
     
     ax1 = plt.subplot(1,1,1)
 #    plt.plot(ti,false_choice_t,'r', label = 'Wrong Arm')
@@ -307,8 +301,19 @@ for sub in [0,1,2,3,4,5]:
 #        plt.imshow(dsf,cmap='viridis',vmin = 0,vmax=200)
     
     
-    
-    
+    t_track.append(t)
+    x_track.append(x)
+    z_track.append(z)
+    subjects.append(sub_name)
+    runLogic.append(pd.Series(run_avg))         
+         
+
+behavior = {'subjects': subjects, 'time': t_track, 'x': x_track, 'z': z_track, 'runLogic': runLogic}
+Allbehav = pd.DataFrame(data=behavior)
+
+
+#Allbehav.to_csv(data_folder / 'MultiMazeData/session6.csv', index=False)   
+np.save(data_folder / 'MultiMazeData/session6.npy', behavior)    
 
 
 plt.title('Session 6',loc='left')

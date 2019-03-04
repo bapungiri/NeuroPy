@@ -59,6 +59,7 @@ filePosNames= np.sort(filePosNames)
 colmap = plt.cm.tab10(np.linspace(0,1,6))
 
 plt.clf()
+t_track, x_track, z_track, subjects, runLogic = [], [], [],[], []
 for sub in [0,1,2,3,4,5]:
 
     PosFile = filePosNames[sub]
@@ -375,8 +376,19 @@ for sub in [0,1,2,3,4,5]:
     
     
     
-    
+    t_track.append(t)
+    x_track.append(x)
+    z_track.append(z)
+    subjects.append(sub_name)
+    runLogic.append(pd.Series(run_avg))         
+         
 
+behavior = {'subjects': subjects, 'time': t_track, 'x': x_track, 'z': z_track, 'runLogic': runLogic}
+Allbehav = pd.DataFrame(data=behavior)
+
+
+#Allbehav.to_csv(data_folder / 'MultiMazeData/session4.csv', index=False)    
+np.save(data_folder / 'MultiMazeData/session4.npy', behavior)   
 
 plt.title('Session 4',loc='left')
 plt.legend(loc = 'upper right',ncol=2)

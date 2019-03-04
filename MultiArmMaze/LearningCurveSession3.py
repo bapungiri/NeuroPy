@@ -46,6 +46,7 @@ filePosNames= np.sort(filePosNames)
 colmap = plt.cm.tab10(np.linspace(0,1,6))
 
 plt.clf()
+t_track, x_track, z_track, subjects, runLogic = [], [], [],[], []
 for sub in [0,1,2,3,4,5]:
 
     PosFile = filePosNames[sub]
@@ -243,7 +244,7 @@ for sub in [0,1,2,3,4,5]:
                 
             if abs(deg-162)<10 and abs(temp-deg)>10:
                 run_avg[ang1] = 1
-                temp=degplt.ylim(0, 1.1)
+                temp=deg
      
         
     mov_sum_reward=[]
@@ -294,7 +295,8 @@ for sub in [0,1,2,3,4,5]:
     
     ti = (edges[0:-1]+5*60)/60
     
-    reward_sensor = np.where((Sensor1==4) | (Sensor1==6))[0]plt.ylim(0, 1.1)
+    reward_sensor = np.where((Sensor1==4) | (Sensor1==6))[0]
+    
     time_sensor_reward = time_n[reward_sensor[0::]]
     true_sensor, edges = np.histogram(time_sensor_reward,np.linspace(0,timeRecord,10))
     true_sensor_t = np.cumsum(true_sensor)
@@ -340,7 +342,19 @@ for sub in [0,1,2,3,4,5]:
 #        plt.imshow(dsf,cmap='viridis',vmin = 0,vmax=200)
     
     
-    
+    t_track.append(t)
+    x_track.append(x)
+    z_track.append(z)
+    subjects.append(sub_name)
+    runLogic.append(pd.Series(run_avg))         
+         
+
+behavior = {'subjects': subjects, 'time': t_track, 'x': x_track, 'z': z_track, 'runLogic': runLogic}
+Allbehav = pd.DataFrame(data=behavior)
+
+
+#Allbehav.to_csv(data_folder / 'MultiMazeData/session3.csv', index=False)
+np.save(data_folder / 'MultiMazeData/session3.npy', behavior)       
     
 
 

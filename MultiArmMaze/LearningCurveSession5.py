@@ -49,16 +49,12 @@ for entry in fileDir:
         SensorNames.append(entry)
 
 filePosNames = np.sort(filePosNames)
-# colmap = cm.get_cmap('tab20c',6)
 
-
-# colmap = ['#e8a05c','#ed913b','#f27a09','#76bbe0','#44a8dd', '#048add']
-
-# colmap = ['#e8a05c','#ed913b','#f27a09','#76bbe0','#44a8dd', '#048add']
 
 colmap = plt.cm.tab10(np.linspace(0, 1, 6))
 
 plt.clf()
+t_track, x_track, z_track, subjects, runLogic = [], [], [],[], []
 for sub in [0, 1, 2, 3, 4, 5]:
 
     PosFile = filePosNames[sub]
@@ -269,6 +265,20 @@ for sub in [0, 1, 2, 3, 4, 5]:
 #        plt.subplot(6,2,sub*2+2)
 #        plt.imshow(dsf,cmap='viridis',vmin = 0,vmax=200)
 
+
+    t_track.append(t)
+    x_track.append(x)
+    z_track.append(z)
+    subjects.append(sub_name)
+    runLogic.append(pd.Series(run_avg))         
+         
+
+behavior = {'subjects': subjects, 'time': t_track, 'x': x_track, 'z': z_track, 'runLogic': runLogic}
+Allbehav = pd.DataFrame(data=behavior)
+
+
+#Allbehav.to_csv(data_folder / 'MultiMazeData/session5.csv', index=False)
+np.save(data_folder / 'MultiMazeData/session5.npy', behavior)   
 
 plt.title('Session 5', loc='left')
 # plt.legend(loc = 'upper right',ncol=2)

@@ -44,13 +44,14 @@ filePosNames = np.sort(filePosNames)
 colmap = plt.cm.tab10(np.linspace(0, 1, 6))
 
 plt.clf()
+t_track, x_track, z_track, subjects, runLogic = [], [], [],[], []
+
 for sub in [0, 1, 2, 3, 4, 5]:
 
     PosFile = filePosNames[sub]
     sub_name = PosFile[0:4]
     print(sub_name)
-#    tbegin = datetime.datetime(2019, 2, 18, 17, 23, 21,0)
-#    datetime_object = datetime.datetime.strptime(PosFile[20:-7], '%Y-%m-%d %I.%M.%S')
+
     tbegin = datetime.datetime.strptime(PosFile[20:-7]+'.0', '%Y-%m-%d %H.%M.%S.%f')
     tbegin = time.mktime(tbegin.timetuple()) + tbegin.microsecond / 1E6
 
@@ -70,7 +71,8 @@ for sub in [0, 1, 2, 3, 4, 5]:
     y = opti.Y
     z = opti.Z
 
-    # ====== Alternative correction ===========
+
+   # ====== Alternative correction ===========
     i = 1
 
     while i < int((len(numColData)-2)/3):
@@ -91,53 +93,7 @@ for sub in [0, 1, 2, 3, 4, 5]:
     print(pd.Series.last_valid_index(x)-pd.Series.last_valid_index(t))
 
 
-#    for i in range(1,int((len(numColData)-2)/3)):
-#
-#        if i < int((len(numColData)-2)/3)-1:
-#
-#            last_ind1 = pd.Series.last_valid_index(x)
-#
-#            x1 = opti['X.'+str(i)]
-#            x2 = opti['X.'+str(i+1)]
-#
-#            last_ind2 = pd.Series.last_valid_index(x1)
-#
-#            valx1 = pd.Series.first_valid_index(x1)
-#            valx2 = pd.Series.first_valid_index(x2)
-#
-#            z1 = opti['Z.'+str(i)]
-#            z2 = opti['Z.'+str(i+1)]
-#
-#            if valx1>last_ind1 and valx2> last_ind2:
-#
-#                x = pd.concat([x[0:valx1],x1[valx1:valx2]])
-#                z = pd.concat([z[0:valx1],z1[valx1:valx2]])
-#
-#            if valx1>last_ind1 and valx2 < last_ind2:
-#
-#                x3 = opti['X.'+str(i+2)]
-#                valx3 = pd.Series.first_valid_index(x3)
-#                x = pd.concat([x[0:valx1],x1[valx1:valx3]])
-#                z = pd.concat([z[0:valx1],z1[valx1:valx3]])
-#
-#
-#
-#        if i>1 and i == int((len(numColData)-2)/3)-1:
-#            x1 = opti['X.'+str(i)]
-#            valx1 = pd.Series.first_valid_index(x1)
-#            x = pd.concat([x[0:valx1],x1[valx1:len(x1)+1]])
-#
-#            z1 = opti['Z.'+str(i)]
-#            valz1 = pd.Series.first_valid_index(z1)
-#            z = pd.concat([z[0:valx1],z1[valx1:len(z1)+1]])
-
-#        y1 = opti['Y.'+str(i)]
-#        valy = pd.Series.first_valid_index(y1)
-#        y = pd.concat([y[0:valy],y1])
-#
-#        z1 = opti['Z.'+str(i)]
-#        valz = pd.Series.first_valid_index(z1)
-#        z = pd.concat([z[0:valz],z1])
+   
 
     xedges = np.linspace(min(x), max(x), 200)
     yedges = np.linspace(min(z), max(z), 200)
@@ -287,8 +243,20 @@ for sub in [0, 1, 2, 3, 4, 5]:
 #        plt.subplot(6,2,sub*2+2)
 #        plt.imshow(dsf,cmap='viridis',vmin = 0,vmax=200)
 
+    t_track.append(t)
+    x_track.append(x)
+    z_track.append(z)
+    subjects.append(sub_name)
+    runLogic.append(pd.Series(run_avg))         
+         
 
+behavior = {'subjects': subjects, 'time': t_track, 'x': x_track, 'z': z_track, 'runLogic': runLogic}
+Allbehav = pd.DataFrame(data=behavior)
+
+
+#Allbehav.to_csv(data_folder / 'MultiMazeData/session1.csv', index=False)
+np.save(data_folder / 'MultiMazeData/session1.npy', behavior)
 plt.title('Session 1', loc='left')
 plt.legend(loc='lower right', ncol=2)
 
-plt.savefig(fig_name, dpi=150)
+#plt.savefig(fig_name, dpi=150)
