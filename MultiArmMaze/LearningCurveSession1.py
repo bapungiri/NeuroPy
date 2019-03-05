@@ -44,10 +44,9 @@ filePosNames = np.sort(filePosNames)
 colmap = plt.cm.tab10(np.linspace(0, 1, 6))
 
 plt.clf()
-t_track, x_track, z_track, subjects, runLogic = [], [], [],[], []
+t_track, x_track, z_track, subjects, runLogic = [], [], [], [], []
 
 for sub in [0, 1, 2, 3, 4, 5]:
-
     PosFile = filePosNames[sub]
     sub_name = PosFile[0:4]
     print(sub_name)
@@ -71,8 +70,7 @@ for sub in [0, 1, 2, 3, 4, 5]:
     y = opti.Y
     z = opti.Z
 
-
-   # ====== Alternative correction ===========
+    # ====== Alternative correction ===========
     i = 1
 
     while i < int((len(numColData)-2)/3):
@@ -91,9 +89,6 @@ for sub in [0, 1, 2, 3, 4, 5]:
         i = i+1
 
     print(pd.Series.last_valid_index(x)-pd.Series.last_valid_index(t))
-
-
-   
 
     xedges = np.linspace(min(x), max(x), 200)
     yedges = np.linspace(min(z), max(z), 200)
@@ -247,16 +242,16 @@ for sub in [0, 1, 2, 3, 4, 5]:
     x_track.append(x)
     z_track.append(z)
     subjects.append(sub_name)
-    runLogic.append(pd.Series(run_avg))         
-         
+    runLogic.append(pd.Series(run_avg))
+
 
 behavior = {'subjects': subjects, 'time': t_track, 'x': x_track, 'z': z_track, 'runLogic': runLogic}
 Allbehav = pd.DataFrame(data=behavior, dtype=np.int64)
 
 
 Allbehav.to_csv(data_folder / 'MultiMazeData/session1.csv', index=False)
-#np.save(data_folder / 'MultiMazeData/session1.npy', behavior)
+# np.save(data_folder / 'MultiMazeData/session1.npy', behavior)
 plt.title('Session 1', loc='left')
 plt.legend(loc='lower right', ncol=2)
 
-#plt.savefig(fig_name, dpi=150)
+# plt.savefig(fig_name, dpi=150)

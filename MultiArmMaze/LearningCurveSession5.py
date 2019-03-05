@@ -54,7 +54,7 @@ filePosNames = np.sort(filePosNames)
 colmap = plt.cm.tab10(np.linspace(0, 1, 6))
 
 plt.clf()
-t_track, x_track, z_track, subjects, runLogic = [], [], [],[], []
+t_track, x_track, z_track, subjects, runLogic = [], [], [], [], []
 for sub in [0, 1, 2, 3, 4, 5]:
 
     PosFile = filePosNames[sub]
@@ -66,6 +66,7 @@ for sub in [0, 1, 2, 3, 4, 5]:
     tbegin = time.mktime(tbegin.timetuple()) + tbegin.microsecond / 1E6
 
     file1 = []
+
     for entry in SensorNames:
         if fnmatch.fnmatch(entry, PosFile[0:4]+'*'):
             file1 = sourceDir / entry
@@ -251,7 +252,7 @@ for sub in [0, 1, 2, 3, 4, 5]:
 
     time_epoch = int(timeRecord/4)*120
 
-  # ==== Plotting occupancy map =================
+# ==== Plotting occupancy map =================
 
 #    for i in [3]:
 #
@@ -265,20 +266,19 @@ for sub in [0, 1, 2, 3, 4, 5]:
 #        plt.subplot(6,2,sub*2+2)
 #        plt.imshow(dsf,cmap='viridis',vmin = 0,vmax=200)
 
-
     t_track.append(t)
     x_track.append(x)
     z_track.append(z)
     subjects.append(sub_name)
-    runLogic.append(pd.Series(run_avg))         
-         
+    runLogic.append(pd.Series(run_avg))
+
 
 behavior = {'subjects': subjects, 'time': t_track, 'x': x_track, 'z': z_track, 'runLogic': runLogic}
 Allbehav = pd.DataFrame(data=behavior)
 
 
-#Allbehav.to_csv(data_folder / 'MultiMazeData/session5.csv', index=False)
-np.save(data_folder / 'MultiMazeData/session5.npy', behavior)   
+# Allbehav.to_csv(data_folder / 'MultiMazeData/session5.csv', index=False)
+np.save(data_folder / 'MultiMazeData/session5.npy', behavior)
 
 plt.title('Session 5', loc='left')
 # plt.legend(loc = 'upper right',ncol=2)
