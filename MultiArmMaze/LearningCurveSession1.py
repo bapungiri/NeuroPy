@@ -251,11 +251,11 @@ for sub in [0, 1, 2, 3, 4, 5]:
          
 
 behavior = {'subjects': subjects, 'time': t_track, 'x': x_track, 'z': z_track, 'runLogic': runLogic}
-Allbehav = pd.DataFrame(data=behavior)
+Allbehav = pd.DataFrame(data=behavior, dtype=np.int64)
 
 
-#Allbehav.to_csv(data_folder / 'MultiMazeData/session1.csv', index=False)
-np.save(data_folder / 'MultiMazeData/session1.npy', behavior)
+Allbehav.to_csv(data_folder / 'MultiMazeData/session1.csv', index=False)
+#np.save(data_folder / 'MultiMazeData/session1.npy', behavior)
 plt.title('Session 1', loc='left')
 plt.legend(loc='lower right', ncol=2)
 
