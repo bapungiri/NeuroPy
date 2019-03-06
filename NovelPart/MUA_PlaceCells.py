@@ -5,20 +5,7 @@ Created on Wed Feb  6 10:00:33 2019
 @author: Bapun
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 31 21:32:14 2019
 
-@author: Bapun
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jan  8 10:00:45 2019
-
-@author: bapung
-"""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,6 +14,13 @@ from scipy.ndimage import gaussian_filter
 #import scipy.stats as stats
 #from scipy.signal import hilbert
 import h5py
+import matplotlib as mpl
+
+#
+#mpl.rc('axes', linewidth=1.5)
+#mpl.rc('font', size = 9)
+#mpl.rc('figure', figsize = (10, 14))
+#mpl.rc('axes.spines', top=False, right=False)
 
 
 sourceDir = '/data/DataGen/wake_new/'

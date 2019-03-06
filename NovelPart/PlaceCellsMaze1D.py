@@ -1,17 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 31 21:32:14 2019
-
-@author: Bapun
-"""
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan  8 10:00:45 2019
+Created on Wed Mar  6 16:50:07 2019
 
 @author: bapung
 """
+
 
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages

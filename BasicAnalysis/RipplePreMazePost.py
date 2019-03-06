@@ -14,13 +14,15 @@ import matplotlib.pyplot as plt
 #from scipy.signal import hilbert
 import h5py
 from OsCheck import DataDirPath, figDirPath
-import matplotlib as mpl
+#import matplotlib as mpl
 
+plt.style.use('figPublish')
 
-mpl.rc('axes', linewidth=1.5)
-mpl.rc('font', size = 12)
-mpl.rc('figure', figsize = (10, 14))
-mpl.rc('axes.spines', top=False, right=False)
+#
+#mpl.rc('axes', linewidth=1.5)
+#mpl.rc('font', size = 9)
+#mpl.rc('figure', figsize = (10, 14))
+#mpl.rc('axes.spines', top=False, right=False)
 
 
 sourceDir = '/data/DataGen/wake_new/'
