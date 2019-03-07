@@ -44,7 +44,7 @@ subjects = arrays['basics']
 figFilename = figDirPath() +'PlaceCells.pdf'
 pdf = PdfPages(figFilename)
 
-for sub in [1]:
+for sub in [6]:
     sub_name = subjects[sub]
     print(sub_name)
     
@@ -80,13 +80,14 @@ for sub in [1]:
     xcoord = np.arange(min(posx_mz),max(posx_mz)+1,2)
     ycoord = np.arange(min(posy_mz),max(posy_mz)+1,2)
     xx,yy = np.meshgrid(xcoord,ycoord)
+    pf2, xe1, ye1 = np.histogram2d(posx_mz,posy_mz,bins = [xcoord,ycoord])
     
     plt.clf()
     for cell in range(len(pyrid)):
         spkt = cellpyr[cell].squeeze()
         spd_spk = np.interp(spkt,spdt,speed)
         
-        spkt = spkt[spkt > 5]   #only selecting spikes where rat's speed is  > 5 cm/s
+        spkt = spkt[spd_spk > 5]   #only selecting spikes where rat's speed is  > 5 cm/s
         
         spktx = np.interp(spkt,post_mz,posx_mz)
         spkty = np.interp(spkt,post_mz,posy_mz)
@@ -94,12 +95,13 @@ for sub in [1]:
         
             
         pf, xe, ye = np.histogram2d(spktx,spkty,bins = [xcoord,ycoord])
-        pft = pf*(1/30)
+        
+        pft = pf2*(1/30)
         
         eps = np.spacing(1)
         pfRate = pf/(pft+eps)
         
-        pfRate_smooth= gaussian_filter(pfRate, sigma=2)
+        pfRate_smooth= gaussian_filter(pfRate, sigma=3)
 
 #    ICA_strength = np.array(np.transpose(fICAStrength['ActStrength']['subjects'][sub_name]['wake'][:]))
         
