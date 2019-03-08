@@ -73,6 +73,9 @@ for sub in [6]:
     
     dist_maze = np.zeros(len(posx_mz))
     
+    min_val = min(posx_mz)
+    
+    
     for d in range(0,len(posx_mz)):
     
         coord = [posx_mz[d],posy_mz[d]]
@@ -81,12 +84,12 @@ for sub in [6]:
             dist_maze[d] = coord[0]
             
         if coord[1] > 300 and coord[0] < 530:
-            dist_maze[d] = 800+530-coord[0]
+            dist_maze[d] = 570+388+530-coord[0]
             
         else:
-            dist_maze[d]= coord[0]+coord[1]-100
+            dist_maze[d]= 570+coord[1]-100
             
-    dist_maze = dist_maze-min(posx_mz)
+    dist_maze = dist_maze
     
     eps = np.spacing(1)
     lin_coord = np.linspace(0,2*(max(posx_mz)-min(posx_mz))+max(posy_mz)-min(posy_mz),500)
@@ -118,13 +121,16 @@ for sub in [6]:
             
             if coord[1] < 100:
                 dist[d] = coord[0]
+            
+            if coord[1] > 300 and coord[0] < 530:
+                dist[d] = 570+388+530-coord[0]
                 
             else:
-                dist[d]= coord[0]+coord[1]-100
+                dist[d]= 570+coord[1]-100
         
             
         pf, xe, ye = np.histogram2d(spktx,spkty,bins = [xcoord,ycoord])
-        dist = dist-min(posx_mz)
+        dist = dist
         
         
         pf1, xe1= np.histogram(dist,bins = lin_coord)

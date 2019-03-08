@@ -18,15 +18,17 @@ tel = {'jack': 4098, 'sape': 4139}
 d = {'sub1': [1, t], 'sub2': [3, 4]}
 df = pd.DataFrame(data=d, index=['t','x'])
 
-df.to_csv('foo.csv')
+df1 = df
+
+df.to_hdf('foo.h5',key=['df', 'df1'],mode='w')
 
 
-m = pd.read_csv('foo.csv')
+m1 = pd.read_hdf('foo.h5','df')
 
 e = {'sub3': df}
 
 df2 = pd.DataFrame
 
-np.savez('Test.npz', postrack = y)
+#np.savez('Test.npz', postrack = y)
 
 #a = np.load('Test.npz')
