@@ -27,7 +27,7 @@ import matplotlib as mpl
 mpl.rc('axes', linewidth=1.5)
 mpl.rc('font', size = 12)
 mpl.rc('figure', figsize = (10, 14))
-
+mpl.rc('axes.spines', right = False, top = False)
 
 
 data_folder = Path(DataDirPath())
@@ -47,6 +47,7 @@ SessNames = np.sort(SessNames)
 
 colmap = plt.cm.tab10(np.linspace(0, 1, 6))
 numArms = [3, 3, 5, 5, 5, 7]
+ChanceEstimate = [0.5,0.5, 0.25,0.25,0.25,0.167]
 
 binomial_test = {}
 plt.clf()
@@ -54,7 +55,8 @@ t_track, x_track, z_track, subjects, runLogic = [], [], [], [], []
 for session in [0, 1, 2, 3, 4, 5]:
 
     sess_name = SessNames[session]
-    chanceLevel = 1/numArms[session]
+#    chanceLevel = 2/numArms[session]
+    chanceLevel = ChanceEstimate[session]
     binomial_test[sess_name[0:8]]={}
 
 #    Allbehav = pd.read_csv(sourceDir / sess_name)
@@ -90,12 +92,13 @@ for session in [0, 1, 2, 3, 4, 5]:
 
         
         binTest = [stat.binom_test(x, n=num_choices_before, p=chanceLevel, alternative='greater') for x in mov_sum_reward]                                   
-        binTestSig = np.where(np.asarray(binTest) < 0.05, 1, 0)
+        binTestSig = np.where(np.asarray(binTest) < 0.05, True, False)
         binomial_test[sess_name[0:8]][sub_name] = binTest
                 
         rand_jitter_plot = np.random.random()*(4/100)-0.02
         percent_correct = [x / 10 for x in mov_sum_reward]
         percent_correct = [x+rand_jitter_plot for x in percent_correct]
+        percent_correct = np.asarray(percent_correct)
 
         plt.subplot(3, 2, session+1)
         if len(percent_correct) > 1:
@@ -103,6 +106,9 @@ for session in [0, 1, 2, 3, 4, 5]:
             plt.plot(run_avg_t, percent_correct, label=sub_name,
                      color=colmap[sub], linewidth=1.5, alpha=0.95-sub/10,
                      linestyle='-')
+            plt.scatter(run_avg_t[binTestSig], percent_correct[binTestSig],s = 15,
+                     color=colmap[sub], alpha=0.95-sub/10,
+                     marker='D')
 
         else:
 
@@ -122,4 +128,4 @@ for session in [0, 1, 2, 3, 4, 5]:
 #np.save(sourceDir/ 'BinomialTestAllSessions.npy', binomial_test)
 plt.legend(ncol=3)
 plt.suptitle('MultiArmMaze behavior')
-#plt.savefig(fig_name, dpi=150)
+plt.savefig(fig_name, dpi=150)
