@@ -20,7 +20,7 @@ df = pd.DataFrame(data=d, index=['t','x'])
 
 df1 = df
 
-df.to_hdf('foo.h5',key=['df', 'df1'],mode='w')
+df.to_hdf('foo.h5',key='df')
 
 
 m1 = pd.read_hdf('foo.h5','df')

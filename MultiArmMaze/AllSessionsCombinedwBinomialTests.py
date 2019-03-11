@@ -5,14 +5,6 @@ Created on Sun Mar 10 20:40:32 2019
 @author: Bapun
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Mar  4 11:36:40 2019
-
-@author: bapung
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 import os

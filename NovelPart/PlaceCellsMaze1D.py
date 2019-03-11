@@ -109,7 +109,7 @@ for sub in [6]:
         spkt = cellpyr[cell].squeeze()
         spd_spk = np.interp(spkt,spdt,speed)
         
-        spkt = spkt[spd_spk > 5]   #only selecting spikes where rat's speed is  > 5 cm/s
+        spkt = spkt[spd_spk > 3]   #only selecting spikes where rat's speed is  > 5 cm/s
         
         spktx = np.interp(spkt,post_mz,posx_mz)
         spkty = np.interp(spkt,post_mz,posy_mz)
