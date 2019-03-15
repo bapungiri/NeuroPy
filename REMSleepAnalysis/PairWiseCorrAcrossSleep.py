@@ -18,10 +18,10 @@ from OsCheck import DataDirPath, figDirPath
 #from scipy.signal import hilbert
 import h5py
 import seaborn as sns
-sns.set(style="darkgrid")
+#sns.set(style="darkgrid")
 
 
-plt.style.use('seaborn')
+#plt.style.use('seaborn')
         
 
 sourceDir = DataDirPath() + 'wake_new/'
@@ -45,7 +45,7 @@ subjects = arrays['basics']
 #pdf = PdfPages(figFilename)
 
 plt.clf()
-for sub in [1,2,3,4,5,6]:
+for sub in [1]:
     sub_name = subjects[sub]
     print(sub_name)
     
@@ -89,8 +89,9 @@ for sub in [1,2,3,4,5,6]:
     # ===== Making quintiles from the maze correlations ==========
     sort_corr = np.argsort(corr_mat)
     corr_ind = [x for x in range(0,len(sort_corr))]
-    n = int(np.floor(len(sort_corr)/5))
+    n = int(np.floor(len(sort_corr)/5)+1)
     quintile_ind = [sort_corr[i * n:(i + 1) * n] for i in range((len(sort_corr) + n - 1) // n )]
+    print(len(quintile_ind))
 
     
     
@@ -116,8 +117,8 @@ for sub in [1,2,3,4,5,6]:
 #        allrem_corr.extend(rem_corr)
         
     # ====creating dataframe for correlations during REM ========
-    
-    df = pd.DataFrame({'q1' : q1, 'q2': q2, 'q3' : q3, 'q4': q4, 'q5' : q5})
+    t = (np.arange(behav[2,0], behav[2,1], 40e6)-behav[2,0])/3600e6
+    df = pd.DataFrame({'time': t ,'q1' : q1, 'q2': q2, 'q3' : q3, 'q4': q4, 'q5' : q5})
 #    df.dropna() # ignoring nan values
     
     
@@ -126,7 +127,7 @@ for sub in [1,2,3,4,5,6]:
         
     fig = plt.subplot(7,1,sub+1)
 
-    df.plot(ax = fig)
+    df.plot(x = 'time', y = ['q1','q2','q3','q4','q5'], ax = fig)
         
         
 #    plt.xticks([])
