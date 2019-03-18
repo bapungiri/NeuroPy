@@ -89,7 +89,7 @@ for sub in [1]:
     # ===== Making quintiles from the maze correlations ==========
     sort_corr = np.argsort(corr_mat)
     corr_ind = [x for x in range(0,len(sort_corr))]
-    n = int(np.floor(len(sort_corr)/5)+1)
+    n = int(np.ceil(len(sort_corr)/5))
     quintile_ind = [sort_corr[i * n:(i + 1) * n] for i in range((len(sort_corr) + n - 1) // n )]
     print(len(quintile_ind))
 
