@@ -11,7 +11,8 @@ import numpy as np
 import pandas as pd
 #from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
-#from scipy.ndimage import gaussian_filter
+import scipy.stats as stats
+from scipy.ndimage.filters import gaussian_filter1d
 from OsCheck import DataDirPath, figDirPath
 #import scipy.signal as sg
 #import scipy.stats as stats
@@ -23,9 +24,11 @@ import seaborn as sns
 
 #plt.style.use('seaborn')
         
+colmapDark = plt.cm.Greys(np.linspace(0.35,1,3))
+colmapLight = plt.cm.Oranges(np.linspace(0.3,1,4))
 
 sourceDir = DataDirPath() + 'sleep/'
-figFilename = figDirPath() +'SpindleAnalysis/PFCSpindle-HippRipple.pdf'
+figFilename = figDirPath() +'SpindleAnalysis/PFCSpindle-HippRipple_normSmoothed.pdf'
 
 arrays = {}
 f= h5py.File(sourceDir + 'sleep-basics.mat', 'r') 
@@ -63,47 +66,45 @@ for sub in range(0,19):
         
         diffTime = ((pfcSpindle.transpose() - hpcRipple.transpose()).ravel())/1e6
 #        diffTime = ((hpcRipple - pfcSpindle).ravel())/1e6
+        hist, edge = np.histogram(diffTime, bins= np.arange(-30,30,1))
+        hist = gaussian_filter1d(stats.zscore(hist), sigma = 2)
+        
         if 'Steve' in sub_name:
             
-            if 'Sleep' in sub_name:
+            m.append(plt.subplot(1,2,1))
             
-        
-                m.append(plt.subplot(1,2,1))
-                hist, edge = np.histogram(diffTime, bins= np.arange(-30,30,1))
-                plt.plot(edge[0:len(hist)], hist, color='#f49e42')
-                plt.title(sub_name)
-            
+            if 'Sleep' in sub_name:           
+                plt.plot(edge[0:len(hist)], hist, color='#f49e42', alpha= 0.95- int(sub_name[-1])/10, label = 'Light'+ sub_name[-1])            
             else:
-                m.append(plt.subplot(1,2,1))
                 hist, edge = np.histogram(diffTime, bins= np.arange(-30,30,1))
-                plt.plot(edge[0:len(hist)], hist, color = '#726f6b')
-                plt.title(sub_name)
+                plt.plot(edge[0:len(hist)], hist, color = '#726f6b', alpha= 0.95- int(sub_name[-1])/10)
+            
+            plt.title('Steve')
                 
                 
             
         if 'Ted' in sub_name:
             
-        
+            m.append(plt.subplot(1,2,2))
             if 'Sleep' in sub_name:
             
-        
-                m.append(plt.subplot(1,2,2))
-                hist, edge = np.histogram(diffTime, bins= np.arange(-30,30,1))
-                plt.plot(edge[0:len(hist)], hist, color='#f49e42')
-                plt.title(sub_name)
+                plt.plot(edge[0:len(hist)], hist, color=colmapLight[int(sub_name[-1])], alpha= 1, label = 'Light'+ sub_name[-1])
+
             
             else:
-                m.append(plt.subplot(1,2,2))
-                hist, edge = np.histogram(diffTime, bins= np.arange(-30,30,1))
-                plt.plot(edge[0:len(hist)], hist, color = '#726f6b')
-                plt.title(sub_name)
+                
+                plt.plot(edge[0:len(hist)], hist, color = colmapDark[int(sub_name[-1])], alpha= 1 , label = 'Dark'+ sub_name[-1])
+            
+            plt.title('Ted')
+                
+        plt.legend(fontsize= 'xx-small', loc = 'best')
 
-for pltind in [4,5,6,7]:
+for pltind in [0,1]:
     m[pltind].set(xlabel='Time relative to PFC spindle (s)')
 
-for pltind in [0,4]:
-    m[pltind].set(ylabel='# Ripple events')      
-     
-     
+for pltind in [0]:
+    m[pltind].set(ylabel='Ripple events (zscored)')      
+
+plt.suptitle('PFC-Spindle vs HPC-Ripple') 
 plt.savefig(figFilename, dpi = 300)
     

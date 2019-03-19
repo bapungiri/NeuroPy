@@ -16,15 +16,19 @@ from OsCheck import DataDirPath, figDirPath
 #import scipy.signal as sg
 #import scipy.stats as stats
 #from scipy.signal import hilbert
+from matplotlib.collections import PatchCollection
+#from matplotlib.patches import Rectangle
+import matplotlib.patches as patch
 import h5py
 import seaborn as sns
 #sns.set(style="darkgrid")
 
 
-#plt.style.use('seaborn')
-        
+plt.style.use('figPublish')
+colmap = plt.cm.YlOrRd(np.linspace(0.15,1,5))        
 
 sourceDir = DataDirPath() + 'wake_new/'
+figFilename = figDirPath() +'PairwiseAnalysis/PairwisePOSTQuintiles.pdf'
 
 arrays = {}
 f= h5py.File(sourceDir + 'wake-basics.mat', 'r') 
@@ -45,7 +49,7 @@ subjects = arrays['basics']
 #pdf = PdfPages(figFilename)
 
 plt.clf()
-for sub in [1]:
+for sub in [0,1,2,3,4,5,6]:
     sub_name = subjects[sub]
     print(sub_name)
     
@@ -74,14 +78,27 @@ for sub in [1]:
     
     if sub==0:
         rem_post = states[(states[:,0] > behav[3,0]) & (states[:,2]==2) & (states[:,1]-states[:,0] > 250e3),0:2]
-        Bins = np.arange(behav[1,0], behav[2,1], 250e3)        
+        rem_post= rem_post-behav[3,0]
+        Bins = np.arange(behav[1,0], behav[2,1], 250e3)
+        post_bin = np.arange(behav[3,0], behav[3,1], 40e6)  
+        t = (post_bin-behav[3,0])/3600e6
     else:
         rem_post = states[(states[:,0] > behav[2,0]) & (states[:,2]==2) & (states[:,1]-states[:,0] > 250e3),0:2]
+        rem_post= rem_post-behav[2,0]
         Bins = np.arange(behav[1,0], behav[1,1], 250e3)
+        post_bin = np.arange(behav[2,0], behav[2,1], 40e6)  
+        t = (post_bin-behav[2,0])/3600e6
+      
+    rembox = []
+    for remidx in range(0,len(rem_post)):
         
-            
+        rect = patch.Rectangle(xy = (rem_post[remidx,0]/3600e6,0),width= np.diff(rem_post[remidx])/3600e6 , height =0.15)
+        rembox.append(rect)       
     
-        
+    
+    pc = PatchCollection(rembox, facecolor=[0.5,0.5,0.5], alpha=0.6,
+                         edgecolor=[1,1,1])
+    
     spkCnt = [np.histogram(cellpyr[x], bins = Bins)[0] for x in range(0,len(cellpyr))]
     corr_mat = np.corrcoef(spkCnt)
     corr_mat = corr_mat[diff_tetMat!=0]
@@ -100,7 +117,7 @@ for sub in [1]:
     mean_remcorr = []
     allrem_corr = []
     q1, q2, q3, q4, q5 = [], [], [], [], []
-    for ep_ind, epoch_strt in enumerate(np.arange(behav[2,0], behav[2,1], 40e6)):
+    for ep_ind, epoch_strt in enumerate(post_bin):
         
         bin_ep = np.arange(epoch_strt, epoch_strt+60e6, 250e3)    
         spkCnt_ep = [np.histogram(cellpyr[x], bins = bin_ep)[0] for x in range(0,len(cellpyr))]
@@ -117,7 +134,8 @@ for sub in [1]:
 #        allrem_corr.extend(rem_corr)
         
     # ====creating dataframe for correlations during REM ========
-    t = (np.arange(behav[2,0], behav[2,1], 40e6)-behav[2,0])/3600e6
+    
+
     df = pd.DataFrame({'time': t ,'q1' : q1, 'q2': q2, 'q3' : q3, 'q4': q4, 'q5' : q5})
 #    df.dropna() # ignoring nan values
     
@@ -126,16 +144,19 @@ for sub in [1]:
         
         
     fig = plt.subplot(7,1,sub+1)
-
-    df.plot(x = 'time', y = ['q1','q2','q3','q4','q5'], ax = fig)
+    fig.add_collection(pc)
+    df.plot(x = 'time', y = ['q1','q2','q3','q4','q5'], ax = fig, legend=False, color=colmap)
         
         
 #    plt.xticks([])
 #    plt.yticks([])
 
-    plt.title(sub_name)
+    plt.title(sub_name, x = -0.1, y=  0.5)
 #    plt.tight_layout()
-#    pdf.savefig(dpi=300)
+plt.ylabel('Mean correlation')
+plt.xlabel('Time (h)')
+plt.suptitle('Pairwise correlation during POST (3hr) with Quintles from MAZE (hotter color = higher correlation ;  gray bars = REM periods)')
+plt.savefig(figFilename, dpi = 300)
 
 #pdf.close()    
     
