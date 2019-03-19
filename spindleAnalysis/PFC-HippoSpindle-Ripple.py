@@ -25,6 +25,7 @@ import seaborn as sns
         
 
 sourceDir = DataDirPath() + 'sleep/'
+figFilename = figDirPath() +'SpindleAnalysis/PFCSpindle-HippRipple.pdf'
 
 arrays = {}
 f= h5py.File(sourceDir + 'sleep-basics.mat', 'r') 
@@ -44,7 +45,10 @@ subjects = arrays['basics']
 #figFilename = figDirPath() +'PlaceCells.pdf'
 #pdf = PdfPages(figFilename)
 k=1
+m=[]
 plt.clf()
+#f, axarr = plt.subplots(2, 4)
+
 for sub in range(0,19):
     sub_name = subjects[sub]
     print(sub_name)
@@ -55,14 +59,51 @@ for sub in range(0,19):
         
         pfcSpindle = np.transpose(fspindle['spindle'][sub_name]['CTX']['peakTime'][:])
 #        hpcSpindle = np.transpose(fspindle['spindle'][sub_name]['HPC']['peakTime'][:])
-        hpcSpindle = np.transpose(fspindle['spindle'][sub_name]['HPC']['peakTime'][:])
+        hpcRipple = np.transpose(fripple['ripple'][sub_name]['peakTime'][:])
         
-        diffTime = ((pfcSpindle.transpose() - hpcSpindle).ravel())/1e6
+        diffTime = ((pfcSpindle.transpose() - hpcRipple.transpose()).ravel())/1e6
+#        diffTime = ((hpcRipple - pfcSpindle).ravel())/1e6
+        if 'Steve' in sub_name:
+            
+            if 'Sleep' in sub_name:
+            
         
-        plt.subplot(2,4,k)
-        hist, edge = np.histogram(diffTime, bins= np.arange(-20,20,1))
-        plt.plot(edge[0:len(hist)], hist)
-        plt.title(sub_name)
-        k = k+1
+                m.append(plt.subplot(1,2,1))
+                hist, edge = np.histogram(diffTime, bins= np.arange(-30,30,1))
+                plt.plot(edge[0:len(hist)], hist, color='#f49e42')
+                plt.title(sub_name)
+            
+            else:
+                m.append(plt.subplot(1,2,1))
+                hist, edge = np.histogram(diffTime, bins= np.arange(-30,30,1))
+                plt.plot(edge[0:len(hist)], hist, color = '#726f6b')
+                plt.title(sub_name)
+                
+                
+            
+        if 'Ted' in sub_name:
+            
         
+            if 'Sleep' in sub_name:
+            
+        
+                m.append(plt.subplot(1,2,2))
+                hist, edge = np.histogram(diffTime, bins= np.arange(-30,30,1))
+                plt.plot(edge[0:len(hist)], hist, color='#f49e42')
+                plt.title(sub_name)
+            
+            else:
+                m.append(plt.subplot(1,2,2))
+                hist, edge = np.histogram(diffTime, bins= np.arange(-30,30,1))
+                plt.plot(edge[0:len(hist)], hist, color = '#726f6b')
+                plt.title(sub_name)
+
+for pltind in [4,5,6,7]:
+    m[pltind].set(xlabel='Time relative to PFC spindle (s)')
+
+for pltind in [0,4]:
+    m[pltind].set(ylabel='# Ripple events')      
+     
+     
+plt.savefig(figFilename, dpi = 300)
     

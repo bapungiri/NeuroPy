@@ -20,7 +20,7 @@ import seaborn as sns
 #sns.set(style="darkgrid")
 
 
-#plt.style.use('seaborn')
+plt.style.use('seaborn')
         
 
 sourceDir = DataDirPath() + 'sleep/'
@@ -61,5 +61,7 @@ for sub in range(0,19):
         plt.plot(edge[0:len(hist)], hist)
         plt.title(sub_name)
         k = k+1
+
+plt.show()
         
     
