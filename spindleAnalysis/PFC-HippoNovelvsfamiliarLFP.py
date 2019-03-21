@@ -68,10 +68,10 @@ for sub in [5]:
     BasicInfo['SpectralChannel'] = 66
 
     nMazeFrames = int(np.diff(frames[2, :]))
-    # POSTNREM = states[(states[:, 0] > behav[2, 0]) & (states[:, 2] == 4), :]
+    MAZE = states[(states[:, 0] > behav[1, 0]) & (states[:, 2] == 4), :]
 
-    y1, xf = lfpSpectMaze(sub_name, states[3, 0], BasicInfo, channel=66)
-    y2, xL = lfpSpectMaze(sub_name, states[1, 0], BasicInfo, channel=50)
+    y1, xf = lfpSpectMaze(sub_name, MAZE[3, 0], BasicInfo, channel=66)
+    y2, xL = lfpSpectMaze(sub_name, MAZE[8, 0], BasicInfo, channel=50)
 
 #    fig, ax = plt.subplots()
     plt.clf()
