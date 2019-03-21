@@ -35,13 +35,14 @@ def lfpSpect(sub_name, nREMPeriod, RecInfo):
     return y1, xf
 
 
-def lfpSpectMaze(sub_name, nREMPeriod, RecInfo):
+def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
 
     SampFreq = RecInfo['samplingFrequency']
     frames = RecInfo['behavFrames']
     behav = RecInfo['behav']
     nChans = RecInfo['numChannels']
-    ReqChan = RecInfo['SpectralChannel']
+#    ReqChan = RecInfo['SpectralChannel']
+    ReqChan = channel
 
     offsetP = ((nREMPeriod - behav[1, 0]) // 1e6) * \
         SampFreq + int(np.diff(frames[0, :]))

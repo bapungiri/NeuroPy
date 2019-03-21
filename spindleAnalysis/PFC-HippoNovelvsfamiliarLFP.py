@@ -1,3 +1,4 @@
+
 import numpy as np
 import pandas as pd
 # rom matplotlib.backends.backend_pdf import PdfPages
@@ -24,15 +25,15 @@ for k, v in f.items():
 
 fspikes = h5py.File(sourceDir + 'testVersion.mat', 'r')
 fbehav = h5py.File(sourceDir + 'wake-behavior.mat', 'r')
-slpbehav = h5py.File(sourceDir2 + 'wake-behavior.mat')
-fpos = h5py.File(sourceDir2 + 'wake-pos.mat')
+# slpbehav = h5py.File(sourceDir2 + 'wake-behavior.mat')
+fpos = h5py.File(sourceDir + 'wake-pos.mat')
 
 # savech = np.load(sourceDir2 + 'sleepPy-behavior')
 
 
 subjects = arrays['basics']
 
-for sub in range(5):
+for sub in [5]:
     sub_name = subjects[sub]
     print(sub_name)
 
@@ -54,29 +55,29 @@ for sub in range(5):
              if quality[i] < 4 and stability[i] == 1]
     cellpyr = [celltype[a] for a in pyrid]
 
-    sleepPeriods = (
-        (slpbehav['behavior'][sub_name.replace('Maze', 'Sleep')]['list']).value).T
-    slpNrem = np.where((sleepPeriods[:, 2] == 1) & (
-        sleepPeriods[:, 1] < behav[2, 0] + 10 * 3600e6))[0]
-    lastNrem = sleepPeriods[slpNrem[-1], 0:2]
+    # sleepPeriods = (
+    #     (slpbehav['behavior'][sub_name.replace('Maze', 'Sleep')]['list']).value).T
+    # slpNrem = np.where((sleepPeriods[:, 2] == 1) & (
+    #     sleepPeriods[:, 1] < behav[2, 0] + 10 * 3600e6))[0]
+    # lastNrem = sleepPeriods[slpNrem[-1], 0:2]
 
     BasicInfo = {'samplingFrequency': 1250}
     BasicInfo['behavFrames'] = frames
     BasicInfo['behav'] = behav
-    BasicInfo['numChannels'] = 65
-    BasicInfo['SpectralChannel'] = 50
+    BasicInfo['numChannels'] = 66
+    BasicInfo['SpectralChannel'] = 66
 
     nMazeFrames = int(np.diff(frames[2, :]))
-    POSTNREM = states[(states[:, 0] > behav[2, 0]) & (states[:, 2] == 1), :]
+    # POSTNREM = states[(states[:, 0] > behav[2, 0]) & (states[:, 2] == 4), :]
 
-    y1, xf = lfpSpectMaze(sub_name, POSTNREM[0, 0], BasicInfo)
-    # y2, xL = lfpSpectMaze(sub_name, lastNrem[0], BasicInfo)
+    y1, xf = lfpSpectMaze(sub_name, states[3, 0], BasicInfo, channel=66)
+    y2, xL = lfpSpectMaze(sub_name, states[1, 0], BasicInfo, channel=50)
 
 #    fig, ax = plt.subplots()
     plt.clf()
     ax0 = plt.subplot(1, 1, 1)
-    plt.plot(xf, y1, label='first NREM')
-    plt.plot(xL, y2, 'r', label='last NREM')
+    plt.plot(xf, y1, label='Novel part')
+    plt.plot(xL, y2, 'r', label='Familiar part')
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Power (db)')
     plt.yscale('log')
