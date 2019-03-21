@@ -1,22 +1,17 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 17 11:27:45 2019
-
-@author: bapung
-"""
-# Comparing spectral profile from first NREM episode to last NREM episode
 import numpy as np
+import pandas as pd
+# rom matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
-#import scipy.fftpack as sfft
-#import time
-import scipy.io as sio
-import scipy.ndimage.filters as smth
-import scipy.fftpack as ft
-import scipy.stats as stat
-import scipy.signal as sg
-from SpectralAnalysis import lfpSpect
+import scipy.stats as stats
+from scipy.ndimage.filters import gaussian_filter1d
+from OsCheck import DataDirPath, figDirPath
+# import scipy.signal as sg
+# import scipy.stats as stats
+# from scipy.signal import hilbert
+from SpectralAnalysis import lfpSpectMaze
 import h5py
+import seaborn as sns
+# sns.set(style="darkgrid")
 
 
 sourceDir = '/data/DataGen/wake_new/'
@@ -29,15 +24,15 @@ for k, v in f.items():
 
 fspikes = h5py.File(sourceDir + 'testVersion.mat', 'r')
 fbehav = h5py.File(sourceDir + 'wake-behavior.mat', 'r')
-slpbehav = h5py.File(sourceDir2 + 'sleep-behavior.mat')
+slpbehav = h5py.File(sourceDir2 + 'wake-behavior.mat')
+fpos = h5py.File(sourceDir2 + 'wake-pos.mat')
 
-#savech = np.load(sourceDir2 + 'sleepPy-behavior')
+# savech = np.load(sourceDir2 + 'sleepPy-behavior')
 
 
 subjects = arrays['basics']
-OsCheck
 
-for sub in range(1, 2):
+for sub in range(5):
     sub_name = subjects[sub]
     print(sub_name)
 
@@ -55,14 +50,14 @@ for sub in range(1, 2):
     behav = np.transpose(fbehav['behavior'][sub_name]['time'][:])
     states = np.transpose(fbehav['behavior'][sub_name]['list'][:])
     frames = np.transpose(fbehav['behavior'][sub_name]['eegFrame'][:])
-    pyrid = [i for i in range(0, nUnits) if quality[i]
-             < 4 and stability[i] == 1]
+    pyrid = [i for i in range(0, nUnits)
+             if quality[i] < 4 and stability[i] == 1]
     cellpyr = [celltype[a] for a in pyrid]
 
     sleepPeriods = (
         (slpbehav['behavior'][sub_name.replace('Maze', 'Sleep')]['list']).value).T
     slpNrem = np.where((sleepPeriods[:, 2] == 1) & (
-        sleepPeriods[:, 1] < behav[2, 0]+10*3600e6))[0]
+        sleepPeriods[:, 1] < behav[2, 0] + 10 * 3600e6))[0]
     lastNrem = sleepPeriods[slpNrem[-1], 0:2]
 
     BasicInfo = {'samplingFrequency': 1250}
@@ -74,8 +69,8 @@ for sub in range(1, 2):
     nMazeFrames = int(np.diff(frames[2, :]))
     POSTNREM = states[(states[:, 0] > behav[2, 0]) & (states[:, 2] == 1), :]
 
-    y1, xf = lfpSpect(sub_name, POSTNREM[0, 0], BasicInfo)
-    y2, xL = lfpSpect(sub_name, lastNrem[0], BasicInfo)
+    y1, xf = lfpSpectMaze(sub_name, POSTNREM[0, 0], BasicInfo)
+    # y2, xL = lfpSpectMaze(sub_name, lastNrem[0], BasicInfo)
 
 #    fig, ax = plt.subplots()
     plt.clf()
