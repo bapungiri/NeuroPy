@@ -51,6 +51,7 @@ for sub in [5]:
     behav = np.transpose(fbehav['behavior'][sub_name]['time'][:])
     states = np.transpose(fbehav['behavior'][sub_name]['list'][:])
     frames = np.transpose(fbehav['behavior'][sub_name]['eegFrame'][:])
+    pos = np.transpose(fpos[sub_name]['eegFrame'][:])
     pyrid = [i for i in range(0, nUnits)
              if quality[i] < 4 and stability[i] == 1]
     cellpyr = [celltype[a] for a in pyrid]
