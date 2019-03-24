@@ -26,7 +26,7 @@ for k, v in f.items():
 fspikes = h5py.File(sourceDir + 'testVersion.mat', 'r')
 fbehav = h5py.File(sourceDir + 'wake-behavior.mat', 'r')
 # slpbehav = h5py.File(sourceDir2 + 'wake-behavior.mat')
-fpos = h5py.File(sourceDir + 'wake-pos.mat')
+fpos = h5py.File(sourceDir + 'wake-position.mat')
 
 # savech = np.load(sourceDir2 + 'sleepPy-behavior')
 
@@ -51,18 +51,29 @@ for sub in [5]:
     behav = np.transpose(fbehav['behavior'][sub_name]['time'][:])
     states = np.transpose(fbehav['behavior'][sub_name]['list'][:])
     frames = np.transpose(fbehav['behavior'][sub_name]['eegFrame'][:])
-    pos = np.transpose(fpos[sub_name]['eegFrame'][:])
+    posx = (fpos['position'][sub_name]['x'][:])
+    posy = (fpos['position'][sub_name]['y'][:])
+    post = (fpos['position'][sub_name]['t'][:])
+
+
     pyrid = [i for i in range(0, nUnits)
              if quality[i] < 4 and stability[i] == 1]
     cellpyr = [celltype[a] for a in pyrid]
 
+    posx_mz = posx[np.where((post > behav[1,0]) & (post < behav[1,1]))]
+    posy_mz = posy[np.where((post > behav[1,0]) & (post < behav[1,1]))]
+    post_mz = post[np.where((post > behav[1,0]) & (post < behav[1,1]))]
+
+    y_thresh = 100
+    posy_mz = posy_mz - y_thresh
+    pos_novel = np.where(posy_mz >0, 1, 0)
     # sleepPeriods = (
     #     (slpbehav['behavior'][sub_name.replace('Maze', 'Sleep')]['list']).value).T
     # slpNrem = np.where((sleepPeriods[:, 2] == 1) & (
     #     sleepPeriods[:, 1] < behav[2, 0] + 10 * 3600e6))[0]
     # lastNrem = sleepPeriods[slpNrem[-1], 0:2]
 
-    BasicInfo = {'samplingFrequency': 1250}
+    BasicInfo = {'samplingFrequency': 1280}
     BasicInfo['behavFrames'] = frames
     BasicInfo['behav'] = behav
     BasicInfo['numChannels'] = 66
@@ -77,12 +88,13 @@ for sub in [5]:
 #    fig, ax = plt.subplots()
     plt.clf()
     ax0 = plt.subplot(1, 1, 1)
-    plt.plot(xf, y1, label='Novel part')
-    plt.plot(xL, y2, 'r', label='Familiar part')
+#    plt.plot(xf, y1, label='Novel part')
+#    plt.plot(xL, y2, 'r', label='Familiar part')
+    plt.plot(post_mz, pos_novel)
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Power (db)')
-    plt.yscale('log')
-    plt.xlim(0.5, 100)
-    plt.legend()
+#    plt.yscale('log')
+#    plt.xlim(0.5, 100)
+#    plt.legend()
     ax0.spines['right'].set_visible(False)
     ax0.spines['top'].set_visible(False)
