@@ -93,19 +93,36 @@ for sub in [5]:
     nMazeFrames = int(np.diff(frames[2, :]))
     MAZE = states[(states[:, 0] > behav[1, 0]) & (states[:, 2] == 4), :]
 
-    y1 = []
+    nov = []
     for i in range(0, len(nov_period)):
         y1, xf = lfpSpectMaze(sub_name, nov_period[i, 0], BasicInfo, channel=66)
-
+        nov.append(y1)
+    fam= []
     for i in range(0, len(fmlr_period)):
         y2, xL = lfpSpectMaze(sub_name, fmlr_period[i, 0], BasicInfo, channel=66)
+        fam.append(y2)
+
+    nov_hipp = []
+    for i in range(0, len(nov_period)):
+        y1, xf = lfpSpectMaze(sub_name, nov_period[i, 0], BasicInfo, channel=55)
+        nov_hipp.append(y1)
+    fam_hipp= []
+    for i in range(0, len(fmlr_period)):
+        y2, xL = lfpSpectMaze(sub_name, fmlr_period[i, 0], BasicInfo, channel=55)
+        fam_hipp.append(y2)
 
 
+    nov_mean = np.mean(nov,axis=0)
+    fam_mean = np.mean(fam,axis=0)
+    nov_hipp_mean = np.mean(nov_hipp,axis=0)
+    fam_hipp_mean = np.mean(fam_hipp,axis=0)
 #    fig, ax = plt.subplots()
     plt.clf()
     ax0 = plt.subplot(1, 1, 1)
-    plt.plot(xf, y1, label='Novel part')
-    plt.plot(xL, y2, 'r', label='Familiar part')
+    plt.plot(xf, nov_mean, label='pfc-novel')
+    plt.plot(xL, fam_mean, 'r', label='pfc-familiar')
+    plt.plot(xf, nov_hipp_mean, 'g',label='hpc-novel')
+    plt.plot(xL, fam_hipp_mean, 'k', label='hpc-familiar')
 #    plt.plot(post_mz, pos_novel)
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Power (db)')
