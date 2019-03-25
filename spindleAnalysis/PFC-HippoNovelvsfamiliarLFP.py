@@ -67,6 +67,17 @@ for sub in [5]:
     y_thresh = 100
     posy_mz = posy_mz - y_thresh
     pos_novel = np.where(posy_mz >0, 1, 0)
+    pos_novel = np.diff(pos_novel)
+    nov_st = post_mz[np.where(pos_novel ==1)]
+    nov_end = post_mz[np.where(pos_novel ==-1)]
+    nov_period = np.column_stack((nov_st[0:len(nov_st)-1],nov_end))
+    fmlr_period = np.column_stack((nov_end,nov_st[1:len(nov_st)]))
+
+    nov_period = nov_period[nov_period[:,1]-nov_period[:,0] > 5e6, :]
+    fmlr_period = fmlr_period[fmlr_period[:,1]-fmlr_period[:,0] > 5e6, :]
+
+
+
     # sleepPeriods = (
     #     (slpbehav['behavior'][sub_name.replace('Maze', 'Sleep')]['list']).value).T
     # slpNrem = np.where((sleepPeriods[:, 2] == 1) & (
@@ -82,19 +93,24 @@ for sub in [5]:
     nMazeFrames = int(np.diff(frames[2, :]))
     MAZE = states[(states[:, 0] > behav[1, 0]) & (states[:, 2] == 4), :]
 
-    y1, xf = lfpSpectMaze(sub_name, MAZE[3, 0], BasicInfo, channel=66)
-    y2, xL = lfpSpectMaze(sub_name, MAZE[8, 0], BasicInfo, channel=50)
+    y1 = []
+    for i in range(0, len(nov_period)):
+        y1, xf = lfpSpectMaze(sub_name, nov_period[i, 0], BasicInfo, channel=66)
+
+    for i in range(0, len(fmlr_period)):
+        y2, xL = lfpSpectMaze(sub_name, fmlr_period[i, 0], BasicInfo, channel=66)
+
 
 #    fig, ax = plt.subplots()
     plt.clf()
     ax0 = plt.subplot(1, 1, 1)
-#    plt.plot(xf, y1, label='Novel part')
-#    plt.plot(xL, y2, 'r', label='Familiar part')
-    plt.plot(post_mz, pos_novel)
+    plt.plot(xf, y1, label='Novel part')
+    plt.plot(xL, y2, 'r', label='Familiar part')
+#    plt.plot(post_mz, pos_novel)
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Power (db)')
-#    plt.yscale('log')
-#    plt.xlim(0.5, 100)
-#    plt.legend()
+    plt.yscale('log')
+    plt.xlim(0.5, 100)
+    plt.legend()
     ax0.spines['right'].set_visible(False)
     ax0.spines['top'].set_visible(False)
