@@ -110,7 +110,7 @@ for sub in [5]:
     for i in range(0, len(fmlr_period)):
         y2, xL = lfpSpectMaze(sub_name, fmlr_period[i, 0], BasicInfo, channel=55)
         fam_hipp.append(y2)
-
+l
 
     nov_mean = np.mean(nov,axis=0)
     fam_mean = np.mean(fam,axis=0)
