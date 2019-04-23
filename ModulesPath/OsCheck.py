@@ -37,3 +37,18 @@ def figDirPath():
         figPath = '../../DataGen/figuresGen/'
 
     return figPath
+
+
+def RawDataPath():
+
+    comp = sys.platform
+
+    if comp == 'linux':
+
+        DataPath = '/data/Cllustering/'
+
+    else:
+
+        DataPath = '../../DataGen/'
+
+    return DataPath
