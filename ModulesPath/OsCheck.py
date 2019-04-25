@@ -45,7 +45,7 @@ def RawDataPath():
 
     if comp == 'linux':
 
-        DataPath = '/data/Cllustering/'
+        DataPath = '/data/Clustering/'
 
     else:
 
