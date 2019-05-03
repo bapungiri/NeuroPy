@@ -227,8 +227,7 @@ def loadContinuous(filepath, dtype=float, verbose=True,
     with open(filepath, 'rb') as f:
         # Read header info, file length, and number of records
         header = readHeader(f)
-#        record_length_bytes = 2 * header['blockLength'] + 22
-        record_length_bytes = 2*1024+22
+        record_length_bytes = 2 * header['blockLength'] + 22
         fileLength = os.fstat(f.fileno()).st_size
         n_records = get_number_of_records(filepath)
 
@@ -260,7 +259,7 @@ def loadContinuous(filepath, dtype=float, verbose=True,
             # Read the number of samples in this record
             # little-endian 16-bit unsigned integer
             N = np.fromfile(f, np.dtype('<u2'), 1).item()
-            if N != 1024: #header['blockLength']:
+            if N != header['blockLength']:
                 raise IOError('Found corrupted record in block ' +
                     str(recordNumber))
 
@@ -276,7 +275,7 @@ def loadContinuous(filepath, dtype=float, verbose=True,
 
             # Optionally convert dtype
             if dtype == float:
-                data = data * 0.195 #header['bitVolts']
+                data = data * header['bitVolts']
 
             # Store the data
             samples.append(data)
@@ -442,12 +441,12 @@ def readHeader(f):
     # Remove newlines and redundant "header." prefixes
     # The result should be a series of "key = value" strings, separated
     # by semicolons.
-    header_string = f.read(1024).replace(b'\n',b'').replace(b'header.',b'')
+    header_string = f.read(1024).decode("utf-8").replace('\n','').replace('header.','')
 
     # Parse each key = value string separately
-    for pair in header_string.split(b';'):
-        if b'=' in pair:
-            key, value = pair.split(b' = ')
+    for pair in header_string.split(';'):
+        if '=' in pair:
+            key, value = pair.split(' = ')
             key = key.strip()
             value = value.strip()
 
@@ -631,8 +630,7 @@ def get_number_of_records(filepath):
         fileLength = os.fstat(f.fileno()).st_size
 
         # Determine the number of records
-#        record_length_bytes = 2 * header['blockLength'] + 22
-        record_length_bytes = 2 * 1024 + 22
+        record_length_bytes = 2 * header['blockLength'] + 22
         n_records = int((fileLength - 1024) / record_length_bytes)
         if (n_records * record_length_bytes + 1024) != fileLength:
             raise IOError("file does not divide evenly into full records")
