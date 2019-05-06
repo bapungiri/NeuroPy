@@ -698,7 +698,7 @@ def get_header_from_folder(folderpath, filelist=None, **kwargs):
     header_l = []
     for filename in filelist:
         full_filename = os.path.join(folderpath, filename)
-        with file(full_filename) as fi:
+        with open(full_filename) as fi:
             header = readHeader(fi)
         header['n_records'] = get_number_of_records(full_filename)
         header_l.append(header)
