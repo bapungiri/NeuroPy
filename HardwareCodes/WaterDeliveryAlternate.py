@@ -8,50 +8,68 @@ Created on Mon May  6 17:13:29 2019
 
 import RPi.GPIO as GPIO
 import time
-GPIO.setmode(GPIO.BCM)
+GPIO.setmode(GPIO.BOARD)
 GPIO.setwarnings(False)
 
 
+pump1= 16
+pump2= 18
+pumpOpen = 0.120 #seconds
+
+sensor1=22
+sensor2=7
+
 #=======Setting up I/O===========
 
-GPIO.setup(18,GPIO.OUT)
-GPIO.setup(23,GPIO.OUT)
+GPIO.setup(pump1,GPIO.OUT, initial=0)
+GPIO.setup(pump1,GPIO.OUT, initial =0)
 
-GPIO.setup(22,GPIO.IN, pull_up_down= GPIO.PUD_down)
-GPIO.setup(7,GPIO.IN)
+GPIO.setup(sensor1,GPIO.IN)
+GPIO.setup(sensor2,GPIO.IN)
 
+#=====Initial values ============
 flag = 0
+pump1_trig=0
+pump2_trig=0
+
 
 try:
 
     while True:
-
-        if flag == 0 and GPIO.input(22):
-            GPIO.output(18,GPIO.HIGH)
+    #=== first lick trigger ==========
+        if flag == 0 and GPIO.input(sensor1):
+            GPIO.output(pump1,GPIO.HIGH)
             time.sleep(0.100)
-            GPIO.output(18,GPIO.LOW)
-            flag==2
+            GPIO.output(pump1,GPIO.LOW)
+            flag=2
+            pump1_trig+=1
 
-        if flag == 0 and GPIO.input(7):
-            GPIO.output(18,GPIO.HIGH)
+        if flag == 0 and GPIO.input(sensor2):
+            GPIO.output(pump2,GPIO.HIGH)
             time.sleep(0.100)
-            GPIO.output(18,GPIO.LOW)
-            flag==1
+            GPIO.output(pump2,GPIO.LOW)
+            flag=1
+            pump2_trig+=1
 
 
+    #===== Alternate between wells ===========
 
-
-        if flag == 1 and GPIO.input(22):
-            GPIO.output(18,GPIO.HIGH)
+        if flag == 1 and GPIO.input(sensor1):
+            GPIO.output(pump1,GPIO.HIGH)
             time.sleep(0.100)
-            GPIO.output(18,GPIO.LOW)
-            flag==2
+            GPIO.output(pump1,GPIO.LOW)
+            flag=2
+            pump1_trig+=1
 
-        if flag == 2 and GPIO.input(7):
-            GPIO.output(23,GPIO.HIGH)
+        if flag == 2 and GPIO.input(sensor2):
+            GPIO.output(pump2,GPIO.HIGH)
             time.sleep(0.100)
-            GPIO.output(23,GPIO.LOW)
-            flag==1
+            GPIO.output(pump2,GPIO.LOW)
+            flag=1
+            pump2_trig+=1
 
+        time.sleep(0.100) #necessary ottherwise cpu usage is 100%
 finally:
     GPIO.cleanup()
+    print('\n','pump1=',pump1_trig,', pump2=', pump2_trig)
+
