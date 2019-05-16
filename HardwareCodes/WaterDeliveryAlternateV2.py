@@ -7,6 +7,7 @@ Created on Wed May 15 11:16:06 2019
 """
 
 import RPi.GPIO as GPIO
+import datetime as dt
 import time
 import csv
 GPIO.setmode(GPIO.BOARD)
@@ -23,7 +24,7 @@ sensor2=7
 #=======Setting up I/O===========
 
 GPIO.setup(pump1,GPIO.OUT, initial=0)
-GPIO.setup(pump1,GPIO.OUT, initial =0)
+GPIO.setup(pump2,GPIO.OUT, initial =0)
 
 GPIO.setup(sensor1,GPIO.IN)
 GPIO.setup(sensor2,GPIO.IN)
@@ -34,15 +35,28 @@ pump1_trig=0
 pump2_trig=0
 
 
-def pumpTrue(whichpump):
+def pumpTrue(whichpump,sensorState):
     GPIO.output(whichpump,GPIO.HIGH)
     time.sleep(0.100)
     GPIO.output(whichpump,GPIO.LOW)
+    writer.writerow([time.time()-start_time,sensorState])
     return flag
 
+def pumpFalse(sensorState):
+    writer = csv.writer(f,delimiter=",")
+    writer.writerow([time.time(),sensorState])
+
+Date_now = dt.datetime.now().strftime("%Y-%m-%d_%H:%M")
+filename = 'RatI_Day2Training_'+ Date_now + '.csv'
 
 
-with open("RatI_Day2Training.csv","a") as f:
+with open(filename,"a") as f:
+
+    start_time = time.time()
+    writer = csv.writer(f,delimiter=",")
+    writer.writerow(['Start Time = ', start_time])
+    writer.writerow(['Time','SensorState'])
+
     try:
 
         while True:
@@ -50,29 +64,29 @@ with open("RatI_Day2Training.csv","a") as f:
         #===== Alternate between wells ===========
 
             if (flag == 0 or flag==1) and GPIO.input(sensor1):
-                pumpTrue(pump1,flag)
+                sensorConfig=1
+                pumpTrue(pump1,sensorConfig)
                 flag=2
-                writer = csv.writer(f,delimiter=",")
-                writer.writerow([time.time(),1])
-
-            if (flag == 0 or flag==2) and GPIO.input(sensor2):
-                pumpTrue(pump2,flag)
-                flag=1
-                writer = csv.writer(f,delimiter=",")
-                writer.writerow([time.time(),3])
-
 
             if flag == 2 and GPIO.input(sensor1):
-                writer = csv.writer(f,delimiter=",")
-                writer.writerow([time.time(),2])
+                sensorConfig=2
+                pumpFalse(sensorConfig)
+                time.sleep(0.100)
+
+            if (flag == 0 or flag==2) and GPIO.input(sensor2):
+                sensorConfig=3
+                pumpTrue(pump1,sensorConfig)
+                flag=1
+
 
             if flag == 1 and GPIO.input(sensor2):
-                writer = csv.writer(f,delimiter=",")
-                writer.writerow([time.time(),4])
+                sensorConfig=4
+                pumpFalse(sensorConfig)
+                time.sleep(0.100)
 
 
             time.sleep(0.100) #necessary ottherwise cpu usage is 100%
     finally:
         GPIO.cleanup()
-        print('\n','pump1=',pump1_trig,', pump2=', pump2_trig)
+        print('pump1=',pump1_trig, ',pump2=', pump2_trig)
 
