@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed May 15 11:16:06 2019
+Created on Fri May 17 10:30:27 2019
 
 @author: bapung
+
+Alternate between water wells with  pulses sent to open ephys via hdmi for syncing post processing in dat files
+
 """
+
 
 import RPi.GPIO as GPIO
 import datetime as dt
