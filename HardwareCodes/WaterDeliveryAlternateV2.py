@@ -35,7 +35,7 @@ pump1_trig=0
 pump2_trig=0
 
 
-def pumpTrue(whichpump,sensorState):
+def pumpTrue(whichpump,sensorState):.
     GPIO.output(whichpump,GPIO.HIGH)
     time.sleep(pumpOpen)
     GPIO.output(whichpump,GPIO.LOW)
