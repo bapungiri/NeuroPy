@@ -55,28 +55,25 @@ for sub in [5]:
     posy = (fpos['position'][sub_name]['y'][:])
     post = (fpos['position'][sub_name]['t'][:])
 
-
     pyrid = [i for i in range(0, nUnits)
              if quality[i] < 4 and stability[i] == 1]
     cellpyr = [celltype[a] for a in pyrid]
 
-    posx_mz = posx[np.where((post > behav[1,0]) & (post < behav[1,1]))]
-    posy_mz = posy[np.where((post > behav[1,0]) & (post < behav[1,1]))]
-    post_mz = post[np.where((post > behav[1,0]) & (post < behav[1,1]))]
+    posx_mz = posx[np.where((post > behav[1, 0]) & (post < behav[1, 1]))]
+    posy_mz = posy[np.where((post > behav[1, 0]) & (post < behav[1, 1]))]
+    post_mz = post[np.where((post > behav[1, 0]) & (post < behav[1, 1]))]
 
     y_thresh = 100
     posy_mz = posy_mz - y_thresh
-    pos_novel = np.where(posy_mz >0, 1, 0)
+    pos_novel = np.where(posy_mz > 0, 1, 0)
     pos_novel = np.diff(pos_novel)
-    nov_st = post_mz[np.where(pos_novel ==1)]
-    nov_end = post_mz[np.where(pos_novel ==-1)]
-    nov_period = np.column_stack((nov_st[0:len(nov_st)-1],nov_end))
-    fmlr_period = np.column_stack((nov_end,nov_st[1:len(nov_st)]))
+    nov_st = post_mz[np.where(pos_novel == 1)]
+    nov_end = post_mz[np.where(pos_novel == -1)]
+    nov_period = np.column_stack((nov_st[0:len(nov_st)-1], nov_end))
+    fmlr_period = np.column_stack((nov_end, nov_st[1:len(nov_st)]))
 
-    nov_period = nov_period[nov_period[:,1]-nov_period[:,0] > 5e6, :]
-    fmlr_period = fmlr_period[fmlr_period[:,1]-fmlr_period[:,0] > 5e6, :]
-
-
+    nov_period = nov_period[nov_period[:, 1]-nov_period[:, 0] > 5e6, :]
+    fmlr_period = fmlr_period[fmlr_period[:, 1]-fmlr_period[:, 0] > 5e6, :]
 
     # sleepPeriods = (
     #     (slpbehav['behavior'][sub_name.replace('Maze', 'Sleep')]['list']).value).T
@@ -95,33 +92,36 @@ for sub in [5]:
 
     nov = []
     for i in range(0, len(nov_period)):
-        y1, xf = lfpSpectMaze(sub_name, nov_period[i, 0], BasicInfo, channel=66)
+        y1, xf = lfpSpectMaze(
+            sub_name, nov_period[i, 0], BasicInfo, channel=66)
         nov.append(y1)
-    fam= []
+    fam = []
     for i in range(0, len(fmlr_period)):
-        y2, xL = lfpSpectMaze(sub_name, fmlr_period[i, 0], BasicInfo, channel=66)
+        y2, xL = lfpSpectMaze(
+            sub_name, fmlr_period[i, 0], BasicInfo, channel=66)
         fam.append(y2)
 
     nov_hipp = []
     for i in range(0, len(nov_period)):
-        y1, xf = lfpSpectMaze(sub_name, nov_period[i, 0], BasicInfo, channel=55)
+        y1, xf = lfpSpectMaze(
+            sub_name, nov_period[i, 0], BasicInfo, channel=55)
         nov_hipp.append(y1)
-    fam_hipp= []
+    fam_hipp = []
     for i in range(0, len(fmlr_period)):
-        y2, xL = lfpSpectMaze(sub_name, fmlr_period[i, 0], BasicInfo, channel=55)
+        y2, xL = lfpSpectMaze(
+            sub_name, fmlr_period[i, 0], BasicInfo, channel=55)
         fam_hipp.append(y2)
-l
 
-    nov_mean = np.mean(nov,axis=0)
-    fam_mean = np.mean(fam,axis=0)
-    nov_hipp_mean = np.mean(nov_hipp,axis=0)
-    fam_hipp_mean = np.mean(fam_hipp,axis=0)
+    nov_mean = np.mean(nov, axis=0)
+    fam_mean = np.mean(fam, axis=0)
+    nov_hipp_mean = np.mean(nov_hipp, axis=0)
+    fam_hipp_mean = np.mean(fam_hipp, axis=0)
 #    fig, ax = plt.subplots()
     plt.clf()
     ax0 = plt.subplot(1, 1, 1)
     plt.plot(xf, nov_mean, label='pfc-novel')
     plt.plot(xL, fam_mean, 'r', label='pfc-familiar')
-    plt.plot(xf, nov_hipp_mean, 'g',label='hpc-novel')
+    plt.plot(xf, nov_hipp_mean, 'g', label='hpc-novel')
     plt.plot(xL, fam_hipp_mean, 'k', label='hpc-familiar')
 #    plt.plot(post_mz, pos_novel)
     plt.xlabel('Frequency (Hz)')

@@ -1,6 +1,7 @@
 {
     "workbench.colorTheme": "Default Light+",
     "python.linting.pylintEnabled": false,
-    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Enabled": false,
+    "editor.formatOnSave": true,
     "python.linting.enabled": true
 }
