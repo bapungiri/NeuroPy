@@ -39,20 +39,35 @@ ReqChan = 28
 
 nyq = 0.5 * SampFreq
 offsetp = (ReqChan-1)
-eeg = np.load(filename)
+signal = np.load(filename)
+signal = signal[0:1250*3600*3]
+signal = np.array(signal, dtype = np.float) # convert data to float
 
-eeg1 = eeg[0:1250*3600*3]
+
 sos = sg.butter(3, [150/nyq,240/nyq], btype='bandpass', fs=SampFreq, output='sos')
-yf = sg.sosfilt(sos, np.square(eeg1))
+yf = sg.sosfilt(sos,signal)
 
-zscoreEEG = stat.zscore(yf)
+squared_signal = np.square(yf)
+zscoreSignal = stat.zscore(squared_signal)
+
+analytic_signal = sg.hilbert(yf)
+amplitude_envelope = stat.zscore(np.abs(analytic_signal))
+
+zscoreSignal = amplitude_envelope
+ThreshSignal= np.diff(np.where(zscoreSignal>2,1,0))
+start_ripple = np.argwhere(ThreshSignal ==1)
+stop_ripple = np.argwhere(ThreshSignal ==-1)
+
+ripple_duration = (stop_ripple-start_ripple)*(1000/1250)
 
 
-
+print('Number of detected Events = ' ,len(start_ripple))
 
 plt.clf()
-plt.plot(zscoreEEG)
-
+plt.plot(signal[int(start_ripple[3]):int(stop_ripple[3])])
+#plt.plot(zscoreSignal)
+#plt.plot(amplitude_envelope, 'r')
+#plt.title('Example Ripple')
 
 
 #yf = ft.fft(yf) / len(eeg1)

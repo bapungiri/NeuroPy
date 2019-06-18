@@ -58,3 +58,37 @@ def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
     y1 = smth.gaussian_filter(y1, 8)
 
     return y1, xf
+
+
+def bestThetaChannel(fileName,sampleRate,nChans,badChannels):
+
+    """
+    fileName: name of the .eeg file
+    sampleRate: sampling frequency of eeg;
+
+    """
+
+    badChannels= [x-1 for x in badChannels] # zero indexing correction
+    duration = 60*10 # chunk of lfp in seconds
+    nyq = 0.5 * sampleRate
+    lowTheta= 5
+    highTheta = 10
+
+    lfpCA1 = np.memmap(fileName, dtype='int16', mode='r', shape=(sampleRate * duration, nChans))
+
+#    goodChannels = [i for i in range(len(a)) if a[i]==1]
+#    lfpCA1[:,goodChannels-1]
+
+    sos = sg.butter(3, [lowTheta/nyq, highTheta/nyq], btype='bandpass', fs=sampleRate, output='sos')
+    yf = sg.sosfilt(sos, lfpCA1, axis=0)
+
+    avgTheta = np.mean(np.square(yf), axis=0);
+    idx = np.argsort(avgTheta)
+
+    bestChannels = np.setdiff1d(idx,badChannels, assume_unique=True)[::-1]
+
+    # selecting first three channels
+
+    bestChannels = bestChannels[0:5]
+
+    return bestChannels
