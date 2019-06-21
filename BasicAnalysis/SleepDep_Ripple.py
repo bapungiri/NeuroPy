@@ -53,7 +53,7 @@ yf = sg.filtfilt(b,a,signal)
 #m = squared_signal
 ## getting an envelope of the signal
 analytic_signal = sg.hilbert(yf)
-amplitude_envelope = np.abs(analytic_signal)
+amplitude_envelope = stat.zscore(np.abs(analytic_signal))
 #
 #windowLength = 1450 #1250/1250*11
 #window = np.ones((int(windowLength),))/windowLength
@@ -81,7 +81,7 @@ amplitude_envelope = np.abs(analytic_signal)
 
 plt.clf()
 #plt.plot(signal[int(start_ripple[3]):int(stop_ripple[3])])
-plt.plot(yf)
+#plt.plot(yf)
 plt.plot(amplitude_envelope,'r')
 #plt.plot(amplitude_envelope,'r')
 #plt.plot(amplitude_envelope, 'r')
