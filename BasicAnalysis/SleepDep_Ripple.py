@@ -22,7 +22,6 @@ import scipy.fftpack as ft
 import scipy.ndimage as smth
 import seaborn as sns
 
-
 #filename ='/data/Clustering/SleepDeprivation/RatJ/Day1/RatJ_2019-05-31_03-55-36/experiment1/recording1/continuous/Rhythm_FPGA-100.0/continuous.eeg'
 
 filename = '/data/DataGen/SleepDeprivation/RatJDay1.npy'
