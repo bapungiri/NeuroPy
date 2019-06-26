@@ -43,7 +43,7 @@ def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
     nChans = RecInfo['numChannels']
 #    ReqChan = RecInfo['SpectralChannel']
     ReqChan = channel
-    duration = 5 # chunk of lfp in seconds
+    duration = 5  # chunk of lfp in seconds
 
     offsetP = ((nREMPeriod - behav[1, 0]) // 1e6) * \
         SampFreq + int(np.diff(frames[0, :]))
@@ -60,32 +60,68 @@ def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
     return y1, xf
 
 
-def bestThetaChannel(fileName,sampleRate,nChans,badChannels):
-
+def bestThetaChannel(fileName, sampleRate, nChans, badChannels):
     """
     fileName: name of the .eeg file
     sampleRate: sampling frequency of eeg;
 
     """
 
-    badChannels= [x-1 for x in badChannels] # zero indexing correction
-    duration = 60*10 # chunk of lfp in seconds
+    badChannels = [x-1 for x in badChannels]  # zero indexing correction
+    duration = 60*10  # chunk of lfp in seconds
     nyq = 0.5 * sampleRate
-    lowTheta= 5
+    lowTheta = 5
     highTheta = 10
 
-    lfpCA1 = np.memmap(fileName, dtype='int16', mode='r', shape=(sampleRate * duration, nChans))
+    lfpCA1 = np.memmap(fileName, dtype='int16', mode='r',
+                       shape=(sampleRate * duration, nChans))
 
 #    goodChannels = [i for i in range(len(a)) if a[i]==1]
 #    lfpCA1[:,goodChannels-1]
 
-    sos = sg.butter(3, [lowTheta/nyq, highTheta/nyq], btype='bandpass', fs=sampleRate, output='sos')
+    sos = sg.butter(3, [lowTheta/nyq, highTheta/nyq],
+                    btype='bandpass', fs=sampleRate, output='sos')
     yf = sg.sosfilt(sos, lfpCA1, axis=0)
 
-    avgTheta = np.mean(np.square(yf), axis=0);
+    avgTheta = np.mean(np.square(yf), axis=0)
     idx = np.argsort(avgTheta)
 
-    bestChannels = np.setdiff1d(idx,badChannels, assume_unique=True)[::-1]
+    bestChannels = np.setdiff1d(idx, badChannels, assume_unique=True)[::-1]
+
+    # selecting first three channels
+
+    bestChannels = bestChannels[0:5]
+
+    return bestChannels
+
+
+def bestRippleChannel(fileName, sampleRate, nChans, badChannels):
+    """
+    fileName: name of the .eeg file
+    sampleRate: sampling frequency of eeg;
+
+    """
+
+    badChannels = [x-1 for x in badChannels]  # zero indexing correction
+    duration = 60*10  # chunk of lfp in seconds
+    nyq = 0.5 * sampleRate  # Nyquist frequency for sampling rate
+    lowRipple = 150
+    highRipple = 250
+
+    lfpCA1 = np.memmap(fileName, dtype='int16', mode='r',
+                       shape=(sampleRate * duration, nChans))
+
+#    goodChannels = [i for i in range(len(a)) if a[i]==1]
+#    lfpCA1[:,goodChannels-1]
+
+    sos = sg.butter(3, [lowRipple/nyq, highRipple/nyq],
+                    btype='bandpass', fs=sampleRate, output='sos')
+    yf = sg.sosfilt(sos, lfpCA1, axis=0)
+
+    avgTheta = np.mean(np.square(yf), axis=0)
+    idx = np.argsort(avgTheta)
+
+    bestChannels = np.setdiff1d(idx, badChannels, assume_unique=True)[::-1]
 
     # selecting first three channels
 
