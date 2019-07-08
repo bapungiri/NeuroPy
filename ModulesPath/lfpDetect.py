@@ -11,6 +11,7 @@ import scipy.signal as sg
 import scipy.fftpack as ft
 import scipy.ndimage as smth
 import scipy.stats as stat
+import numpy.random as rnd
 
 
 def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
@@ -21,12 +22,12 @@ def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
     ReqChan = RippleChannel
     nyq = 0.5 * SampFreq
     offsetp = (ReqChan-1)*2
-    duration = 3600*14
+    duration = 3600*1
 
     # loading the required chanel from eeg file for ripple detection
     lfpCA1 = np.memmap(lfp, dtype='int16', mode='r',
                        offset=offsetp, shape=(SampFreq * duration, nChans))
-    signal = lfpCA1[0::nChans]
+    signal = lfpCA1[:, 0]
     signal = np.array(signal, dtype=np.float)  # convert data to float
 
     b, a = sg.butter(3, [150/nyq, 240/nyq], btype='bandpass')
@@ -44,6 +45,9 @@ def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
 
     smoothSignal = sg.filtfilt(window, 1, squared_signal, axis=0)
     zscoreSignal = stat.zscore(smoothSignal)
+
+    hist_zscoresignal, edges_zscoresignal = np.histogram(
+        zscoreSignal, bins=np.linspace(0, 6, 100))
 
     ThreshSignal = np.diff(np.where(zscoreSignal > 2, 1, 0))
     start_ripple = np.argwhere(ThreshSignal == 1)
@@ -85,7 +89,22 @@ def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
     shortRipples = np.where(ripple_duration < 20)[0]
     thirdPass = np.delete(thirdPass, shortRipples, 0)
 
-    return thirdPass
+    # selecting some example ripples
+    idx = rnd.randint(0, thirdPass.shape[0], 5, dtype='int')
+    example_ripples = []
+    example_ripples_duration = []  # in frames
+    for i in range(5):
+        example_ripples.append(
+            signal[thirdPass[idx[i], 0]-125:thirdPass[idx[i], 1]+125])
+        example_ripples_duration.append(
+            thirdPass[idx[i], 1]-thirdPass[idx[i], 0])
+
+    other_measures = dict()
+    other_measures['example_ripples'] = [
+        example_ripples, example_ripples_duration]
+    other_measures['zscore_dist'] = [hist_zscoresignal, edges_zscoresignal]
+
+    return thirdPass, other_measures
 
 
 def deltawave(sub_name, nREMPeriod, RecInfo):

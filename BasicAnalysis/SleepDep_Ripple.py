@@ -10,20 +10,25 @@ import numpy as np
 
 
 #filename ='/data/Clustering/SleepDeprivation/RatJ/Day1/RatJ_2019-05-31_03-55-36/experiment1/recording1/continuous/Rhythm_FPGA-100.0/continuous.eeg'
-
-filename = '/data/DataGen/SleepDeprivation/RatJDay1.npy'
-
+filename = '/data/Clustering/SleepDeprivation/RatJ/Day1/RatJ_2019-05-31_03-55-36/experiment1/recording1/continuous/Rhythm_FPGA-100.0/continuous.eeg'
 SampFreq = 1250
 #frames = RecInfo['behavFrames']
 #behav = RecInfo['behav']
 nChans = 75
-ReqChan = 28
+ReqChan = 32
+offsetp = (ReqChan-1)*2
+
+duration = 3600*3
+
+
+# filename = '/data/DataGen/SleepDeprivation/RatJDay1.npy'
+lfpCA1 = np.memmap(filename, dtype='int16', mode='r',
+                   shape=(SampFreq * duration, nChans))
 
 
 nyq = 0.5 * SampFreq
-offsetp = (ReqChan-1)
-signal = np.load(filename)
-signal = signal[0:1250*14*3600]
+signal = lfpCA1[:, 31]
+# signal = signal[0:1250*14*3600]
 signal = np.array(signal, dtype=np.float)  # convert data to float
 
 #zscoreSignal = stat.zscore(signal)
