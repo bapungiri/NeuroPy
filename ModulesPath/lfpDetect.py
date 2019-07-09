@@ -22,7 +22,10 @@ def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
     ReqChan = RippleChannel
     nyq = 0.5 * SampFreq
     offsetp = (ReqChan-1)*2
-    duration = 3600*1
+    duration = 3600*14
+    lowthresholdFactor = 2
+    highThresholdFactor = 4
+    # print(duration)
 
     # loading the required chanel from eeg file for ripple detection
     lfpCA1 = np.memmap(lfp, dtype='int16', mode='r',
@@ -49,7 +52,7 @@ def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
     hist_zscoresignal, edges_zscoresignal = np.histogram(
         zscoreSignal, bins=np.linspace(0, 6, 100))
 
-    ThreshSignal = np.diff(np.where(zscoreSignal > 2, 1, 0))
+    ThreshSignal = np.diff(np.where(zscoreSignal > lowthresholdFactor, 1, 0))
     start_ripple = np.argwhere(ThreshSignal == 1)
     stop_ripple = np.argwhere(ThreshSignal == -1)
 
@@ -74,7 +77,7 @@ def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
     # delete ripples with less than threshold power
     thirdPass = []
     peakNormalizedPower = []
-    highThresholdFactor = 5
+
     for i in range(0, len(secondPass)):
         maxValue = max(zscoreSignal[secondPass[i, 0]:secondPass[i, 1]])
         if maxValue > highThresholdFactor:

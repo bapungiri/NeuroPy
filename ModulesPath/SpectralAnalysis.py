@@ -103,7 +103,7 @@ def bestRippleChannel(fileName, sampleRate, nChans, badChannels):
     """
 
     badChannels = [x-1 for x in badChannels]  # zero indexing correction
-    duration = 60*10  # chunk of lfp in seconds
+    duration = 60*30  # chunk of lfp in seconds
     nyq = 0.5 * sampleRate  # Nyquist frequency for sampling rate
     lowRipple = 150
     highRipple = 250
@@ -118,8 +118,9 @@ def bestRippleChannel(fileName, sampleRate, nChans, badChannels):
                     btype='bandpass', fs=sampleRate, output='sos')
     yf = sg.sosfilt(sos, lfpCA1, axis=0)
 
-    avgTheta = np.mean(np.square(yf), axis=0)
-    idx = np.argsort(avgTheta)
+    rms_signal = np.sqrt(np.mean(yf**2))
+    # avgRipple = np.mean(np.square(yf), axis=0)
+    idx = np.argsort(rms_signal)
 
     bestChannels = np.setdiff1d(idx, badChannels, assume_unique=True)[::-1]
 

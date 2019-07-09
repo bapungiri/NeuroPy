@@ -15,12 +15,12 @@ session2 = '/data/Clustering/SleepDeprivation/RatJ/Day2/RatJ_2019-06-02_03-59-19
 RippleSess1, ex1 = lfpDetect.swr(session1, 32, 1250, 75)
 
 thresh_hist = ex1['zscore_dist']
-# RippleSess2, ex2, exdur2 = lfpDetect.swr(session2, 32, 1250, 67)
+RippleSess2, ex2 = lfpDetect.swr(session2, 32, 1250, 67)
 
 # x1 = np.linspace(125)
 
-# ripple_rate1, _ = np.histogram(RippleSess1[:, 0], 140)
-# ripple_rate2, _ = np.histogram(RippleSess2[:, 0], 140)
+ripple_rate1, _ = np.histogram(RippleSess1[:, 0], 140)
+ripple_rate2, _ = np.histogram(RippleSess2[:, 0], 140)
 
 
 # ex_ripple1 = [item for sublist in ex1 for item in sublist]
@@ -29,9 +29,9 @@ thresh_hist = ex1['zscore_dist']
 
 # plt.figure(1)
 
-# # plt.subplot(2, 1, 1)
-# plt.plot(ripple_rate1, 'r')
-# plt.plot(ripple_rate2, 'k')
+plt.subplot(2, 1, 1)
+plt.plot(ripple_rate1, 'r')
+plt.plot(ripple_rate2, 'k')
 # plt.ylabel('# Ripple')
 # plt.xlabel('time')
 
