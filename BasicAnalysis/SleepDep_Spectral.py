@@ -36,4 +36,4 @@ eegnrem1 = b1[0, ::nChans]
 # yf = ft.fft(yf) / len(eegnrem1)
 # xf = np.linspace(0.0, SampFreq / 2, len(eegnrem1) // 2)
 # y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegnrem1) // 2])
-# y1 = smth.gaussi#!/usr/bin/env python3
+# y1 = smth.gaussi
