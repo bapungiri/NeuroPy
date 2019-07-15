@@ -31,7 +31,7 @@ y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegnrem1) // 2])
 y1 = smth.gaussian_filter(y1, 200)
 
 plt.clf()
-#plt.subplot()
+# plt.subplot()
 plt.plot(xf, y1)
 plt.xlim([1, 80])
 plt.ylim([0, 0.000005])
@@ -61,7 +61,7 @@ y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegnrem1) // 2])
 y1 = smth.gaussian_filter(y1, 200)
 
 
-#plt.subplot()
+# plt.subplot()
 plt.plot(xf, y1)
 plt.xlim([1, 80])
 plt.ylim([0, 0.000005])

@@ -118,9 +118,9 @@ def bestRippleChannel(fileName, sampleRate, nChans, badChannels):
                     btype='bandpass', fs=sampleRate, output='sos')
     yf = sg.sosfilt(sos, lfpCA1, axis=0)
 
-    rms_signal = np.sqrt(np.mean(yf**2))
-    # avgRipple = np.mean(np.square(yf), axis=0)
-    idx = np.argsort(rms_signal)
+    # rms_signal = np.sqrt(np.mean(yf**2))
+    avgRipple = np.mean(np.square(yf), axis=0)
+    idx = np.argsort(avgRipple)
 
     bestChannels = np.setdiff1d(idx, badChannels, assume_unique=True)[::-1]
 

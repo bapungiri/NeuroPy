@@ -22,9 +22,9 @@ def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
     ReqChan = RippleChannel
     nyq = 0.5 * SampFreq
     offsetp = (ReqChan-1)*2
-    duration = 3600*14
-    lowthresholdFactor = 2
-    highThresholdFactor = 4
+    duration = 3600*1
+    lowthresholdFactor = 1
+    highThresholdFactor = 3
     # print(duration)
 
     # loading the required chanel from eeg file for ripple detection
