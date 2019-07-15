@@ -114,12 +114,16 @@ def bestRippleChannel(fileName, sampleRate, nChans, badChannels):
 #    goodChannels = [i for i in range(len(a)) if a[i]==1]
 #    lfpCA1[:,goodChannels-1]
 
-    sos = sg.butter(3, [lowRipple/nyq, highRipple/nyq],
-                    btype='bandpass', fs=sampleRate, output='sos')
-    yf = sg.sosfilt(sos, lfpCA1, axis=0)
+    b, a = sg.butter(3, [lowRipple/nyq, highRipple/nyq],
+                     btype='bandpass')
+    delta = sg.filtfilt(b, a, lfpCA1, axis=0)
+
+# Hilbert transform for calculating signal's envelope
+    analytic_signal = sg.hilbert(delta)
+    amplitude_envelope = np.abs(analytic_signal)
 
     # rms_signal = np.sqrt(np.mean(yf**2))
-    avgRipple = np.mean(np.square(yf), axis=0)
+    avgRipple = np.mean(amplitude_envelope, axis=0)
     idx = np.argsort(avgRipple)
 
     bestChannels = np.setdiff1d(idx, badChannels, assume_unique=True)[::-1]
