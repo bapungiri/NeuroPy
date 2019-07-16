@@ -22,7 +22,7 @@ def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
     ReqChan = RippleChannel
     nyq = 0.5 * SampFreq
     offsetp = (ReqChan-1)*2
-    duration = 3600*1
+    duration = 3600*14
     lowthresholdFactor = 1
     highThresholdFactor = 2
     # print(duration)
@@ -87,6 +87,10 @@ def swr(lfpfile, RippleChannel, samplingFrequency, numChans):
     thirdPass = np.asarray(thirdPass)
 
     ripple_duration = np.diff(thirdPass, axis=1)/1250*1000
+
+    # delete very short ripples
+    shortRipples = np.where(ripple_duration < 20)[0]
+    thirdPass = np.delete(thirdPass, shortRipples, 0)
 
     # delete very short ripples
     shortRipples = np.where(ripple_duration < 20)[0]

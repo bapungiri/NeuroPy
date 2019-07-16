@@ -19,8 +19,10 @@ bestChanSess1 = spect.bestRippleChannel(session1, 1250, 75, badchan)
 
 RippleSess1, ex1 = lfpDetect.swr(session1, 33, 1250, 75)
 
+
+bestChanSess2 = spect.bestRippleChannel(session2, 1250, 67, badchan)
 thresh_hist = ex1['zscore_dist']
-RippleSess2, ex2 = lfpDetect.swr(session2, 32, 1250, 67)
+RippleSess2, ex2 = lfpDetect.swr(session2, bestChanSess2[0]+1, 1250, 67)
 
 # x1 = np.linspace(125)
 
@@ -32,22 +34,23 @@ trig_loc = (RippleSess1[:, 0]/1250)*1000
 # f = open("test.evt", "a")
 # np.savetxt('test.evt', trig_loc, newline='\n')
 
-with open('test2.evt', 'w') as file:
-    for year in trig_loc:
-        file.write("%f gh\n" % year)
+# with open('test2.evt', 'w') as file:
+#     for year in trig_loc:
+#         file.write("%f gh\n" % year)
 
 
-# # ex_ripple1 = [item for sublist in ex1 for item in sublist]
-# # ex_ripple2 = [item for sublist in ex2 for item in sublist]
+# ex_ripple1 = [item for sublist in ex1 for item in sublist]
+# ex_ripple2 = [item for sublist in ex2 for item in sublist]
 
 
-# # plt.figure(1)
+# plt.figure(1)
 
-# plt.subplot(2, 1, 1)
-# plt.plot(ripple_rate1, 'r')
-# plt.plot(ripple_rate2, 'k')
-# # plt.ylabel('# Ripple')
-# # plt.xlabel('time')
+plt.subplot(2, 1, 1)
+plt.plot(ripple_rate1, 'r')
+plt.plot(ripple_rate2, 'k')
+plt.ylim(0, 500)
+# plt.ylabel('# Ripple')
+# plt.xlabel('time')
 
 
 # # plt.figure(1)
