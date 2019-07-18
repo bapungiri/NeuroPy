@@ -24,6 +24,7 @@ for idx, fd in enumerate(dir_inside):
         'spktimes', 'ClusterNum', 'MaxSite'])
 
     quality_Info = pd.read_csv(quality_filename, header=None)
+    clustertype = quality_Info[-1].tolist()
 
     spktimes = spkInfo['spktimes']
     allspikes.append(spktimes.tolist())
