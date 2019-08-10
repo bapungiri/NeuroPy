@@ -37,4 +37,4 @@ with open(filename) as f:
 xpos = list(map(float, xpos))
 ypos = list(map(float, ypos))
 zpos = list(map(float, zpos))
-plt.plot(ypos, zpos)
+plt.plot(zpos)
