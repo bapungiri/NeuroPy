@@ -3,8 +3,11 @@ import numpy as np
 import pandas as pd
 import linecache
 
+from mpl_toolkits.mplot3d import Axes3D
 
-filename = '/data/Clustering/SleepDeprivation/RatJ/Behavior_Position/Take 2019-05-31 03.55.25 AM.fbx'
+
+# filename = '/data/Clustering/SleepDeprivation/RatJ/Behavior_Position/Take 2019-05-31 03.55.25 AM.fbx'
+filename = '/data/Clustering/SleepDeprivation/RatK/Position/Take 2019-08-16 04.42.07 AM.fbx'
 
 fid = open(filename, 'r')
 # data = pd.read_csv(filename, header=5, skipfooter=800)
@@ -57,4 +60,5 @@ ypos = list(map(float, ypos))
 zpos = list(map(float, zpos))
 
 plt.clf()
-plt.plot(zpos)
+ax = plt.axes(projection='3d')
+ax.plot3D(xpos, ypos, zpos)
