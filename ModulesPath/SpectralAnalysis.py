@@ -95,7 +95,7 @@ def bestThetaChannel(fileName, sampleRate, nChans, badChannels):
     return bestChannels
 
 
-def besimpootRippleChannel(fileName, sampleRate, nChans, badChannels):
+def bestRippleChannel(fileName, sampleRate, nChans, badChannels):
     """
     fileName: name of the .eeg file
     sampleRate: sampling frequency of eeg;
