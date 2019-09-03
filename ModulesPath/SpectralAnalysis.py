@@ -12,27 +12,22 @@ import scipy.fftpack as ft
 import scipy.ndimage.filters as smth
 
 
-def lfpSpect(sub_name, nREMPeriod, RecInfo):
+def lfpSpectrogram(fileName, sRate, nChans, reqChan):
 
-    SampFreq = RecInfo['samplingFrequency']
-    frames = RecInfo['behavFrames']
-    behav = RecInfo['behav']
-    nChans = RecInfo['numChannels']
-    ReqChan = RecInfo['SpectralChannel']
-
-    offsetP = ((nREMPeriod - behav[2, 0]) // 1e6) * SampFreq + \
-        int(np.diff(frames[0, :])) + int(np.diff(frames[1, :]))
-    b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r',
-                   offset=int(offsetP) * nChans * 2 + 1 * (ReqChan - 1) * 2, shape=(1, nChans * SampFreq * 5))
+    duration = 1800
+    offsetP = 0
+    b1 = np.memmap(fileName, dtype='int16', mode='r',
+                   offset=int(offsetP) * nChans * 2 + 1 * (reqChan - 1) * 2, shape=(1, nChans * sRate * duration))
     eegnrem1 = b1[0, ::nChans]
-    sos = sg.butter(3, 100, btype='low', fs=SampFreq, output='sos')
+    sos = sg.butter(3, 100, btype='low', fs=sRate, output='sos')
     yf = sg.sosfilt(sos, eegnrem1)
-    yf = ft.fft(yf) / len(eegnrem1)
-    xf = np.linspace(0.0, SampFreq / 2, len(eegnrem1) // 2)
-    y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegnrem1) // 2])
-    y1 = smth.gaussian_filter(y1, 8)
+    f, t, x = sg.spectrogram(yf, sRate)
+    # yf = ft.fft(yf) / len(eegnrem1)
+    # xf = np.linspace(0.0, SampFreq / 2, len(eegnrem1) // 2)
+    # y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegnrem1) // 2])
+    # y1 = smth.gaussian_filter(y1, 8)
 
-    return y1, xf
+    return x, f, t
 
 
 def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):

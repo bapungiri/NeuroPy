@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from SpectralAnalysis import bestRippleChannel
+from SpectralAnalysis import bestRippleChannel, bestThetaChannel, lfpSpectrogram
 from lfpDetect import swr
 
 basePath = '/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/'
@@ -10,6 +10,12 @@ fileName = basePath + subject + '/' + subject + '.eeg'
 sampleRate = 1250
 nChans = 134
 badChannels = np.arange(129, 135)
+
+bestTheta = bestThetaChannel(fileName, sampleRate, nChans, badChannels)
+sxx, f, t = lfpSpectrogram(fileName, sampleRate, nChans, bestTheta[0])
+plt.imshow(sxx, aspect='auto')
+
+
 bestChannel = bestRippleChannel(fileName, sampleRate, nChans, badChannels)
 ripples = swr(fileName, bestChannel[0], sampleRate, nChans)
 
