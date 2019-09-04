@@ -3,16 +3,18 @@ import matplotlib.pyplot as plt
 from SpectralAnalysis import bestRippleChannel, bestThetaChannel, lfpSpectrogram
 from lfpDetect import swr
 
-basePath = '/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/'
-subject = 'RatK_2019-08-06_03-44-01'
-fileName = basePath + subject + '/' + subject + '.eeg'
+basePath = '/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/'
+# subject = ''
+# fileName = basePath + subject + '/' + subject + '.eeg'
 
 sampleRate = 1250
 nChans = 134
 badChannels = np.arange(129, 135)
 
-bestTheta = bestThetaChannel(fileName, sampleRate, nChans, badChannels)
-sxx, f, t, sample = lfpSpectrogram(fileName, sampleRate, nChans, bestTheta[0])
+bestTheta = bestThetaChannel(
+    basePath, sampleRate, nChans, badChannels, saveThetaChan=1)
+
+sxx, f, t, sample = lfpSpectrogram(basePath, sampleRate, nChans, bestTheta[0])
 sxx = sxx[0:500, :]
 sxx = np.flip(sxx)
 
@@ -23,8 +25,8 @@ plt.ylabel('Frequency (Hz)')
 plt.xlabel('Time (h)')
 
 
-bestChannel = bestRippleChannel(fileName, sampleRate, nChans, badChannels)
-ripples = swr(fileName, bestChannel[0], sampleRate, nChans)
+bestChannel = bestRippleChannel(basePath, sampleRate, nChans, badChannels)
+ripples = swr(basePath, bestChannel[0], sampleRate, nChans)
 
 rpple_times = ripples[0]
 ripple_start = rpple_times[:, 0]

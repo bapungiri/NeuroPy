@@ -10,12 +10,16 @@ import numpy as np
 import scipy.signal as sg
 import scipy.fftpack as ft
 import scipy.ndimage.filters as smth
+import os
 
 
-def lfpSpectrogram(fileName, sRate, nChans, reqChan):
+def lfpSpectrogram(basePath, sRate, nChans, reqChan):
 
     duration = 3600*10
     offsetP = 0
+    subname = os.path.basename(os.path.normpath(basePath))
+    fileName = basePath + subname + '.eeg'
+
     b1 = np.memmap(fileName, dtype='int16', mode='r',
                    offset=int(offsetP) * nChans * 2 + 1 * (reqChan - 1) * 2, shape=(1, nChans * sRate * duration))
     eegnrem1 = b1[0, ::nChans]
@@ -57,7 +61,7 @@ def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
     return y1, xf
 
 
-def bestThetaChannel(fileName, sampleRate, nChans, badChannels):
+def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0):
     """
     fileName: name of the .eeg file
     sampleRate: sampling frequency of eeg;
@@ -65,10 +69,12 @@ def bestThetaChannel(fileName, sampleRate, nChans, badChannels):
     """
 
     badChannels = [x-1 for x in badChannels]  # zero indexing correction
-    duration = 60*10  # chunk of lfp in seconds
+    duration = 3600  # chunk of lfp in seconds
     nyq = 0.5 * sampleRate
     lowTheta = 5
     highTheta = 10
+    subname = os.path.basename(os.path.normpath(basePath))
+    fileName = basePath + subname + '.eeg'
 
     lfpCA1 = np.memmap(fileName, dtype='int16', mode='r',
                        shape=(sampleRate * duration, nChans))
@@ -88,6 +94,14 @@ def bestThetaChannel(fileName, sampleRate, nChans, badChannels):
     # selecting first three channels
 
     bestChannels = bestChannels[0:5]
+
+    if saveThetaChan == 1:
+        reqChan = bestChannels[0]-1
+        b1 = np.memmap(fileName, dtype='int16', mode='r',
+                       offset=int(offsetP) * nChans * 2 + 1 * (reqChan - 1) * 2)
+        ThetaExtract = b1[0, ::nChans]
+
+        np.save(subname+'.npy', ThetaExtract)
 
     return bestChannels
 
