@@ -12,8 +12,15 @@ nChans = 134
 badChannels = np.arange(129, 135)
 
 bestTheta = bestThetaChannel(fileName, sampleRate, nChans, badChannels)
-sxx, f, t = lfpSpectrogram(fileName, sampleRate, nChans, bestTheta[0])
-plt.imshow(sxx, aspect='auto')
+sxx, f, t, sample = lfpSpectrogram(fileName, sampleRate, nChans, bestTheta[0])
+sxx = sxx[0:500, :]
+sxx = np.flip(sxx)
+
+plt.clf()
+plt.imshow(sxx, extent=[0, 10, f[0], f[500]],
+           aspect='auto', vmax=3000, cmap='YlGn')
+plt.ylabel('Frequency (Hz)')
+plt.xlabel('Time (h)')
 
 
 bestChannel = bestRippleChannel(fileName, sampleRate, nChans, badChannels)

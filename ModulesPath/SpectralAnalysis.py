@@ -14,20 +14,22 @@ import scipy.ndimage.filters as smth
 
 def lfpSpectrogram(fileName, sRate, nChans, reqChan):
 
-    duration = 1800
+    duration = 3600*10
     offsetP = 0
     b1 = np.memmap(fileName, dtype='int16', mode='r',
                    offset=int(offsetP) * nChans * 2 + 1 * (reqChan - 1) * 2, shape=(1, nChans * sRate * duration))
     eegnrem1 = b1[0, ::nChans]
     sos = sg.butter(3, 100, btype='low', fs=sRate, output='sos')
     yf = sg.sosfilt(sos, eegnrem1)
-    f, t, x = sg.spectrogram(yf, sRate)
+    f, t, x = sg.spectrogram(yf, fs=sRate, nperseg=5*1250,
+                             noverlap=3*1250)
+    sample_data = yf[0:1250*5]
     # yf = ft.fft(yf) / len(eegnrem1)
     # xf = np.linspace(0.0, SampFreq / 2, len(eegnrem1) // 2)
     # y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegnrem1) // 2])
     # y1 = smth.gaussian_filter(y1, 8)
 
-    return x, f, t
+    return x, f, t, sample_data
 
 
 def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
