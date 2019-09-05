@@ -13,24 +13,33 @@ import scipy.ndimage.filters as smth
 import os
 
 
-def lfpSpectrogram(basePath, sRate, nChans, reqChan):
+def lfpSpectrogram(basePath, sRate, nChans, reqChan, loadfrom=0):
 
     duration = 3600*10
     offsetP = 0
     subname = os.path.basename(os.path.normpath(basePath))
-    fileName = basePath + subname + '.eeg'
 
-    b1 = np.memmap(fileName, dtype='int16', mode='r',
-                   offset=int(offsetP) * nChans * 2 + 1 * (reqChan - 1) * 2, shape=(1, nChans * sRate * duration))
-    eegnrem1 = b1[0, ::nChans]
+    if loadfrom == 1:
+        fileName = basePath + subname + '_BestThetaChan.npy'
+        BestThetaInfo = np.load(fileName)
+        eegChan = BestThetaInfo
+
+    else:
+        fileName = basePath + subname + '.eeg'
+
+        b1 = np.memmap(fileName, dtype='int16', mode='r',
+                       offset=int(offsetP) * nChans * 2 +
+                       1 * (reqChan - 1) * 2)
+        eegChan = b1[0::nChans]
+
     sos = sg.butter(3, 100, btype='low', fs=sRate, output='sos')
-    yf = sg.sosfilt(sos, eegnrem1)
+    yf = sg.sosfilt(sos, eegChan)
     f, t, x = sg.spectrogram(yf, fs=sRate, nperseg=5*1250,
                              noverlap=3*1250)
-    sample_data = yf[0:1250*5]
-    # yf = ft.fft(yf) / len(eegnrem1)
-    # xf = np.linspace(0.0, SampFreq / 2, len(eegnrem1) // 2)
-    # y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegnrem1) // 2])
+    sample_data = yf[0:sRate*5]
+    # yf = ft.fft(yf) / len(eegChan)
+    # xf = np.linspace(0.0, SampFreq / 2, len(eegChan) // 2)
+    # y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegChan) // 2])
     # y1 = smth.gaussian_filter(y1, 8)
 
     return x, f, t, sample_data
@@ -50,12 +59,12 @@ def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
         SampFreq + int(np.diff(frames[0, :]))
     b1 = np.memmap('/data/EEGData/' + sub_name + '.eeg', dtype='int16', mode='r',
                    offset=int(offsetP) * nChans * 2 + 1 * (ReqChan - 1) * 2, shape=(1, nChans * SampFreq * duration))
-    eegnrem1 = b1[0, ::nChans]
+    eegChan = b1[0, ::nChans]
     sos = sg.butter(3, 100, btype='low', fs=SampFreq, output='sos')
-    yf = sg.sosfilt(sos, eegnrem1)
-    yf = ft.fft(yf) / len(eegnrem1)
-    xf = np.linspace(0.0, SampFreq / 2, len(eegnrem1) // 2)
-    y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegnrem1) // 2])
+    yf = sg.sosfilt(sos, eegChan)
+    yf = ft.fft(yf) / len(eegChan)
+    xf = np.linspace(0.0, SampFreq / 2, len(eegChan) // 2)
+    y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegChan) // 2])
     y1 = smth.gaussian_filter(y1, 8)
 
     return y1, xf
@@ -83,7 +92,7 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
 #    lfpCA1[:,goodChannels-1]
 
     sos = sg.butter(3, [lowTheta/nyq, highTheta/nyq],
-                    btype='bandpass', fs=sampleRate, output='sos')
+                    btype='bandpass', fs=sampleRate)
     yf = sg.sosfilt(sos, lfpCA1, axis=0)
 
     avgTheta = np.mean(np.square(yf), axis=0)
@@ -96,12 +105,11 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
     bestChannels = bestChannels[0:5]
 
     if saveThetaChan == 1:
-        reqChan = bestChannels[0]-1
-        b1 = np.memmap(fileName, dtype='int16', mode='r',
-                       offset=int(offsetP) * nChans * 2 + 1 * (reqChan - 1) * 2)
-        ThetaExtract = b1[0, ::nChans]
+        reqChan = bestChannels[0]
+        b1 = np.memmap(fileName, dtype='int16', mode='r')
+        ThetaExtract = b1[reqChan::nChans]
 
-        np.save(subname+'.npy', ThetaExtract)
+        np.save(basePath+subname+'_BestThetaChan.npy', ThetaExtract)
 
     return bestChannels
 
