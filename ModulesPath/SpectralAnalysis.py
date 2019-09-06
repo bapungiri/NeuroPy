@@ -92,8 +92,8 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
 #    lfpCA1[:,goodChannels-1]
 
     sos = sg.butter(3, [lowTheta/nyq, highTheta/nyq],
-                    btype='bandpass', fs=sampleRate)
-    yf = sg.sosfilt(sos, lfpCA1, axis=0)
+                    btype='bandpass', output='sos', fs=sampleRate)
+    yf = sg.sosfiltfilt(sos, lfpCA1, axis=0)
 
     avgTheta = np.mean(np.square(yf), axis=0)
     idx = np.argsort(avgTheta)
@@ -107,7 +107,7 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
     if saveThetaChan == 1:
         reqChan = bestChannels[0]
         b1 = np.memmap(fileName, dtype='int16', mode='r')
-        ThetaExtract = b1[reqChan::nChans]
+        ThetaExtract = b1[reqChan::nChans-1]
 
         np.save(basePath+subname+'_BestThetaChan.npy', ThetaExtract)
 

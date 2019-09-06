@@ -4,22 +4,39 @@ from SpectralAnalysis import bestRippleChannel, bestThetaChannel, lfpSpectrogram
 from lfpDetect import swr
 import os
 
+# %load_ext autoreload
+# %autoreload 2
 
 basePath = (
     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
 )
 # subject = ''
 # fileName = basePath + subject + '/' + subject + '.eeg'
+subname = os.path.basename(os.path.normpath(basePath))
+fileName = basePath + subname + '.eeg'
+reqChan = 33
+b1 = np.memmap(fileName, dtype='int16', mode='r')
+ThetaExtract = b1[reqChan::nChans]
+
+np.save(basePath+subname+'_BestThetaChan.npy', ThetaExtract)
+
 
 subname = os.path.basename(os.path.normpath(basePath))
 bestThetaCheck = basePath + subname + "_BestThetaChan.npy"
 thetasec = np.load(bestThetaCheck)
 
+T = 1/1250
+N = len(thetasec)
 fftTheta = np.fft.fft(thetasec)
 xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
 
-fig, ax = plt.subplots()
-ax.plot(xf, 2.0/N * np.abs(yf[:N//2]))
+plt.clf()
+plt.subplot(2, 1, 1)
+plt.plot(xf, 2.0/N * np.abs(fftTheta[:N//2]))
+
+plt.subplot(2, 1, 2)
+plt.plot(thetasec[0:5*1250])
+
 
 # fftTheta = np.fft.fft()
 
