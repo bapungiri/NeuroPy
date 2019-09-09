@@ -37,7 +37,8 @@ corr1 = []
 for ind in range(0, N, 5*sampleRate):
     s1 = ThetaExtract[ind:ind+10*sampleRate]
     s2 = ThetaExtract2[ind:ind+10*sampleRate]
-    corr1.extend(np.correlate(s1, s2))
+    a = np.corrcoef(s1, s2)
+    corr1.append(a[0, 1])
 
 # N = 500
 # t = np.linspace(0, 1, N)
