@@ -107,9 +107,11 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
     if saveThetaChan == 1:
         reqChan = bestChannels[0]
         b1 = np.memmap(fileName, dtype='int16', mode='r')
-        ThetaExtract = b1[reqChan::nChans-1]
+        ThetaExtract = b1[reqChan::nChans]
+        ThetaExtract2 = b1[reqChan-16::nChans]
 
         np.save(basePath+subname+'_BestThetaChan.npy', ThetaExtract)
+        np.save(basePath+subname+'_BestThetaChan.npy', ThetaExtract2)
 
     return bestChannels
 
