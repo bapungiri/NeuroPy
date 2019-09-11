@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage as smth
@@ -9,11 +8,11 @@ import lfpDetect as lfpDetect
 import SpectralAnalysis as spect
 
 
-session1 = '/data/Clustering/SleepDeprivation/RatJ/Day1/RatJ_2019-05-31_03-55-36/experiment1/recording1/continuous/Rhythm_FPGA-100.0/continuous.eeg'
-session2 = '/data/Clustering/SleepDeprivation/RatJ/Day2/RatJ_2019-06-02_03-59-19/experiment1/recording1/continuous/Rhythm_FPGA-100.0/continuous.eeg'
+session1 = "/data/Clustering/SleepDeprivation/RatJ/Day1/RatJ_2019-05-31_03-55-36/experiment1/recording1/continuous/Rhythm_FPGA-100.0/continuous.eeg"
+session2 = "/data/Clustering/SleepDeprivation/RatJ/Day2/RatJ_2019-06-02_03-59-19/experiment1/recording1/continuous/Rhythm_FPGA-100.0/continuous.eeg"
 
 badchan = [0, 2, 5, 6, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74]
-badchan = [x+1 for x in badchan]
+badchan = [x + 1 for x in badchan]
 
 bestChanSess1 = spect.bestRippleChannel(session1, 1250, 75, badchan)
 
@@ -21,15 +20,15 @@ RippleSess1, ex1 = lfpDetect.swr(session1, 33, 1250, 75)
 
 
 bestChanSess2 = spect.bestRippleChannel(session2, 1250, 67, badchan)
-thresh_hist = ex1['zscore_dist']
-RippleSess2, ex2 = lfpDetect.swr(session2, bestChanSess2[0]+1, 1250, 67)
+thresh_hist = ex1["zscore_dist"]
+RippleSess2, ex2 = lfpDetect.swr(session2, bestChanSess2[0] + 1, 1250, 67)
 
 # x1 = np.linspace(125)
 
 ripple_rate1, _ = np.histogram(RippleSess1[:, 0], 140)
 ripple_rate2, _ = np.histogram(RippleSess2[:, 0], 140)
 
-trig_loc = (RippleSess1[:, 0]/1250)*1000
+trig_loc = (RippleSess1[:, 0] / 1250) * 1000
 # trig_loc = [[x, 'gh'] for x in trig_loc]
 # f = open("test.evt", "a")
 # np.savetxt('test.evt', trig_loc, newline='\n')
@@ -46,8 +45,8 @@ trig_loc = (RippleSess1[:, 0]/1250)*1000
 # plt.figure(1)
 
 plt.subplot(2, 1, 1)
-plt.plot(ripple_rate1, 'r')
-plt.plot(ripple_rate2, 'k')
+plt.plot(ripple_rate1, "r")
+plt.plot(ripple_rate2, "k")
 plt.ylim(0, 500)
 # plt.ylabel('# Ripple')
 # plt.xlabel('time')

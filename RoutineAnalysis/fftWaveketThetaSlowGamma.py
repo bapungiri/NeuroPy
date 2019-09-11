@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
 # import pywt
 import pandas as pd
 import numpy as np
@@ -15,11 +16,11 @@ basePath = (
 
 
 subname = os.path.basename(os.path.normpath(basePath))
-fileName = basePath + subname + '.eeg'
+fileName = basePath + subname + ".eeg"
 nChans = 134
 
 reqChan = 33
-b1 = np.memmap(fileName, dtype='int16', mode='r')
+b1 = np.memmap(fileName, dtype="int16", mode="r")
 ThetaExtract = b1[reqChan::nChans]
 # np.save(basePath+subname+'_Chan1.npy', ThetaExtract)
 
@@ -34,9 +35,9 @@ sampleRate = 1250
 N = len(thetaData)
 
 corr1 = []
-for ind in range(0, N, 5*sampleRate):
-    s1 = ThetaExtract[ind:ind+10*sampleRate]
-    s2 = ThetaExtract2[ind:ind+10*sampleRate]
+for ind in range(0, N, 5 * sampleRate):
+    s1 = ThetaExtract[ind : ind + 10 * sampleRate]
+    s2 = ThetaExtract2[ind : ind + 10 * sampleRate]
     a = np.corrcoef(s1, s2)
     corr1.append(a[0, 1])
 
@@ -48,23 +49,28 @@ for ind in range(0, N, 5*sampleRate):
 # fftSig = np.abs(np.fft.fft(thetaData))
 # freq = np.fft.fftfreq(N, 1/sampleRate)
 
-f, t, sxx = sg.spectrogram(thetaData, fs=sampleRate,
-                           nperseg=10*sampleRate, noverlap=5*sampleRate)
+f, t, sxx = sg.spectrogram(
+    thetaData, fs=sampleRate, nperseg=10 * sampleRate, noverlap=5 * sampleRate
+)
 
 # f2, coher_sig = sg.coherence(ThetaExtract, ThetaExtract2, fs=1250,
 #                              nperseg=10*sampleRate, noverlap=5*sampleRate)
 
 theta_ind = np.where((f > 5) & (f < 10))[0]
-delta_ind = np.where((f < 4) | ((f > 12) & (f < 15)))[
-    0]  # delta band 0-4 Hz and 12-15 Hz
+delta_ind = np.where(((f > 1) & (f < 4)) | ((f > 12) & (f < 15)))[
+    0
+]  # delta band 0-4 Hz and 12-15 Hz
 gamma_ind = np.where((f > 50) & (f < 250))[0]  # delta band 0-4 Hz and 12-15 Hz
+highfreq_ind = np.where((f > 300) & (f < 600))[0]  # delta band 0-4 Hz and 12-15 Hz
 
 theta_sxx = np.mean(sxx[theta_ind, :], axis=0)
 delta_sxx = np.mean(sxx[delta_ind, :], axis=0)
 gamma_sxx = np.mean(sxx[gamma_ind, :], axis=0)
+highfreq_sxx = np.mean(sxx[highfreq_ind, :], axis=0)
 
-theta_delta_ratio = stats.zscore(theta_sxx/delta_sxx)
-theta_gamma_ratio = stats.zscore(theta_sxx/gamma_sxx)
+theta_delta_ratio = stats.zscore(theta_sxx / delta_sxx)
+theta_gamma_ratio = stats.zscore(theta_sxx / gamma_sxx)
+theta_highfreq_ratio = stats.zscore(theta_sxx / highfreq_sxx)
 
 feature_comb = np.stack((theta_delta_ratio, theta_gamma_ratio), axis=1)
 
@@ -76,5 +82,8 @@ feature_comb = np.stack((theta_delta_ratio, theta_gamma_ratio), axis=1)
 # TODO coherence among multiple channels from different shanks
 theta_ratio_dist, bin_edges = np.histogram(theta_delta_ratio, bins=100)
 
-plt.plot(coher_sig, theta_delta_ratio, '.')
+plt.clf()
+plt.plot(theta_highfreq_ratio, theta_delta_ratio, ".")
 # plt.plot(freq[:N//2], (2/N)*fftSig[:N//2])
+# plt.imshow(np.flip(sxx), cmap="jet", vmax=5000, extent=[0, 14, 0, 1])
+# plt.plot(theta_delta_ratio)
