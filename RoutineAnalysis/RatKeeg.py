@@ -1,3 +1,4 @@
+#%%====== Import statements==========
 import numpy as np
 import matplotlib.pyplot as plt
 from SpectralAnalysis import bestRippleChannel, bestThetaChannel, lfpSpectrogram
@@ -7,35 +8,38 @@ import os
 # %load_ext autoreload
 # %autoreload 2
 
+
+# %% ======== Theta detection testuing==============
 basePath = (
     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
 )
+nChans = 134
 # subject = ''
 # fileName = basePath + subject + '/' + subject + '.eeg'
 subname = os.path.basename(os.path.normpath(basePath))
-fileName = basePath + subname + '.eeg'
+fileName = basePath + subname + ".eeg"
 reqChan = 33
-b1 = np.memmap(fileName, dtype='int16', mode='r')
+b1 = np.memmap(fileName, dtype="int16", mode="r")
 ThetaExtract = b1[reqChan::nChans]
 
-np.save(basePath+subname+'_BestThetaChan.npy', ThetaExtract)
+np.save(basePath + subname + "_BestThetaChan.npy", ThetaExtract)
 
 
 subname = os.path.basename(os.path.normpath(basePath))
 bestThetaCheck = basePath + subname + "_BestThetaChan.npy"
 thetasec = np.load(bestThetaCheck)
 
-T = 1/1250
+T = 1 / 1250
 N = len(thetasec)
 fftTheta = np.fft.fft(thetasec)
-xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
+xf = np.linspace(0.0, 1.0 / (2.0 * T), N / 2)
 
 plt.clf()
 plt.subplot(2, 1, 1)
-plt.plot(xf, 2.0/N * np.abs(fftTheta[:N//2]))
+plt.plot(xf, 2.0 / N * np.abs(fftTheta[: N // 2]))
 
 plt.subplot(2, 1, 2)
-plt.plot(thetasec[0:5*1250])
+plt.plot(thetasec[0 : 5 * 1250])
 
 
 # fftTheta = np.fft.fft()
@@ -65,3 +69,39 @@ plt.plot(thetasec[0:5*1250])
 # ripple_start = rpple_times[:, 0]
 
 # ripple_counts, bin_edges = np.histogram(ripple_start, bins=14)
+
+#%% ========== Ripple Detection ============
+
+basePath = (
+    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
+)
+
+nChans = 134
+sRate = 1250
+badChannels = np.arange(65, 134)
+RippleTry = bestRippleChannel(
+    basePath, sampleRate=sRate, nChans=nChans, badChannels=badChannels, saveRippleChan=1
+)
+
+# subname = os.path.basename(os.path.normpath(basePath))
+
+# fileName = basePath + subname + "_BestRippleChans.npy"
+# lfpCA1 = np.load(fileName)
+
+ripples = swr(basePath, sRate=sRate)
+ex = ripples[1]
+ex = ex["example_ripples"][0]
+
+flat_ripples = [item for sublist in ex for item in sublist]
+
+dt = 1 / 1250
+N = len(flat_ripples)
+Pxx = np.abs(np.fft.fft(flat_ripples))
+freq = np.fft.fftfreq(N, dt)
+
+plt.clf()
+plt.plot(flat_ripples)
+# plt.plot(freq[: N // 2], (2 / N) * Pxx[: N // 2])
+
+
+#%%
