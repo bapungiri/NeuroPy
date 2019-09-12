@@ -15,6 +15,7 @@ import numpy.random as rnd
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 sns.set_style("darkgrid")
 
@@ -30,6 +31,9 @@ def swr(lfpfile, sRate, PlotRippleStat=0):
     # duration = 3600 * 14
     lowthresholdFactor = 1
     highThresholdFactor = 2
+    minRippleDuration = 20  # in milliseconds
+    maxRippleDuration = 800  # in milliseconds
+    maxRipplePower = 60  # in normalized power units
     subname = os.path.basename(os.path.normpath(basePath))
     fileName = basePath + subname + "_BestRippleChans.npy"
     lfpCA1 = np.load(fileName)
@@ -100,20 +104,20 @@ def swr(lfpfile, sRate, PlotRippleStat=0):
 
     thirdPass = np.asarray(thirdPass)
 
-    ripple_duration = np.diff(thirdPass, axis=1) / 1250 * 1000
+    ripple_duration = np.diff(thirdPass, axis=1) / SampFreq * 1000
 
     # delete very short ripples
-    shortRipples = np.where(ripple_duration < 20)[0]
+    shortRipples = np.where(ripple_duration < minRippleDuration)[0]
     thirdPass = np.delete(thirdPass, shortRipples, 0)
     peakNormalizedPower = np.delete(peakNormalizedPower, shortRipples)
 
     # delete ripples with unrealistic high power
-    artifactRipples = np.where(peakNormalizedPower > 60)[0]
+    artifactRipples = np.where(peakNormalizedPower > maxRipplePower)[0]
     fourthPass = np.delete(thirdPass, artifactRipples, 0)
     peakNormalizedPower = np.delete(peakNormalizedPower, artifactRipples)
 
     # delete very long ripples
-    veryLongRipples = np.where(ripple_duration > 800)[0]
+    veryLongRipples = np.where(ripple_duration > maxRippleDuration)[0]
     fifthPass = np.delete(fourthPass, veryLongRipples, 0)
     peakNormalizedPower = np.delete(peakNormalizedPower, veryLongRipples)
 
@@ -137,7 +141,6 @@ def swr(lfpfile, sRate, PlotRippleStat=0):
         )
 
         numRow, numCol = 3, 2
-
         plt.figure()
         plt.subplot(numRow, 1, 1)
         plt.plot(flat_ripples)
@@ -145,18 +148,27 @@ def swr(lfpfile, sRate, PlotRippleStat=0):
         plt.subplot(numRow, 2, 3)
         # plt.plot(duration_edges, ripple_duration_hist)
         sns.distplot(ripple_duration, bins=None)
+        plt.xlabel("Ripple duration (ms)")
+        plt.ylabel("Counts")
         plt.title("Ripple duration distribution")
 
         plt.subplot(numRow, 2, 4)
         # sns.set_style("darkgrid")
         sns.distplot(peakNormalizedPower, bins=np.arange(1, 100))
+        plt.xlabel("Normalized Power")
+        plt.ylabel("Counts")
+        plt.title("Ripple Power Distribution")
 
     other_measures = dict()
     other_measures["example_ripples"] = [example_ripples, example_ripples_duration]
     other_measures["zscore_dist"] = [hist_zscoresignal, edges_zscoresignal]
 
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+
     detectionParams = dict()
     detectionParams["example_ripples"] = [example_ripples, example_ripples_duration]
+    detectionParams["Date"] = dt_string
 
     return thirdPass, other_measures
 
