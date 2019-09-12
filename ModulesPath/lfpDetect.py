@@ -13,9 +13,13 @@ import scipy.ndimage as smth
 import scipy.stats as stat
 import numpy.random as rnd
 import os
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.set_style("darkgrid")
 
 
-def swr(lfpfile, sRate):
+def swr(lfpfile, sRate, PlotRippleStat=0):
 
     basePath = lfpfile
     SampFreq = sRate
@@ -84,7 +88,7 @@ def swr(lfpfile, sRate):
     secondPass.append(ripple)
     secondPass = np.asarray(secondPass)
 
-    # delete ripples with less than threshold power
+    # =======delete ripples with less than threshold power
     thirdPass = []
     peakNormalizedPower = []
 
@@ -101,14 +105,20 @@ def swr(lfpfile, sRate):
     # delete very short ripples
     shortRipples = np.where(ripple_duration < 20)[0]
     thirdPass = np.delete(thirdPass, shortRipples, 0)
+    peakNormalizedPower = np.delete(peakNormalizedPower, shortRipples)
 
-    # delete very short ripples
-    shortRipples = np.where(ripple_duration < 20)[0]
-    thirdPass = np.delete(thirdPass, shortRipples, 0)
+    # delete ripples with unrealistic high power
+    artifactRipples = np.where(peakNormalizedPower > 60)[0]
+    fourthPass = np.delete(thirdPass, artifactRipples, 0)
+    peakNormalizedPower = np.delete(peakNormalizedPower, artifactRipples)
 
-    # TODO delete very long ripples
+    # delete very long ripples
+    veryLongRipples = np.where(ripple_duration > 800)[0]
+    fifthPass = np.delete(fourthPass, veryLongRipples, 0)
+    peakNormalizedPower = np.delete(peakNormalizedPower, veryLongRipples)
 
-    # TODO delet sharp ripple like artifacts
+    # TODO delete sharp ripple like artifacts
+    # Maybe unrelistic high power has taken care of this but check to confirm
 
     # selecting some example ripples
     idx = rnd.randint(0, thirdPass.shape[0], 5, dtype="int")
@@ -120,9 +130,33 @@ def swr(lfpfile, sRate):
         )
         example_ripples_duration.append(thirdPass[idx[i], 1] - thirdPass[idx[i], 0])
 
+    if PlotRippleStat == 1:
+        flat_ripples = [item for sublist in example_ripples for item in sublist]
+        ripple_duration_hist, duration_edges = np.histogram(
+            example_ripples_duration, bins=20
+        )
+
+        numRow, numCol = 3, 2
+
+        plt.figure()
+        plt.subplot(numRow, 1, 1)
+        plt.plot(flat_ripples)
+
+        plt.subplot(numRow, 2, 3)
+        # plt.plot(duration_edges, ripple_duration_hist)
+        sns.distplot(ripple_duration, bins=None)
+        plt.title("Ripple duration distribution")
+
+        plt.subplot(numRow, 2, 4)
+        # sns.set_style("darkgrid")
+        sns.distplot(peakNormalizedPower, bins=np.arange(1, 100))
+
     other_measures = dict()
     other_measures["example_ripples"] = [example_ripples, example_ripples_duration]
     other_measures["zscore_dist"] = [hist_zscoresignal, edges_zscoresignal]
+
+    detectionParams = dict()
+    detectionParams["example_ripples"] = [example_ripples, example_ripples_duration]
 
     return thirdPass, other_measures
 
