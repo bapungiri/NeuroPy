@@ -20,7 +20,7 @@ from datetime import datetime
 sns.set_style("darkgrid")
 
 
-def swr(lfpfile, sRate, PlotRippleStat=0):
+def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
 
     basePath = lfpfile
     SampFreq = sRate
@@ -29,6 +29,8 @@ def swr(lfpfile, sRate, PlotRippleStat=0):
     nyq = 0.5 * SampFreq
     # offsetp = (ReqChan - 1) * 2
     # duration = 3600 * 14
+    lowFreq = 150
+    highFreq = 240
     lowthresholdFactor = 1
     highThresholdFactor = 2
     minRippleDuration = 20  # in milliseconds
@@ -50,7 +52,7 @@ def swr(lfpfile, sRate, PlotRippleStat=0):
     signal = signal["BestChan"]
     signal = np.array(signal, dtype=np.float)  # convert data to float
 
-    b, a = sg.butter(3, [150 / nyq, 240 / nyq], btype="bandpass")
+    b, a = sg.butter(3, [lowFreq / nyq, highFreq / nyq], btype="bandpass")
     yf = sg.filtfilt(b, a, signal)
 
     squared_signal = np.square(yf)
@@ -125,15 +127,16 @@ def swr(lfpfile, sRate, PlotRippleStat=0):
     # Maybe unrelistic high power has taken care of this but check to confirm
 
     # selecting some example ripples
-    idx = rnd.randint(0, thirdPass.shape[0], 5, dtype="int")
+    idx = rnd.randint(0, fifthPass.shape[0], 5, dtype="int")
     example_ripples = []
     example_ripples_duration = []  # in frames
     for i in range(5):
         example_ripples.append(
-            signal[thirdPass[idx[i], 0] - 125 : thirdPass[idx[i], 1] + 125]
+            signal[fifthPass[idx[i], 0] - 125 : fifthPass[idx[i], 1] + 125]
         )
-        example_ripples_duration.append(thirdPass[idx[i], 1] - thirdPass[idx[i], 0])
+        example_ripples_duration.append(fifthPass[idx[i], 1] - fifthPass[idx[i], 0])
 
+    # ====== Plotting some results===============
     if PlotRippleStat == 1:
         flat_ripples = [item for sublist in example_ripples for item in sublist]
         ripple_duration_hist, duration_edges = np.histogram(
@@ -159,18 +162,35 @@ def swr(lfpfile, sRate, PlotRippleStat=0):
         plt.ylabel("Counts")
         plt.title("Ripple Power Distribution")
 
-    other_measures = dict()
-    other_measures["example_ripples"] = [example_ripples, example_ripples_duration]
-    other_measures["zscore_dist"] = [hist_zscoresignal, edges_zscoresignal]
-
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
-    detectionParams = dict()
-    detectionParams["example_ripples"] = [example_ripples, example_ripples_duration]
-    detectionParams["Date"] = dt_string
+    ripples = dict()
+    ripples["timestamps"] = fifthPass
+    ripples["DetectionParams"] = {
+        "lowThres": lowthresholdFactor,
+        "highThresh": highThresholdFactor,
+        "ArtifactThresh": maxRipplePower,
+        "lowFreq": lowFreq,
+        "highFreq": highFreq,
+        "samplingRate": SampFreq,
+        "minDuration": minRippleDuration,
+        "maxDuration": maxRippleDuration,
+    }
+    ripples["Info"] = {"Date": dt_string, "DetectorName": "lfpDetect/swr"}
 
-    return thirdPass, other_measures
+    # other_measures = dict()
+    # other_measures["example_ripples"] = [example_ripples, example_ripples_duration]
+    # other_measures["zscore_dist"] = [hist_zscoresignal, edges_zscoresignal]
+
+    # detectionParams = dict()
+    # detectionParams["example_ripples"] = [example_ripples, example_ripples_duration]
+    # detectionParams["Date"] = dt_string
+
+    if savefile == 1:
+        np.save(basePath + subname + "_ripples.npy", ripples)
+
+    return ripples
 
 
 def deltawave(sub_name, nREMPeriod, RecInfo):

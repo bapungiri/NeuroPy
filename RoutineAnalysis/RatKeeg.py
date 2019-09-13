@@ -72,11 +72,11 @@ plt.plot(thetasec[0 : 5 * 1250])
 
 #%% ========== Ripple Detection ============
 
-# basePath = (
-#     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
-# )
+basePath1 = (
+    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
+)
 
-basePath = (
+basePath2 = (
     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-08_04-00-00/"
 )
 
@@ -84,7 +84,22 @@ nChans = 134
 sRate = 1250
 badChannels = np.arange(65, 134)
 RippleTry = bestRippleChannel(
-    basePath, sampleRate=sRate, nChans=nChans, badChannels=badChannels, saveRippleChan=1
+    basePath1,
+    sampleRate=sRate,
+    nChans=nChans,
+    badChannels=badChannels,
+    saveRippleChan=1,
+)
+
+nChans = 134
+sRate = 1250
+badChannels = np.arange(65, 134)
+RippleTry = bestRippleChannel(
+    basePath2,
+    sampleRate=sRate,
+    nChans=nChans,
+    badChannels=badChannels,
+    saveRippleChan=1,
 )
 
 # subname = os.path.basename(os.path.normpath(basePath))
@@ -93,20 +108,12 @@ RippleTry = bestRippleChannel(
 # fileName = basePath + subname + "_BestRippleChans.npy"
 # lfpCA1 = np.load(fileName)
 
-ripples = swr(basePath, sRate=sRate, PlotRippleStat=1)
-# ex = ripples[1]
-# ex = ex["example_ripples"][0]
+ripplesSess1 = swr(basePath1, sRate=sRate, PlotRippleStat=1)
+ripplesSess2 = swr(basePath2, sRate=sRate, PlotRippleStat=1)
 
-# flat_ripples = [item for sublist in ex for item in sublist]
 
-# dt = 1 / 1250
-# N = len(flat_ripples)
-# Pxx = np.abs(np.fft.fft(flat_ripples))
-# freq = np.fft.fftfreq(N, dt)
-
-# plt.clf()
-# plt.plot(flat_ripples)
-# plt.plot(freq[: N // 2], (2 / N) * Pxx[: N // 2])
+a1 = ripplesSess1["timestamps"]
+a2 = ripplesSess2["timestamps"]
 
 
 #%%
