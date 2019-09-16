@@ -90,20 +90,34 @@ class RippleDetect:
 
 
 basePath1 = (
-    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
+    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatJ/RatJ_2019-05-31_03-55-36/"
 )
 
 basePath2 = (
+    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatJ/RatJ_2019-06-02_03-59-19/"
+)
+
+basePath3 = (
+    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
+)
+
+basePath4 = (
     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-08_04-00-00/"
 )
 
 
-SleepDep = RippleDetect(basePath1)
-NoSleepDep = RippleDetect(basePath2)
+RatJ_SleepDep = RippleDetect(basePath1)
+RatJ_NoSleepDep = RippleDetect(basePath2)
+
+RatK_SleepDep = RippleDetect(basePath3)
+RatK_NoSleepDep = RippleDetect(basePath4)
 
 
 plt.clf()
-plt.plot(SleepDep.histRipple, "r")
-plt.plot(NoSleepDep.histRipple)
+plt.plot(RatJ_SleepDep.histRipple, "r")
+plt.plot(RatJ_NoSleepDep.histRipple)
+plt.plot(RatK_SleepDep.histRipple, "k")
+plt.plot(RatK_NoSleepDep.histRipple)
+
 
 #%%
