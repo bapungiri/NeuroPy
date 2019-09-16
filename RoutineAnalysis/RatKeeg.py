@@ -72,6 +72,23 @@ plt.plot(thetasec[0 : 5 * 1250])
 
 #%% ========== Ripple Detection ============
 
+
+class RippleDetect:
+    nChans = 134
+    sRate = 1250
+    badChannels = np.arange(65, 134)
+
+    def __init__(self, basePath):
+        self.sessionnName = os.path.basename(os.path.normpath(basePath))
+        self.ripples = swr(basePath, sRate=sRate, PlotRippleStat=0)
+        self.ripplesTime = self.ripples["timestamps"]
+        self.rippleStart = self.ripplesTime[:, 0]
+        self.histRipple, self.edges = np.histogram(self.rippleStart, bins=20)
+
+    def sessionInfo(self):
+        self.Date = self.ripples["DetectionParams"]
+
+
 basePath1 = (
     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
 )
@@ -80,40 +97,13 @@ basePath2 = (
     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-08_04-00-00/"
 )
 
-nChans = 134
-sRate = 1250
-badChannels = np.arange(65, 134)
-RippleTry = bestRippleChannel(
-    basePath1,
-    sampleRate=sRate,
-    nChans=nChans,
-    badChannels=badChannels,
-    saveRippleChan=1,
-)
 
-nChans = 134
-sRate = 1250
-badChannels = np.arange(65, 134)
-RippleTry = bestRippleChannel(
-    basePath2,
-    sampleRate=sRate,
-    nChans=nChans,
-    badChannels=badChannels,
-    saveRippleChan=1,
-)
-
-# subname = os.path.basename(os.path.normpath(basePath))
+SleepDep = RippleDetect(basePath1)
+NoSleepDep = RippleDetect(basePath2)
 
 
-# fileName = basePath + subname + "_BestRippleChans.npy"
-# lfpCA1 = np.load(fileName)
-
-ripplesSess1 = swr(basePath1, sRate=sRate, PlotRippleStat=1)
-ripplesSess2 = swr(basePath2, sRate=sRate, PlotRippleStat=1)
-
-
-a1 = ripplesSess1["timestamps"]
-a2 = ripplesSess2["timestamps"]
-
+plt.clf()
+plt.plot(SleepDep.histRipple, "r")
+plt.plot(NoSleepDep.histRipple)
 
 #%%

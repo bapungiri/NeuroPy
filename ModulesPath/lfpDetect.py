@@ -24,11 +24,7 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
 
     basePath = lfpfile
     SampFreq = sRate
-    # nChans = numChans
-    # ReqChan = RippleChannel
     nyq = 0.5 * SampFreq
-    # offsetp = (ReqChan - 1) * 2
-    # duration = 3600 * 14
     lowFreq = 150
     highFreq = 240
     lowthresholdFactor = 1
@@ -40,14 +36,6 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     fileName = basePath + subname + "_BestRippleChans.npy"
     lfpCA1 = np.load(fileName)
 
-    # loading the required chanel from eeg file for ripple detection
-    # lfpCA1 = np.memmap(
-    #     lfp,
-    #     dtype="int16",
-    #     mode="r",
-    #     offset=offsetp,
-    #     shape=(SampFreq * duration, nChans),
-    # )
     signal = lfpCA1.item()
     signal = signal["BestChan"]
     signal = np.array(signal, dtype=np.float)  # convert data to float
