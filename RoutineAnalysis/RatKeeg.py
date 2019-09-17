@@ -80,7 +80,16 @@ class RippleDetect:
 
     def __init__(self, basePath):
         self.sessionnName = os.path.basename(os.path.normpath(basePath))
-        self.ripples = swr(basePath, sRate=sRate, PlotRippleStat=0)
+        if not os.path.exists(basePath + self.sessionnName + "_BestRippleChans.npy"):
+            self.bestRippleChannels = bestRippleChannel(
+                basePath,
+                sampleRate=sRate,
+                nChans=self.nChans,
+                badChannels=self.badChannels,
+                saveRippleChan=1,
+            )
+
+        self.ripples = swr(basePath, sRate=sRate, PlotRippleStat=1)
         self.ripplesTime = self.ripples["timestamps"]
         self.rippleStart = self.ripplesTime[:, 0]
         self.histRipple, self.edges = np.histogram(self.rippleStart, bins=20)
@@ -106,18 +115,22 @@ basePath4 = (
 )
 
 
-RatJ_SleepDep = RippleDetect(basePath1)
+RippleDetect.badChannels = [1, 3, 7, 6, 65, 66, 67]
+RippleDetect.nChans = 67
+# RatJ_SleepDep = RippleDetect(basePath1)
 RatJ_NoSleepDep = RippleDetect(basePath2)
 
-RatK_SleepDep = RippleDetect(basePath3)
-RatK_NoSleepDep = RippleDetect(basePath4)
+
+# RippleDetect.badChannels = np.arange(65, 134)
+# RatK_SleepDep = RippleDetect(basePath3)
+# RatK_NoSleepDep = RippleDetect(basePath4)
 
 
-plt.clf()
-plt.plot(RatJ_SleepDep.histRipple, "r")
-plt.plot(RatJ_NoSleepDep.histRipple)
-plt.plot(RatK_SleepDep.histRipple, "k")
-plt.plot(RatK_NoSleepDep.histRipple)
+# plt.clf()
+# plt.plot(RatJ_SleepDep.histRipple, "r")
+# plt.plot(RatJ_NoSleepDep.histRipple)
+# plt.plot(RatK_SleepDep.histRipple, "k")
+# plt.plot(RatK_NoSleepDep.histRipple)
 
 
 #%%

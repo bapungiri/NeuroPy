@@ -141,7 +141,8 @@ def bestRippleChannel(basePath, sampleRate, nChans, badChannels, saveRippleChan=
     duration = 60 * 30  # chunk of lfp in seconds
     nyq = 0.5 * sampleRate  # Nyquist frequency for sampling rate
     lowRipple = 150  # ripple lower end frequency in Hz
-    highRipple = 250  # ripple higher end frequency in Hz
+    highRipple = 250  # ripple higher e
+nd frequency in Hz
     subname = os.path.basename(os.path.normpath(basePath))
     fileName = basePath + subname + ".eeg"
 
@@ -167,6 +168,7 @@ def bestRippleChannel(basePath, sampleRate, nChans, badChannels, saveRippleChan=
     if saveRippleChan == 1:
         bestChan = bestChannels[0]
         best2ndChan = bestChannels[1]
+
 
         b1 = np.memmap(fileName, dtype="int16", mode="r")
         RipplelfpExtract = b1[bestChan::nChans]

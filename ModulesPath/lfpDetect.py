@@ -116,6 +116,7 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
 
     # selecting some example ripples
     idx = rnd.randint(0, fifthPass.shape[0], 5, dtype="int")
+    print(idx)
     example_ripples = []
     example_ripples_duration = []  # in frames
     for i in range(5):
