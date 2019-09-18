@@ -121,9 +121,9 @@ RatJ_NoSD.badChannels = [1, 3, 7, 6, 65, 66, 67]
 RatJ_NoSD.nChans = 67
 RatJ_NoSD.findRipples()
 
-RatJ_SD.badChannels = [1, 3, 7] + list(range(65, 76))
-RatJ_SD.nChans = 75
-RatJ_SD.findRipples()
+# RatJ_SD.badChannels = [1, 3, 7] + list(range(65, 76))
+# RatJ_SD.nChans = 75
+# RatJ_SD.findRipples()
 
 
 # RippleDetect.badChannels = np.arange(65, 134)

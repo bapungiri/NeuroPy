@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/home/bapung/miniconda3/bin/python",
+    "python.pythonPath": "/home/bapung/conda3/bin/python",
     "python.linting.pep8Enabled": false,
     "python.linting.enabled": true,
     "python.linting.flake8Enabled": false,

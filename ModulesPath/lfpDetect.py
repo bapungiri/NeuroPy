@@ -34,7 +34,7 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     maxRipplePower = 60  # in normalized power units
     subname = os.path.basename(os.path.normpath(basePath))
     fileName = basePath + subname + "_BestRippleChans.npy"
-    lfpCA1 = np.load(fileName)
+    lfpCA1 = np.load(fileName, allow_pickle=True)
 
     signal = lfpCA1.item()
     signal = signal["BestChan"]

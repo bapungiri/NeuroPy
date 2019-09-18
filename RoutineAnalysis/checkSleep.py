@@ -12,7 +12,9 @@ nyq = 0.5 * 1250
 sessionName = os.path.basename(os.path.normpath(basePath))
 filename = basePath + sessionName + "_BestRippleChans.npy"
 
-data = np.load(filename)
+data = np.load(filename, allow_pickle=True)
+
+
 signal = data.item()
 signal = signal["BestChan"]
 
