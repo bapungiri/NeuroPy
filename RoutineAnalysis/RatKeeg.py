@@ -5,41 +5,42 @@ from SpectralAnalysis import bestRippleChannel, bestThetaChannel, lfpSpectrogram
 from lfpDetect import swr
 import os
 
+
 # %load_ext autoreload
 # %autoreload 2
 
 
 # %% ======== Theta detection testuing==============
-basePath = (
-    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
-)
-nChans = 134
-# subject = ''
-# fileName = basePath + subject + '/' + subject + '.eeg'
-subname = os.path.basename(os.path.normpath(basePath))
-fileName = basePath + subname + ".eeg"
-reqChan = 33
-b1 = np.memmap(fileName, dtype="int16", mode="r")
-ThetaExtract = b1[reqChan::nChans]
+# basePath = (
+#     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
+# )
+# nChans = 134
+# # subject = ''
+# # fileName = basePath + subject + '/' + subject + '.eeg'
+# subname = os.path.basename(os.path.normpath(basePath))
+# fileName = basePath + subname + ".eeg"
+# reqChan = 33
+# b1 = np.memmap(fileName, dtype="int16", mode="r")
+# ThetaExtract = b1[reqChan::nChans]
 
-np.save(basePath + subname + "_BestThetaChan.npy", ThetaExtract)
+# np.save(basePath + subname + "_BestThetaChan.npy", ThetaExtract)
 
 
-subname = os.path.basename(os.path.normpath(basePath))
-bestThetaCheck = basePath + subname + "_BestThetaChan.npy"
-thetasec = np.load(bestThetaCheck)
+# subname = os.path.basename(os.path.normpath(basePath))
+# bestThetaCheck = basePath + subname + "_BestThetaChan.npy"
+# thetasec = np.load(bestThetaCheck)
 
-T = 1 / 1250
-N = len(thetasec)
-fftTheta = np.fft.fft(thetasec)
-xf = np.linspace(0.0, 1.0 / (2.0 * T), N / 2)
+# T = 1 / 1250
+# N = len(thetasec)
+# fftTheta = np.fft.fft(thetasec)
+# xf = np.linspace(0.0, 1.0 / (2.0 * T), N / 2)
 
-plt.clf()
-plt.subplot(2, 1, 1)
-plt.plot(xf, 2.0 / N * np.abs(fftTheta[: N // 2]))
+# plt.clf()
+# plt.subplot(2, 1, 1)
+# plt.plot(xf, 2.0 / N * np.abs(fftTheta[: N // 2]))
 
-plt.subplot(2, 1, 2)
-plt.plot(thetasec[0 : 5 * 1250])
+# plt.subplot(2, 1, 2)
+# plt.plot(thetasec[0 : 5 * 1250])
 
 
 # fftTheta = np.fft.fft()
@@ -70,7 +71,7 @@ plt.plot(thetasec[0 : 5 * 1250])
 
 # ripple_counts, bin_edges = np.histogram(ripple_start, bins=14)
 
-#%% ========== Ripple Detection ============
+# %% ========== Ripple Detection ============
 
 
 class RippleDetect:
@@ -80,16 +81,21 @@ class RippleDetect:
 
     def __init__(self, basePath):
         self.sessionnName = os.path.basename(os.path.normpath(basePath))
-        if not os.path.exists(basePath + self.sessionnName + "_BestRippleChans.npy"):
+        self.basePath = basePath
+
+    def findRipples(self):
+        if not os.path.exists(
+            self.basePath + self.sessionnName + "_BestRippleChans.npy"
+        ):
             self.bestRippleChannels = bestRippleChannel(
-                basePath,
-                sampleRate=sRate,
+                self.basePath,
+                sampleRate=self.sRate,
                 nChans=self.nChans,
                 badChannels=self.badChannels,
                 saveRippleChan=1,
             )
 
-        self.ripples = swr(basePath, sRate=sRate, PlotRippleStat=1)
+        self.ripples = swr(self.basePath, sRate=self.sRate, PlotRippleStat=1)
         self.ripplesTime = self.ripples["timestamps"]
         self.rippleStart = self.ripplesTime[:, 0]
         self.histRipple, self.edges = np.histogram(self.rippleStart, bins=20)
@@ -98,27 +104,26 @@ class RippleDetect:
         self.Date = self.ripples["DetectionParams"]
 
 
-basePath1 = (
-    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatJ/RatJ_2019-05-31_03-55-36/"
-)
-
-basePath2 = (
-    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatJ/RatJ_2019-06-02_03-59-19/"
-)
-
-basePath3 = (
-    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/"
-)
-
-basePath4 = (
-    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-08_04-00-00/"
-)
+folderPath = [
+    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatJ/RatJ_2019-05-31_03-55-36/",
+    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatJ/RatJ_2019-06-02_03-59-19/",
+    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/",
+    "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-08_04-00-00/",
+]
 
 
-RippleDetect.badChannels = [1, 3, 7, 6, 65, 66, 67]
-RippleDetect.nChans = 67
-# RatJ_SleepDep = RippleDetect(basePath1)
-RatJ_NoSleepDep = RippleDetect(basePath2)
+RatJ_SD = RippleDetect(folderPath[0])
+RatJ_NoSD = RippleDetect(folderPath[1])
+RatK_SD = RippleDetect(folderPath[2])
+RatK_NoSD = RippleDetect(folderPath[3])
+
+RatJ_NoSD.badChannels = [1, 3, 7, 6, 65, 66, 67]
+RatJ_NoSD.nChans = 67
+RatJ_NoSD.findRipples()
+
+RatJ_SD.badChannels = [1, 3, 7] + list(range(65, 76))
+RatJ_SD.nChans = 75
+RatJ_SD.findRipples()
 
 
 # RippleDetect.badChannels = np.arange(65, 134)
@@ -133,4 +138,4 @@ RatJ_NoSleepDep = RippleDetect(basePath2)
 # plt.plot(RatK_NoSleepDep.histRipple)
 
 
-#%%
+# %%
