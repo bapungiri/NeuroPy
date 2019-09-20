@@ -138,7 +138,7 @@ def bestRippleChannel(basePath, sampleRate, nChans, badChannels, saveRippleChan=
     """
 
     badChannels = [x - 1 for x in badChannels]  # zero indexing correction
-    duration = 60 * 30  # chunk of lfp in seconds
+    duration = 60 * 60  # chunk of lfp in seconds
     nyq = 0.5 * sampleRate  # Nyquist frequency for sampling rate
     lowRipple = 150  # ripple lower end frequency in Hz
     highRipple = 250  # ripple higher end frequency in Hz

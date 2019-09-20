@@ -29,6 +29,7 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     highFreq = 240
     lowthresholdFactor = 1
     highThresholdFactor = 2
+    highRawSigThresholdFactor = 14000
     minRippleDuration = 20  # in milliseconds
     maxRippleDuration = 800  # in milliseconds
     maxRipplePower = 60  # in normalized power units
@@ -39,6 +40,7 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     signal = lfpCA1.item()
     signal = signal["BestChan"]
     signal = np.array(signal, dtype=np.float)  # convert data to float
+    zscoreRawSig = stat.zscore(signal)
 
     b, a = sg.butter(3, [lowFreq / nyq, highFreq / nyq], btype="bandpass")
     yf = sg.filtfilt(b, a, signal)
@@ -64,7 +66,7 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     start_ripple = np.argwhere(ThreshSignal == 1)
     stop_ripple = np.argwhere(ThreshSignal == -1)
 
-    print(start_ripple.shape, stop_ripple.shape)
+    # print(start_ripple.shape, stop_ripple.shape)
     firstPass = np.concatenate((start_ripple, stop_ripple), axis=1)
 
     # ===== merging close ripples
@@ -111,19 +113,30 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     fifthPass = np.delete(fourthPass, veryLongRipples, 0)
     peakNormalizedPower = np.delete(peakNormalizedPower, veryLongRipples)
 
+    # delete ripples which have unusually high amp in raw signal (takes care of disconnection)
+    highRawInd = []
+    for i in range(0, len(fifthPass)):
+        maxValue = max(signal[fifthPass[i, 0] : fifthPass[i, 1]])
+        if maxValue > highRawSigThresholdFactor:
+            highRawInd.append(i)
+
+    sixthPass = np.delete(fifthPass, highRawInd, 0)
+    peakNormalizedPower = np.delete(peakNormalizedPower, highRawInd)
+
+    print(sixthPass.shape)
     # TODO delete sharp ripple like artifacts
     # Maybe unrelistic high power has taken care of this but check to confirm
 
     # selecting some example ripples
-    idx = rnd.randint(0, fifthPass.shape[0], 5, dtype="int")
+    idx = rnd.randint(0, sixthPass.shape[0], 5, dtype="int")
     print(idx)
     example_ripples = []
     example_ripples_duration = []  # in frames
     for i in range(5):
         example_ripples.append(
-            signal[fifthPass[idx[i], 0] - 125 : fifthPass[idx[i], 1] + 125]
+            signal[sixthPass[idx[i], 0] - 125 : sixthPass[idx[i], 1] + 125]
         )
-        example_ripples_duration.append(fifthPass[idx[i], 1] - fifthPass[idx[i], 0])
+        example_ripples_duration.append(sixthPass[idx[i], 1] - sixthPass[idx[i], 0])
 
     # ====== Plotting some results===============
     if PlotRippleStat == 1:
@@ -155,7 +168,7 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
     ripples = dict()
-    ripples["timestamps"] = fifthPass
+    ripples["timestamps"] = sixthPass
     ripples["DetectionParams"] = {
         "lowThres": lowthresholdFactor,
         "highThresh": highThresholdFactor,

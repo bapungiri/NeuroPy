@@ -121,21 +121,21 @@ RatJ_NoSD.badChannels = [1, 3, 7, 6, 65, 66, 67]
 RatJ_NoSD.nChans = 67
 RatJ_NoSD.findRipples()
 
-# RatJ_SD.badChannels = [1, 3, 7] + list(range(65, 76))
-# RatJ_SD.nChans = 75
-# RatJ_SD.findRipples()
+RatJ_SD.badChannels = [1, 3, 7] + list(range(65, 76))
+RatJ_SD.nChans = 75
+RatJ_SD.findRipples()
+
+RatK_SD.findRipples()
+
+RatK_NoSD.badChannels = [102, 106, 127, 128]
+RatK_NoSD.findRipples()
 
 
-# RippleDetect.badChannels = np.arange(65, 134)
-# RatK_SleepDep = RippleDetect(basePath3)
-# RatK_NoSleepDep = RippleDetect(basePath4)
-
-
-# plt.clf()
-# plt.plot(RatJ_SleepDep.histRipple, "r")
-# plt.plot(RatJ_NoSleepDep.histRipple)
-# plt.plot(RatK_SleepDep.histRipple, "k")
-# plt.plot(RatK_NoSleepDep.histRipple)
+plt.clf()
+plt.plot(RatJ_SD.histRipple, "r")
+plt.plot(RatJ_NoSD.histRipple)
+plt.plot(RatK_SD.histRipple, "k")
+plt.plot(RatK_NoSD.histRipple, "g")
 
 
 # %%
