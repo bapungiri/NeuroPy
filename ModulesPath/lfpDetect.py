@@ -29,7 +29,8 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     highFreq = 240
     lowthresholdFactor = 1
     highThresholdFactor = 2
-    highRawSigThresholdFactor = 14000
+    # TODO chnage raw amplitude threshold to something statistical
+    highRawSigThresholdFactor = 15000
     minRippleDuration = 20  # in milliseconds
     maxRippleDuration = 800  # in milliseconds
     maxRipplePower = 60  # in normalized power units
@@ -68,6 +69,8 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
 
     # print(start_ripple.shape, stop_ripple.shape)
     firstPass = np.concatenate((start_ripple, stop_ripple), axis=1)
+
+    # TODO delete half ripples in begining or end
 
     # ===== merging close ripples
     minInterRippleSamples = 30 / 1000 * SampFreq
@@ -129,9 +132,16 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
 
     # selecting some example ripples
     idx = rnd.randint(0, sixthPass.shape[0], 5, dtype="int")
-    print(idx)
     example_ripples = []
     example_ripples_duration = []  # in frames
+    for i in range(5):
+        example_ripples.append(
+            signal[sixthPass[idx[i], 0] - 125 : sixthPass[idx[i], 1] + 125]
+        )
+        example_ripples_duration.append(sixthPass[idx[i], 1] - sixthPass[idx[i], 0])
+
+    # selecting high power ripples
+    highpoweredRipples = np.argsort(peakNormalizedPower)
     for i in range(5):
         example_ripples.append(
             signal[sixthPass[idx[i], 0] - 125 : sixthPass[idx[i], 1] + 125]
