@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from SpectralAnalysis import bestRippleChannel, bestThetaChannel, lfpSpectrogram
 from lfpDetect import swr
 import os
+from datetime import datetime as dt
 
 
 # %load_ext autoreload
@@ -82,6 +83,7 @@ class RippleDetect:
     def __init__(self, basePath):
         self.sessionnName = os.path.basename(os.path.normpath(basePath))
         self.basePath = basePath
+        print(self)
 
     def findRipples(self):
         if not os.path.exists(
@@ -94,11 +96,16 @@ class RippleDetect:
                 badChannels=self.badChannels,
                 saveRippleChan=1,
             )
-
+        self.Starttime = dt.strptime(self.sessionnName[-19:], "%Y-%m-%d_%H-%M-%S")
         self.ripples = swr(self.basePath, sRate=self.sRate, PlotRippleStat=1)
         self.ripplesTime = self.ripples["timestamps"]
         self.rippleStart = self.ripplesTime[:, 0]
         self.histRipple, self.edges = np.histogram(self.rippleStart, bins=20)
+
+    def lfpSpect(self):
+        self.spect, self.freq, self.time = lfpSpectrogram(
+            self.basePath, self.sRate, nChans=self.nChans, loadfrom=1
+        )
 
     def sessionInfo(self):
         self.Date = self.ripples["DetectionParams"]
@@ -119,23 +126,43 @@ RatK_NoSD = RippleDetect(folderPath[3])
 
 RatJ_NoSD.badChannels = [1, 3, 7, 6, 65, 66, 67]
 RatJ_NoSD.nChans = 67
-RatJ_NoSD.findRipples()
+# RatJ_NoSD.findRipples()
+RatJ_NoSD.lfpSpect()
 
 RatJ_SD.badChannels = [1, 3, 7] + list(range(65, 76))
 RatJ_SD.nChans = 75
-RatJ_SD.findRipples()
+# RatJ_SD.findRipples()
+RatJ_SD.lfpSpect()
 
-RatK_SD.findRipples()
+# RatK_SD.findRipples()
+RatK_SD.lfpSpect()
 
 RatK_NoSD.badChannels = [102, 106, 127, 128]
-RatK_NoSD.findRipples()
+# RatK_NoSD.findRipples()
+RatK_NoSD.lfpSpect()
 
+sessions = ["RatJ_SD", "RatJ_NoSD", "RatK_SD", "RatK_NoSD"]
 
 plt.clf()
-plt.plot(RatJ_SD.histRipple, "r")
-plt.plot(RatJ_NoSD.histRipple)
-plt.plot(RatK_SD.histRipple, "k")
-plt.plot(RatK_NoSD.histRipple, "g")
+for i in range(4):
+    plt.subplot(4, 1, i + 1)
+    plt.imshow(
+        RatJ_SD.spect[5:200, :],
+        cmap="YlGn",
+        vmax=1,
+        extent=[
+            np.min(RatJ_SD.time),
+            np.max(RatJ_SD.time),
+            np.min(RatJ_SD.freq),
+            np.max(RatJ_SD.freq),
+        ],
+        aspect="auto",
+    )
+
+
+# plt.plot(RatJ_NoSD.histRipple)
+# plt.plot(RatK_SD.histRipple, "k")
+# plt.plot(RatK_NoSD.histRipple, "g")
 
 
 # %%

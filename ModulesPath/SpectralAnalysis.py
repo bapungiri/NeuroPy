@@ -13,38 +13,27 @@ import scipy.ndimage.filters as smth
 import os
 
 
-def lfpSpectrogram(basePath, sRate, nChans, reqChan, loadfrom=0):
+def lfpSpectrogram(basePath, sRate, nChans, loadfrom=0):
 
-    duration = 3600 * 10
-    offsetP = 0
     subname = os.path.basename(os.path.normpath(basePath))
 
     if loadfrom == 1:
-        fileName = basePath + subname + "_BestThetaChan.npy"
-        BestThetaInfo = np.load(fileName)
-        eegChan = BestThetaInfo
+        fileName = basePath + subname + "_BestRippleChans.npy"
+        lfpCA1 = np.load(fileName, allow_pickle=True)
+        eegChan = lfpCA1.item()
+        eegChan = eegChan["BestChan"]
+        eegChan = np.array(eegChan, dtype=np.float)  # convert data to float
 
-    else:
-        fileName = basePath + subname + ".eeg"
-
-        b1 = np.memmap(
-            fileName,
-            dtype="int16",
-            mode="r",
-            offset=int(offsetP) * nChans * 2 + 1 * (reqChan - 1) * 2,
-        )
-        eegChan = b1[0::nChans]
-
-    sos = sg.butter(3, 100, btype="low", fs=sRate, output="sos")
+    sos = sg.butter(3, 625 / 1250, btype="lowpass", fs=sRate, output="sos")
     yf = sg.sosfilt(sos, eegChan)
-    f, t, x = sg.spectrogram(yf, fs=sRate, nperseg=5 * 1250, noverlap=3 * 1250)
+    f, t, x = sg.spectrogram(yf, fs=sRate, nperseg=10 * 1250, noverlap=5 * 1250)
     sample_data = yf[0 : sRate * 5]
     # yf = ft.fft(yf) / len(eegChan)
     # xf = np.linspace(0.0, SampFreq / 2, len(eegChan) // 2)
     # y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegChan) // 2])
     # y1 = smth.gaussian_filter(y1, 8)
 
-    return x, f, t, sample_data
+    return x, f, t
 
 
 def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
