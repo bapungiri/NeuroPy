@@ -27,33 +27,16 @@ badChannels = [np.arange(65, 135), [1, 3, 7, 6, 65, 66, 67]]
 nChans_all = [75, 67, 134, 134]
 
 plt.clf()
-for i in [1]:
+for i in [0, 1, 2, 3]:
     basePath = folderPath[i]
     sampleRate = 1250
     numChans = nChans_all[i]
     subname = os.path.basename(os.path.normpath(basePath))
 
-    fileName = basePath + subname + "_BestRippleChans.npy"
-    lfpCA1 = np.load(fileName, allow_pickle=True)
-    eegChan = lfpCA1.item()
-    eegChan = eegChan["BestChan"]
-    # eegChan = np.array(eegChan, dtype=np.float)  # convert data to float
-
-    window_spect = 5 * sampleRate
-    window_overlap = 2 * sampleRate
-    # sos = sg.butter(3, 625 / 1250, btype="lowpass", fs=sampleRate, output="sos")
-    # yf = sg.sosfiltfilt(sos, eegChan)
-    f, t, Pxx = sg.spectrogram(
-        eegChan,
-        fs=sampleRate,
-        nperseg=10 * sampleRate,
-        noverlap=5 * sampleRate,
-        nfft=20 * sampleRate,
-    )
     # ripples = swr(basePath, sRate=sampleRate, PlotRippleStat=0)
-    # Pxx, f, t, samp_data = lfpSpectrogram(
-    #     basePath, sRate=sampleRate, loadfrom=1, nChans=numChans
-    # )
+    Pxx, f, t, samp_data = lfpSpectrogram(
+        basePath, sRate=sampleRate, loadfrom=1, nChans=numChans
+    )
     f_req_ind = np.where(f < 50)[0]
 
     f_req = f[f_req_ind]

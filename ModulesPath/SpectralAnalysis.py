@@ -25,8 +25,9 @@ def lfpSpectrogram(basePath, sRate, nChans, loadfrom=1, savefile=1):
         eegChan = eegChan["BestChan"]
         # eegChan = np.array(eegChan, dtype=np.float)  # convert data to float
 
-    window_spect = 5 * sRate
+    window_spect = 10 * sRate
     window_overlap = 2 * sRate
+    numfft = window_spect
     sos = sg.butter(3, 625 / 1250, btype="lowpass", fs=sRate, output="sos")
     yf = sg.sosfiltfilt(sos, eegChan)
     f, t, Pxx = sg.spectrogram(
@@ -34,7 +35,7 @@ def lfpSpectrogram(basePath, sRate, nChans, loadfrom=1, savefile=1):
         fs=sRate,
         nperseg=window_spect,
         noverlap=window_overlap,
-        nfft=10 * sRate,
+        nfft=numfft,
         scaling="spectrum",
     )
     sample_data = eegChan[0 : sRate * 5]  # 5 seconds of data
