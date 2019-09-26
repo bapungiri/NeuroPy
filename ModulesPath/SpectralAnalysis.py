@@ -11,9 +11,10 @@ import scipy.signal as sg
 import scipy.fftpack as ft
 import scipy.ndimage.filters as smth
 import os
+from datetime import datetime
 
 
-def lfpSpectrogram(basePath, sRate, nChans, loadfrom=0):
+def lfpSpectrogram(basePath, sRate, nChans, loadfrom=1, savefile=1):
 
     subname = os.path.basename(os.path.normpath(basePath))
 
@@ -24,16 +25,37 @@ def lfpSpectrogram(basePath, sRate, nChans, loadfrom=0):
         eegChan = eegChan["BestChan"]
         # eegChan = np.array(eegChan, dtype=np.float)  # convert data to float
 
+    window_spect = 5 * sRate
+    window_overlap = 2 * sRate
     sos = sg.butter(3, 625 / 1250, btype="lowpass", fs=sRate, output="sos")
     yf = sg.sosfiltfilt(sos, eegChan)
-    f, t, x = sg.spectrogram(eegChan, fs=sRate, nperseg=10 * 1250, noverlap=5 * 1250)
-    sample_data = eegChan[0 : sRate * 5]
+    f, t, Pxx = sg.spectrogram(
+        eegChan,
+        fs=sRate,
+        nperseg=window_spect,
+        noverlap=window_overlap,
+        nfft=10 * sRate,
+        scaling="spectrum",
+    )
+    sample_data = eegChan[0 : sRate * 5]  # 5 seconds of data
     # yf = ft.fft(yf) / len(eegChan)
     # xf = np.linspace(0.0, SampFreq / 2, len(eegChan) // 2)
     # y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegChan) // 2])
     # y1 = smth.gaussian_filter(y1, 8)
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
-    return x, f, t, sample_data
+    spect = dict()
+    spect["timestamps"] = t
+    spect["Pxx"] = Pxx
+    spect["freq"] = f
+    spect["Params"] = {"windowSize": window_spect, "overlap": window_overlap}
+    spect["Info"] = {"Date": dt_string, "DetectorName": "lfpDetect/swr"}
+
+    if savefile == 1:
+        np.save(basePath + subname + "_spectogram.npy", spect)
+
+    return Pxx, f, t, sample_data
 
 
 def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
