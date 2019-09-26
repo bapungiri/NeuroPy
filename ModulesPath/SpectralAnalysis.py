@@ -22,18 +22,18 @@ def lfpSpectrogram(basePath, sRate, nChans, loadfrom=0):
         lfpCA1 = np.load(fileName, allow_pickle=True)
         eegChan = lfpCA1.item()
         eegChan = eegChan["BestChan"]
-        eegChan = np.array(eegChan, dtype=np.float)  # convert data to float
+        # eegChan = np.array(eegChan, dtype=np.float)  # convert data to float
 
     sos = sg.butter(3, 625 / 1250, btype="lowpass", fs=sRate, output="sos")
-    yf = sg.sosfilt(sos, eegChan)
-    f, t, x = sg.spectrogram(yf, fs=sRate, nperseg=10 * 1250, noverlap=5 * 1250)
-    sample_data = yf[0 : sRate * 5]
+    yf = sg.sosfiltfilt(sos, eegChan)
+    f, t, x = sg.spectrogram(eegChan, fs=sRate, nperseg=10 * 1250, noverlap=5 * 1250)
+    sample_data = eegChan[0 : sRate * 5]
     # yf = ft.fft(yf) / len(eegChan)
     # xf = np.linspace(0.0, SampFreq / 2, len(eegChan) // 2)
     # y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegChan) // 2])
     # y1 = smth.gaussian_filter(y1, 8)
 
-    return x, f, t
+    return x, f, t, sample_data
 
 
 def lfpSpectMaze(sub_name, nREMPeriod, RecInfo, channel):
