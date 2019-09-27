@@ -28,8 +28,8 @@ def lfpSpectrogram(basePath, sRate, nChans, loadfrom=1, savefile=1):
     window_spect = 10 * sRate
     window_overlap = 2 * sRate
     numfft = window_spect
-    sos = sg.butter(3, 625 / 1250, btype="lowpass", fs=sRate, output="sos")
-    yf = sg.sosfiltfilt(sos, eegChan)
+    # sos = sg.butter(3, 625 / 1250, btype="lowpass", fs=sRate, output="sos")
+    # yf = sg.sosfiltfilt(sos, eegChan)
     f, t, Pxx = sg.spectrogram(
         eegChan,
         fs=sRate,
@@ -39,6 +39,8 @@ def lfpSpectrogram(basePath, sRate, nChans, loadfrom=1, savefile=1):
         scaling="spectrum",
     )
     sample_data = eegChan[0 : sRate * 5]  # 5 seconds of data
+
+    # Smoothing the spectrogram if needed
     # yf = ft.fft(yf) / len(eegChan)
     # xf = np.linspace(0.0, SampFreq / 2, len(eegChan) // 2)
     # y1 = 2.0 / (len(xf)) * np.abs(yf[:len(eegChan) // 2])
