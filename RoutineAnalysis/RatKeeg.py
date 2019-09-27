@@ -120,27 +120,27 @@ folderPath = [
 ]
 
 
-RatJ_SD = RippleDetect(folderPath[0])
-RatJ_NoSD = RippleDetect(folderPath[1])
-RatK_SD = RippleDetect(folderPath[2])
-RatK_NoSD = RippleDetect(folderPath[3])
+# dict_sessions = {
+#     "RatJ_SD": RippleDetect(folderPath[0]),
+#     "RatJ_NoSD": RippleDetect(folderPath[1]),
+#     "RatK_SD": RippleDetect(folderPath[2]),
+#     "RatK_NoSD": RippleDetect(folderPath[3]),
+# }
+badChannels_all = [
+    [1, 3, 7] + list(range(65, 76)),
+    [1, 3, 7, 6, 65, 66, 67],
+    np.arange(65, 135),
+    [102, 106, 127, 128],
+]
 
-RatJ_NoSD.badChannels = [1, 3, 7, 6, 65, 66, 67]
-RatJ_NoSD.nChans = 67
-# RatJ_NoSD.findRipples()
-RatJ_NoSD.lfpSpect()
+nChans_all = [75, 67, 134, 134]
 
-# RatJ_SD.badChannels = [1, 3, 7] + list(range(65, 76))
-# RatJ_SD.nChans = 75
-# # RatJ_SD.findRipples()
-# RatJ_SD.lfpSpect()
+Ripple_inst = [RippleDetect(folderPath[i]) for i in range(4)]
 
-# # RatK_SD.findRipples()
-# RatK_SD.lfpSpect()
+for i in range(4):
+    Ripple_inst[i].badChannels = badChannels_all[i]
+    Ripple_inst[i].nChans = nChans_all[i]
 
-# RatK_NoSD.badChannels = [102, 106, 127, 128]
-# # RatK_NoSD.findRipples()
-# RatK_NoSD.lfpSpect()
 
 sessions = ["RatJ_SD", "RatJ_NoSD", "RatK_SD", "RatK_NoSD"]
 spect_sessions = [RatJ_NoSD.spect]
@@ -160,11 +160,6 @@ for i in range(1):
         ],
         aspect="auto",
     )
-
-
-# plt.plot(RatJ_NoSD.histRipple)
-# plt.plot(RatK_SD.histRipple, "k")
-# plt.plot(RatK_NoSD.histRipple, "g")
 
 
 # %%

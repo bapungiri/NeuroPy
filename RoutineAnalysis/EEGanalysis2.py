@@ -9,7 +9,7 @@ import matplotlib.style
 import matplotlib as mpl
 import scipy.signal as sg
 
-mpl.style.use("classic")
+mpl.style.use("default")
 # %load_ext autoreload
 # %autoreload 2
 
