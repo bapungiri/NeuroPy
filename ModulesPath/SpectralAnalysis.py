@@ -196,3 +196,24 @@ def bestRippleChannel(basePath, sampleRate, nChans, badChannels, saveRippleChan=
     bestChannels = bestChannels[0:5]
 
     return bestChannels
+
+
+class SpectralRatio(object):
+    def __init__(self, basePath):
+
+    
+    def ThetaDeltaRatio(self):
+        f, t, sxx = sg.spectrogram(
+            thetaData, fs=sampleRate, nperseg=10 * sampleRate, noverlap=5 * sampleRate
+        )
+
+        theta_ind = np.where((f > 5) & (f < 10))[0]
+        delta_ind = np.where(((f > 1) & (f < 4)) | ((f > 12) & (f < 15)))[0]
+        theta_sxx = np.mean(sxx[theta_ind, :], axis=0)
+        delta_sxx = np.mean(sxx[delta_ind, :], axis=0)
+
+        self.theta_delta_ratio = stats.zscore(theta_sxx / delta_sxx)
+
+
+
+
