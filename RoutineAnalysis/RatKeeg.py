@@ -65,6 +65,8 @@ folderPath = [
     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatJ/RatJ_2019-06-02_03-59-19/",
     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-06_03-44-01/",
     "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatK/RatK_2019-08-08_04-00-00/",
+    # "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatN/RatN_2019-08-08_04-00-00/",
+    # "/home/bapung/Documents/ClusteringHub/EEGAnlaysis/RatN/RatN_2019-08-08_04-00-00/",
 ]
 
 
