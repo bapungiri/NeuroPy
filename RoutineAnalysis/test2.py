@@ -4,7 +4,8 @@ import numpy as np
 class VarCheck:
     def Addtwo(self, a):
 
-        b = a + 2
+        self.b = a + 2
+        return b
 
     def Addthree(self):
 
