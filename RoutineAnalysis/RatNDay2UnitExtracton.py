@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
 
 folderPath = "/data/Clustering/SleepDeprivation/RatN/Day2/Shank"
 
@@ -9,6 +10,53 @@ recording_file = np.memmap(
     dtype="int16",
     mode="r",
 )
+
+
+class ExtractSpikes:
+    nChans = 134
+    sRate = 30000
+    binSize = 0.250  # in seconds
+
+    def __init__(self, basePath):
+        self.sessionnName = os.path.basename(os.path.normpath(basePath))
+        self.basePath = basePath
+
+    def CollectSpikes(self):
+        self.spkAll = []
+        firing_rate = []
+        for i in range(1, 9):
+            fileName = folderPath + str(i) + "/"
+
+            spike_times = np.load(fileName + "spike_times.npy")
+            cluster_labels = pd.read_csv(fileName + "cluster_group.tsv", sep="\t")
+            clusterInfo = pd.read_csv(fileName + "cluster_info.tsv", sep="\t")
+            goodCellsID = cluster_labels.cluster_id[
+                cluster_labels["group"] == "good"
+            ].tolist()
+            goodcells_firingRate = clusterInfo.firing_rate[
+                clusterInfo["group"] == "good"
+            ].tolist()
+            cluID = np.load(fileName + "spike_clusters.npy")
+
+            firing_rate.append(goodcells_firingRate)
+            for i in range(len(goodCellsID)):
+                clu_spike_location = spike_times[np.where(cluID == goodCellsID[i])[0]]
+                spkAll.append(clu_spike_location / 30000)
+
+    def lfpSpect(self):
+        self.Pxx, self.freq, self.time, self.sampleData = lfpSpectrogram(
+            self.basePath, self.sRate, nChans=self.nChans, loadfrom=1
+        )
+        f_req_ind = np.where(self.freq < 50)[0]
+
+        self.f_req = self.freq[f_req_ind]
+        self.Pxx_req = self.Pxx[f_req_ind, :]
+        self.Pxx_req = np.flipud(self.Pxx_req)
+        self.time = self.time / 3600
+
+    def sessionInfo(self):
+        self.Date = self.ripples["DetectionParams"]
+
 
 recording_dur = len(recording_file) / (30000 * 134)  # in seconds
 
