@@ -1,9 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from hmmlearn.hmm import GaussianHMM
 
-
-for i in range(2, 3):
+for i in range(2, 9):
 
     filename = (
         "/data/Clustering/SleepDeprivation/RatN/Day1/Shank"

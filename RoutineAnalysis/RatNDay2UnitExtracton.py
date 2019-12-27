@@ -5,11 +5,11 @@ import os
 
 folderPath = "/data/Clustering/SleepDeprivation/RatN/Day2/Shank"
 
-recording_file = np.memmap(
-    "/data/Clustering/SleepDeprivation/RatN/Day2/RatN-Day2-2019-10-11_03-58-54.dat",
-    dtype="int16",
-    mode="r",
-)
+# recording_file = np.memmap(
+#     "/data/Clustering/SleepDeprivation/RatN/Day2/RatN-Day2-2019-10-11_03-58-54.dat",
+#     dtype="int16",
+#     mode="r",
+# )
 
 
 class ExtractSpikes:
@@ -46,6 +46,18 @@ class ExtractSpikes:
                 clu_spike_location = spike_times[np.where(cluID == goodCellsID[i])[0]]
                 self.spkAll.append(clu_spike_location / self.sRate)
 
+    @staticmethod
+    def partialCorrelation(X, Y, Z):
+        corrXY = [pd.Series.corr(pd.Series(X), pd.Series(Y[i])) for i in range(len(Y))]
+        corrYZ = [pd.Series.corr(pd.Series(Y), pd.Series(Z[i])) for i in range(len(Y))]
+        corrXZ = [pd.Series.corr(pd.Series(Z), pd.Series(Z[i])) for i in range(len(Y))]
+
+        parCorr = (corrXY - corrXZ * corrYZ) / (
+            np.sqrt(1 - corrXZ ** 2) * (np.sqrt(1 - corrYZ ** 2))
+        )
+
+        return parCorr
+
     def ExpVAr(self):
 
         recording_file = np.memmap(
@@ -56,17 +68,10 @@ class ExtractSpikes:
         nUnits = len(self.spkAll)
         windowSize = self.timeWindow
 
-        spike_corr_diff = [
-            np.histogram(
-                self.spkAll[x], bins=np.arange(0, 16 * windowSize, windowSize)
-            )[0]
-            for x in range(0, nUnits)
-        ]
-
+        # Calculating firing rate
         f_rate = [len(x) / recording_dur for x in self.spkAll]
-        f_rate_hist = np.histogram(f_rate, bins=np.arange(0, 30, 0.1))
         pyr_id = [x for x in range(len(f_rate)) if f_rate[x] < 10]
-        spkAll = [spkAll[x] for x in pyr_id]
+        spkAll = [self.spkAll[x] for x in pyr_id]
 
         pre_bin = np.arange(0, 3 * windowSize, 0.250)
         maze_bin = np.arange(3 * windowSize, 4.1 * windowSize, 0.250)
@@ -77,7 +82,7 @@ class ExtractSpikes:
         post_spikecount = np.array([np.histogram(x, bins=post_bin)[0] for x in spkAll])
         post_spikecount = [
             post_spikecount[:, i : i + windowSize]
-            for i in range(0, 13 * windowSize, windowSize)
+            for i in range(0, len(post_bin) * windowSize, windowSize)
         ]
 
         pre_corr = np.corrcoef(pre_spikecount)
@@ -86,6 +91,7 @@ class ExtractSpikes:
             np.corrcoef(post_spikecount[x]) for x in range(len(post_spikecount))
         ]
 
+        # selecting only lower diagonal of matrix
         pre_corr = pre_corr[np.tril_indices(pre_corr.shape[0], k=-1)]
         maze_corr = maze_corr[np.tril_indices(maze_corr.shape[0], k=-1)]
         post_corr = [
@@ -93,29 +99,21 @@ class ExtractSpikes:
             for x in range(len(post_spikecount))
         ]
 
-        corr_maze_vs_post = [
-            pd.Series.corr(pd.Series(maze_corr), pd.Series(post_corr[x]))
-            for x in range(len(post_corr))
-        ]
-        corr_maze_vs_pre = pd.Series.corr(pd.Series(maze_corr), pd.Series(pre_corr))
-
-        corr_pre_vs_post = [
-            pd.Series.corr(pd.Series(pre_corr), pd.Series(post_corr[x]))
-            for x in range(len(post_corr))
-        ]
-
-        parcorr_maze_vs_post = [
-            (corr_maze_vs_post[x] - (corr_pre_vs_post[x] * corr_maze_vs_pre))
-            / (
-                np.sqrt(1 - corr_pre_vs_post[x] ** 2)
-                * np.sqrt(1 - corr_maze_vs_pre ** 2)
-            )
-            for x in range(len(corr_maze_vs_post))
-        ]
+        parcorr_maze_vs_post = partialCorrelation(maze_corr, post_corr, pre_corr)
 
         ev_maze_vs_post = [
             parcorr_maze_vs_post[x] ** 2 for x in range(len(parcorr_maze_vs_post))
         ]
+
+    def FiringRate(self):
+        spike_corr_diff = [
+            np.histogram(
+                self.spkAll[x], bins=np.arange(0, 16 * windowSize, windowSize)
+            )[0]
+            for x in range(0, nUnits)
+        ]
+
+        f_rate_hist = np.histogram(f_rate, bins=np.arange(0, 30, 0.1))
 
     def sessionInfo(self):
         self.Date = self.ripples["DetectionParams"]
