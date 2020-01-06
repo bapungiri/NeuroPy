@@ -35,6 +35,7 @@ class ExtractPosition:
         self.posX = positionStruct.iloc[:, 1]
         self.posY = positionStruct.iloc[:, 2]
         self.posZ = positionStruct.iloc[:, 3]
+        self.dt = self.time[1] - self.time[0]
 
     def plotPosition(self):
 
@@ -43,7 +44,7 @@ class ExtractPosition:
 
     def Speed(self):
         location = np.sqrt((self.posZ) ** 2 + (self.posX) ** 2)
-        spd = np.diff(location)
+        spd = np.abs(np.diff(location)) / self.dt
 
         self.speed = spd.tolist()
         return self.speed
