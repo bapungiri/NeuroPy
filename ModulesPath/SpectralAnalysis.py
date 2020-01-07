@@ -104,8 +104,14 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
     nyq = 0.5 * sampleRate
     lowTheta = 5
     highTheta = 10
-    subname = os.path.basename(os.path.normpath(basePath))
-    fileName = basePath + subname + ".eeg"
+
+    for file in os.listdir(basePath):
+        if file.endswith(".eeg"):
+            print(file)
+            subname = file[:-4]
+            fileName = os.path.join(basePath, file)
+    # subname = os.path.basename(os.path.normpath(basePath))
+    # fileName = basePath + subname + ".eeg"
 
     lfpCA1 = np.memmap(
         fileName, dtype="int16", mode="r", shape=(sampleRate * duration, nChans)
@@ -114,14 +120,8 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
     #    goodChannels = [i for i in range(len(a)) if a[i]==1]
     #    lfpCA1[:,goodChannels-1]
 
-    sos = sg.butter(
-        3,
-        [lowTheta / nyq, highTheta / nyq],
-        btype="bandpass",
-        output="sos",
-        fs=sampleRate,
-    )
-    yf = sg.sosfiltfilt(sos, lfpCA1, axis=0)
+    b, a = sg.butter(3, [lowTheta / nyq, highTheta / nyq], btype="bandpass")
+    yf = sg.filtfilt(b, a, lfpCA1, axis=0)
 
     avgTheta = np.mean(np.square(yf), axis=0)
     idx = np.argsort(avgTheta)
@@ -136,10 +136,10 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
         reqChan = bestChannels[0]
         b1 = np.memmap(fileName, dtype="int16", mode="r")
         ThetaExtract = b1[reqChan::nChans]
-        ThetaExtract2 = b1[reqChan - 16 :: nChans]
+        # ThetaExtract2 = b1[reqChan - 16 :: nChans]
 
         np.save(basePath + subname + "_BestThetaChan.npy", ThetaExtract)
-        np.save(basePath + subname + "_BestThetaChan.npy", ThetaExtract2)
+        # np.save(basePath + subname + "_BestThetaChan.npy", ThetaExtract2)
 
     return bestChannels
 
