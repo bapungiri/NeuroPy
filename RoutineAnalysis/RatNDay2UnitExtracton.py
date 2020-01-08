@@ -20,15 +20,20 @@ class ExtractSpikes:
 
     def __init__(self, basePath):
         # self.sessionnName = os.path.basename(os.path.normpath(basePath))
-        self.sessionName = basePath.split("/")[-3] + basePath.split("/")[-2]
+        self.sessionName = basePath.split("/")[-2] + basePath.split("/")[-1]
         self.basePath = basePath
+        for file in os.listdir(basePath):
+            if file.endswith(".eeg"):
+                print(file)
+                self.subname = file[:-4]
+                print(os.path.join(basePath, file))
 
     def CollectSpikes(self):
         self.spkAll = []
         # firing_rate = []
 
         for i in range(1, 9):
-            fileName = self.basePath + str(i) + "/"
+            fileName = self.basePath + "Shank" + str(i) + "/"
             spike_times = np.load(fileName + "spike_times.npy")
             cluster_labels = pd.read_csv(fileName + "cluster_group.tsv", sep="\t")
             clusterInfo = pd.read_csv(fileName + "cluster_info.tsv", sep="\t")
@@ -56,16 +61,22 @@ class ExtractSpikes:
             for m in range(len(corrYZ))
         ]
 
-        return parCorr
+        revCorr = [
+            (corrXZ - corrXY[m] * corrYZ[m])
+            / ((np.sqrt(1 - corrXY[m] ** 2)) * (np.sqrt(1 - corrYZ[m] ** 2)))
+            for m in range(len(corrYZ))
+        ]
+
+        return parCorr, revCorr
 
     def ExpVAr(self):
 
-        recording_file = np.memmap(
-            self.basePath + str(1) + "/RatNDay1Shank1.dat", dtype="int16", mode="r"
-        )
+        epoch_time = np.load(self.basePath + "epochs.npy", allow_pickle=True)
+        recording_dur = epoch_time.item().get("POST")[1]  # in seconds
+        pre = epoch_time.item().get("PRE")  # in seconds
+        maze = epoch_time.item().get("MAZE")  # in seconds
+        post = epoch_time.item().get("POST")  # in seconds
 
-        recording_dur = len(recording_file) / (self.sRate * self.nChans)  # in seconds
-        print(recording_dur)
         self.nUnits = len(self.spkAll)
         windowSize = self.timeWindow
 
@@ -74,9 +85,9 @@ class ExtractSpikes:
         pyr_id = [x for x in range(len(f_rate)) if f_rate[x] < 10]
         spkAll = [self.spkAll[x] for x in pyr_id]
 
-        pre_bin = np.arange(0, 3 * windowSize, 0.250)
-        maze_bin = np.arange(3 * windowSize, 4.1 * windowSize, 0.250)
-        post_bin = np.arange(4.1 * windowSize, 14 * windowSize, 0.250)
+        pre_bin = np.arange(pre[0], pre[1], 0.250)
+        maze_bin = np.arange(maze[0], maze[1], 0.250)
+        post_bin = np.arange(post[0], post[1], 0.250)
 
         pre_spikecount = np.array([np.histogram(x, bins=pre_bin)[0] for x in spkAll])
         maze_spikecount = np.array([np.histogram(x, bins=maze_bin)[0] for x in spkAll])
@@ -102,9 +113,15 @@ class ExtractSpikes:
         ]
 
         self.check2 = post_corr
-        parcorr_maze_vs_post = self.partialCorrelation(maze_corr, post_corr, pre_corr)
+        parcorr_maze_vs_post, revcorr = self.partialCorrelation(
+            maze_corr, post_corr, pre_corr
+        )
 
         self.ev_maze_vs_post = [x ** 2 for x in parcorr_maze_vs_post]
+        self.rev = [x ** 2 for x in revcorr]
+
+        np.save(self.basePath + self.subname + "_EV.npy", self.ev_maze_vs_post)
+        np.save(self.basePath + self.subname + "_REV.npy", self.rev)
 
         # return ev_maze_vs_post
 
@@ -122,8 +139,20 @@ class ExtractSpikes:
     #     self.Date = self.ripples["DetectionParams"]
 
 
-folderPath = "/data/Clustering/SleepDeprivation/RatN/Day1/Shank"
+folderPath = "/data/Clustering/SleepDeprivation/RatN/Day1/"
 
 RatNDay1 = ExtractSpikes(folderPath)
 RatNDay1.CollectSpikes()
 RatNDay1.ExpVAr()
+
+
+folderPath = "/data/Clustering/SleepDeprivation/RatN/Day2/"
+
+RatNDay2 = ExtractSpikes(folderPath)
+RatNDay2.CollectSpikes()
+RatNDay2.ExpVAr()
+
+# plt.clf()
+# plt.plot(RatNDay1.ev_maze_vs_post)
+# plt.plot(RatNDay2.ev_maze_vs_post, "r")
+

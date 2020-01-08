@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.collections import PatchCollection
 
-basePath = "/data/Clustering/SleepDeprivation/RatN/Day2/"
+basePath = "/data/Clustering/SleepDeprivation/RatN/Day1/"
 
 for file in os.listdir(basePath):
     if file.endswith(".eeg"):
