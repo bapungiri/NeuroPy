@@ -116,25 +116,26 @@ sleep_stages = sleep_stages[sleep_stages[:, 0].argsort()]
 
 # np.save(basePath + sessionName + "_behavior.npy", sleep_stages)
 
-arr_start = np.argwhere(f > 20)[0]
-sxx2 = sxx[:201][:]
+arr_start = np.argwhere(f > 25)[0]
+sxx2 = sxx[: arr_start[0]][:]
 # sxx2 = np.flipud(sxx2)
 
 plt.clf()
 
 plt.imshow(
     sxx2,
-    cmap="copper",
+    cmap="YlGn",
     aspect="auto",
-    extent=[0, len(t), 0, 20.1],
+    extent=[0, len(t), 0, 25.0],
     origin="lower",
     vmin=-500,
-    vmax=90000,
+    vmax=140000,
+    interpolation="mitchell",
 )
 # plt.pcolormesh(t / 3600, f, sxx, cmap="copper", vmax=30)
 
 # plt.plot(theta_delta_ratio)
-plt.plot((theta_delta_smooth + 5) * 2, "r")
-plt.plot(relabeled_states, "w")
+plt.plot((theta_delta_smooth + 5) * 2, "r", linewidth=2)
+plt.plot(relabeled_states + 4, color="#3fa8d5", linewidth=3)
 # plt.plot(hidden_states, "r")
 
