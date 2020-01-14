@@ -18,108 +18,103 @@ from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from OsCheck import DataDirPath, figDirPath
-#import scipy.signal as sg
-#import scipy.stats as stats
-#from scipy.signal import hilbert
-import h5py
-        
 
-sourceDir = DataDirPath() + 'wake_new/'
+# import scipy.signal as sg
+# import scipy.stats as stats
+# from scipy.signal import hilbert
+import h5py
+
+
+sourceDir = DataDirPath() + "wake_new/"
 
 arrays = {}
-f= h5py.File(sourceDir + 'wake-basics.mat', 'r') 
+f = h5py.File(sourceDir + "wake-basics.mat", "r")
 for k, v in f.items():
     arrays[k] = np.array(v)
 
-#spks = {}
-fspikes= h5py.File(sourceDir + 'testVersion.mat', 'r') 
-fbehav= h5py.File(sourceDir + 'wake-behavior.mat', 'r') 
-fpos= h5py.File(sourceDir + 'wake-position.mat', 'r') 
-fspeed= h5py.File(sourceDir + 'wake-speed.mat', 'r') 
-#fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r') 
+# spks = {}
+fspikes = h5py.File(sourceDir + "testVersion.mat", "r")
+fbehav = h5py.File(sourceDir + "wake-behavior.mat", "r")
+fpos = h5py.File(sourceDir + "wake-position.mat", "r")
+fspeed = h5py.File(sourceDir + "wake-speed.mat", "r")
+# fICAStrength = h5py.File('/data/DataGen/ICAStrengthpy.mat', 'r')
 
-subjects = arrays['basics']
-#spikes = spks['spikes']
+subjects = arrays["basics"]
+# spikes = spks['spikes']
 
-figFilename = figDirPath() +'PlaceCells.pdf'
+figFilename = figDirPath() + "PlaceCells.pdf"
 pdf = PdfPages(figFilename)
 
 for sub in [6]:
     sub_name = subjects[sub]
     print(sub_name)
-    
-    nUnits = len(fspikes['spikes'][sub_name]['time'])
-    celltype={}
-    quality={}
-    stability={}
-    for i in range(0,nUnits):
-        celltype[i] = fspikes[fspikes['spikes'][sub_name]['time'][i,0]].value
-        quality[i] = fspikes[fspikes['spikes'][sub_name]['quality'][i,0]].value
-        stability[i] = fspikes[fspikes['spikes'][sub_name]['StablePrePost'][i,0]].value
-    
-    
-    pyrid = [i for i in range(0,nUnits) if quality[i] < 4 and stability[i] == 1]
+
+    nUnits = len(fspikes["spikes"][sub_name]["time"])
+    celltype = {}
+    quality = {}
+    stability = {}
+    for i in range(0, nUnits):
+        celltype[i] = fspikes[fspikes["spikes"][sub_name]["time"][i, 0]].value
+        quality[i] = fspikes[fspikes["spikes"][sub_name]["quality"][i, 0]].value
+        stability[i] = fspikes[fspikes["spikes"][sub_name]["StablePrePost"][i, 0]].value
+
+    pyrid = [i for i in range(0, nUnits) if quality[i] < 4 and stability[i] == 1]
     nPyr = len(pyrid)
-    cellpyr= [celltype[a] for a in pyrid]
-    
-    behav = np.transpose(fbehav['behavior'][sub_name]['time'][:])
-    states = np.transpose(fbehav['behavior'][sub_name]['list'][:])
-    posx = (fpos['position'][sub_name]['x'][:])
-    posy = (fpos['position'][sub_name]['y'][:])
-    post = (fpos['position'][sub_name]['t'][:])
-    
-    speed = (fspeed['speed'][sub_name]['v'][:]).squeeze()
-    spdt = (fspeed['speed'][sub_name]['t'][:]).squeeze()
-    
-    
-    
-    posx_mz = posx[np.where((post > behav[1,0]) & (post < behav[1,1]))] 
-    posy_mz = posy[np.where((post > behav[1,0]) & (post < behav[1,1]))] 
-    post_mz = post[np.where((post > behav[1,0]) & (post < behav[1,1]))]
-    
-    xcoord = np.arange(min(posx_mz),max(posx_mz)+1,2)
-    ycoord = np.arange(min(posy_mz),max(posy_mz)+1,2)
-    xx,yy = np.meshgrid(xcoord,ycoord)
-    pf2, xe1, ye1 = np.histogram2d(posx_mz,posy_mz,bins = [xcoord,ycoord])
-    
+    cellpyr = [celltype[a] for a in pyrid]
+
+    behav = np.transpose(fbehav["behavior"][sub_name]["time"][:])
+    states = np.transpose(fbehav["behavior"][sub_name]["list"][:])
+    posx = fpos["position"][sub_name]["x"][:]
+    posy = fpos["position"][sub_name]["y"][:]
+    post = fpos["position"][sub_name]["t"][:]
+
+    speed = (fspeed["speed"][sub_name]["v"][:]).squeeze()
+    spdt = (fspeed["speed"][sub_name]["t"][:]).squeeze()
+
+    posx_mz = posx[np.where((post > behav[1, 0]) & (post < behav[1, 1]))]
+    posy_mz = posy[np.where((post > behav[1, 0]) & (post < behav[1, 1]))]
+    post_mz = post[np.where((post > behav[1, 0]) & (post < behav[1, 1]))]
+
+    xcoord = np.arange(min(posx_mz), max(posx_mz) + 1, 2)
+    ycoord = np.arange(min(posy_mz), max(posy_mz) + 1, 2)
+    xx, yy = np.meshgrid(xcoord, ycoord)
+    pf2, xe1, ye1 = np.histogram2d(posx_mz, posy_mz, bins=[xcoord, ycoord])
+
     plt.clf()
     for cell in range(len(pyrid)):
         spkt = cellpyr[cell].squeeze()
-        spd_spk = np.interp(spkt,spdt,speed)
-        
-        spkt = spkt[spd_spk > 5]   #only selecting spikes where rat's speed is  > 5 cm/s
-        
-        spktx = np.interp(spkt,post_mz,posx_mz)
-        spkty = np.interp(spkt,post_mz,posy_mz)
-        
-        
-            
-        pf, xe, ye = np.histogram2d(spktx,spkty,bins = [xcoord,ycoord])
-        
-        pft = pf2*(1/30)
-        
-        eps = np.spacing(1)
-        pfRate = pf/(pft+eps)
-        
-        pfRate_smooth= gaussian_filter(pfRate, sigma=3)
+        spd_spk = np.interp(spkt, spdt, speed)
 
-#    ICA_strength = np.array(np.transpose(fICAStrength['ActStrength']['subjects'][sub_name]['wake'][:]))
-        
+        spkt = spkt[spd_spk > 5]  # only selecting spikes where rat's speed is  > 5 cm/s
+
+        spktx = np.interp(spkt, post_mz, posx_mz)
+        spkty = np.interp(spkt, post_mz, posy_mz)
+
+        pf, xe, ye = np.histogram2d(spktx, spkty, bins=[xcoord, ycoord])
+
+        pft = pf2 * (1 / 30)
+
+        eps = np.spacing(1)
+        pfRate = pf / (pft + eps)
+
+        pfRate_smooth = gaussian_filter(pfRate, sigma=3)
+
+        #    ICA_strength = np.array(np.transpose(fICAStrength['ActStrength']['subjects'][sub_name]['wake'][:]))
+
         nRows = np.ceil(np.sqrt(nPyr))
         nCols = np.ceil(np.sqrt(nPyr))
-    
-        
-    #    plt.plot(posx_mz,posy_mz,'.')
-        plt.subplot(nRows,nCols,cell+1)
+
+        #    plt.plot(posx_mz,posy_mz,'.')
+        plt.subplot(nRows, nCols, cell + 1)
         plt.imshow(pfRate_smooth)
-        
+
         plt.xticks([])
         plt.yticks([])
-#        plt.subplot(1,2,2)
-#        plt.imshow(pfRate_smooth)
+    #        plt.subplot(1,2,2)
+    #        plt.imshow(pfRate_smooth)
     plt.suptitle(sub_name)
     plt.tight_layout()
     pdf.savefig(dpi=300)
 
-pdf.close()    
-    
+pdf.close()
+
