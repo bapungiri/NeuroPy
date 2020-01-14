@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.collections import PatchCollection
 
-basePath = "/data/Clustering/SleepDeprivation/RatN/Day1/"
+basePath = "/data/Clustering/SleepDeprivation/RatN/Day2/"
 
 for file in os.listdir(basePath):
     if file.endswith(".eeg"):
@@ -66,4 +66,6 @@ p = PatchCollection(patches, facecolor=color_states, alpha=0.4)
 
 ax.add_collection(p)
 plt.plot(t / 3600, expVar)
+plt.xlabel("Time (h)")
+plt.ylabel("EV")
 

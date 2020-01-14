@@ -38,7 +38,6 @@ def lfpSpectrogram(basePath, sRate, nChans, loadfrom=1, savefile=1):
         nfft=numfft,
         scaling="spectrum",
     )
-    sample_data = eegChan[0 : sRate * 5]  # 5 seconds of data
 
     # Smoothing the spectrogram if needed
     # yf = ft.fft(yf) / len(eegChan)

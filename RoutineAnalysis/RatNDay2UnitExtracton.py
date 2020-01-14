@@ -49,6 +49,7 @@ class ExtractSpikes:
             for i in range(len(goodCellsID)):
                 clu_spike_location = spike_times[np.where(cluID == goodCellsID[i])[0]]
                 self.spkAll.append(clu_spike_location / self.sRate)
+        np.save(self.basePath + self.subname + "_spikes.npy", self.spkAll)
 
     def partialCorrelation(self, X, Y, Z):
         corrXY = [pd.Series.corr(pd.Series(X), pd.Series(Y[i])) for i in range(len(Y))]

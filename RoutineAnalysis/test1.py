@@ -27,8 +27,7 @@ thetaData = signal["BestChan"]
 
 sampleRate = 1250
 N = len(thetaData)
-# ! sdfgnsod
-# TODO sdljkh
+
 # N = 500
 # t = np.linspace(0, 1, N)
 # s = 0.7*np.sin(8 * 2 * np.pi * t)+0.5*np.sin(30 * 2 * np.pi * t) + 0.3 * np.sin(60 * 2 * np.pi * t)+0.2*np.random.randn(500)
