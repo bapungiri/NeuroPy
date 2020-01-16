@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import os
 import scipy.signal as sg
 
+# import multiprocessing as mp
+
 
 class SDspect(object):
 
@@ -56,6 +58,9 @@ nSessions = len(folderPath)
 sleepDep_inst = [SDspect(folderPath[i]) for i in range(nSessions)]
 sessRun = range(4, nSessions)
 
+# pool = mp.Pool(2)
+
+# [pool.apply(howmany_within_range, args=(row, 4, 8)) for row in data]
 for i in sessRun:
     # sleepDep_inst[i].badChannels = badChannels_all[i]
     sleepDep_inst[i].nChans = nChans_sessions[i]
