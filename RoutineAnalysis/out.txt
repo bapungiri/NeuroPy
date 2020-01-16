@@ -1,11 +1,10 @@
 experiment_name = RatJDay1
-experiment_name = 'hybrid_10sec'
 n_channels = RatJDay1.prb
 
 traces = dict(
-    raw_data_files=['myrecording.dat', ],  # path to your .dat file(s)
+  raw_data_files = [RatJDay1.dat],
     sample_rate=20000,  # sampling rate in Hz
-    n_channels=32,  # number of channels in the .dat files
+n_channels = 8,
     dtype='int16',  # the data type used in the .dat files
 )
 

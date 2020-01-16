@@ -10,33 +10,29 @@ traces = dict(
 
 # Parameters for the spike detection process.
 spikedetekt = dict(
-    'filter_low': 500.,
-    'filter_high_factor': 0.95 * .5,  # will be multiplied by the sample rate
-    'filter_butter_order': 3,
+    filter_low=800.,  # Low pass frequency (Hz)
+    #filter_high_factor=0.95 * .5,
+    filter_butter_order=3,  # Order of Butterworth filter.
 
-    # Data chunks.
-    'chunk_size_seconds': 1.,
-    'chunk_overlap_seconds': .015,
+    filter_lfp_low=0,  # LFP filter low-pass frequency
+    filter_lfp_high=300,  # LFP filter high-pass frequency
 
-    # Threshold.
-    'n_excerpts': 50,
-    'excerpt_size_seconds': 1.,
-    'use_single_threshold': True,
-    'threshold_strong_std_factor': 4.5,
-    'threshold_weak_std_factor': 2.,
-    'detect_spikes': 'negative',
+    chunk_size_seconds=1,
+    chunk_overlap_seconds=.015,
 
-    # Connected components.
-    'connected_component_join_size': 1,
+    n_excerpts=50,
+    excerpt_size_seconds=1,
+    threshold_strong_std_factor=4.5,
+    threshold_weak_std_factor=2,
+   	detect_spikes='negative',
 
-    # Spike extractions.
-    'extract_s_before': 10,
-    'extract_s_after': 10,
-    'weight_power': 2,
+    connected_component_join_size=1,
 
-    # Features.
-    'n_features_per_channel': 3,
-    'pca_n_waveforms_max': 10000,
+    extract_s_before=27,
+    extract_s_after=27,
+
+    n_features_per_channel=3,  # Number of features per channel.
+    pca_n_waveforms_max=50000,
 
 )
 
