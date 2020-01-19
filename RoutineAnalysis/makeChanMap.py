@@ -1,17 +1,47 @@
+import os
+import numpy as np
 import xml.etree.ElementTree as ET
 
+
+class ExtractChanXml:
+    def __init__(self, basePath):
+        self.sessionName = basePath.split("/")[-3] + basePath.split("/")[-2]
+        print(self.sessionName)
+        self.basePath = basePath
+        for file in os.listdir(basePath):
+            if file.endswith(".xml"):
+
+                self.subname = file[:-4]
+                self.filename = os.path.join(basePath, file)
+                self.filePrefix = os.path.join(basePath, file[:-4])
+
+        myroot = ET.parse(self.filename).getroot()
+
+        self.chan_session = []
+        for x in myroot.findall("anatomicalDescription"):
+            for y in x.findall("channelGroups"):
+                for z in y.findall("group"):
+                    for chan in z.findall("channel"):
+                        self.chan_session.append(int(chan.text))
+
+        for sf in myroot.findall("acquisitionSystem"):
+            self.sampfreq = int(sf.find("samplingRate").text)
+
+        self.nChans = len(self.chan_session)
+
+        basics = {
+            "sRate": self.sampfreq,
+            "channels": self.chan_session,
+            "nChans": self.nChans,
+        }
+
+        np.save(self.filePrefix + "_basics.npy", basics)
+
+
 basePath = "/data/Clustering/SleepDeprivation/RatJ/Day3/"
-filename = basePath + "RatJ_Day3_2019-06-14_04-08-48.xml"
-root = ET.parse(filename).getroot()
+filename = basePath + "RatJ_Day3_2019-06-14_04-08-48_basics.npy"
 
-for i in root[3]:
-    print(i.tag, i.text)
+rat1 = ExtractChanXml(basePath)
 
-
-chan_session = []
-for x in root.findall("anatomicalDescription"):
-    for y in x.findall("channelGroups"):
-        for z in y.findall("group"):
-            for a in z.findall("channel"):
-                chan_session.append(int(a.text))
+gh = np.load(filename, allow_pickle=True)
 

@@ -8,8 +8,7 @@ import os
 
 class makePrmPrb:
 
-    nChans = 67
-    sampFreq = 30000
+    nChans = 64
 
     def __init__(self, basePath):
         self.sessionName = basePath.split("/")[-3] + basePath.split("/")[-2]
@@ -27,6 +26,11 @@ class makePrmPrb:
         self.prbTemplate = (
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prb"
         )
+
+        recInfo = np.load(self.filePrefix + "_basics.npy", allow_pickle=True)
+        self.sampFreq = recInfo.item().get("sRate")
+        self.chan_session = recInfo.item().get("channels")
+        self.nChansDat = recInfo.item().get("nChans")
 
     def makePrm(self):
         for shank in range(1, 9):
@@ -59,15 +63,12 @@ class makePrmPrb:
                             f1.write("prb_file = '" + outfile_prefix + ".prb'\n")
                         elif "raw_data_files" in line:
                             f1.write(
-                                "   raw_data_files = ['"
-                                + self.basePath
-                                + self.filePrefix
-                                + ".dat'],\n"
+                                "   raw_data_files = ['" + self.filePrefix + ".dat'],\n"
                             )
                         elif "sample_rate" in line:
                             f1.write("   sample_rate = " + str(self.sampFreq) + ",\n")
                         elif "n_channels" in line:
-                            f1.write("  n_channels = " + str(self.nChans) + ",\n")
+                            f1.write("  n_channels = " + str(self.nChansDat) + ",\n")
 
                         else:
                             f1.write(line)
@@ -77,7 +78,8 @@ class makePrmPrb:
 
             chan_start = (shank - 1) * 8
             chan_end = chan_start + 8
-            chan_list = np.arange(chan_start, chan_end).tolist()
+            chan_list = self.chan_session[chan_start:chan_end]
+            # chan_list = np.arange(chan_start, chan_end).tolist()
             with open(self.prbTemplate) as f:
                 if not os.path.exists(self.basePath + "Shank" + str(shank)):
                     os.mkdir(self.basePath + "Shank" + str(shank))
