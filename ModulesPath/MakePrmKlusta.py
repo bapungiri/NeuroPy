@@ -10,7 +10,7 @@ class makePrmPrb:
 
     nChans = 64
 
-    def __init__(self, basePath):
+    def __init__(self, basePath, nShanks, nChansPerShank):
         self.sessionName = basePath.split("/")[-3] + basePath.split("/")[-2]
         print(self.sessionName)
         self.basePath = basePath
@@ -27,13 +27,16 @@ class makePrmPrb:
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prb"
         )
 
+        self.nShanks = nShanks
+        self.nChansPerShank = nChansPerShank
+
         recInfo = np.load(self.filePrefix + "_basics.npy", allow_pickle=True)
         self.sampFreq = recInfo.item().get("sRate")
         self.chan_session = recInfo.item().get("channels")
         self.nChansDat = recInfo.item().get("nChans")
 
     def makePrm(self):
-        for shank in range(1, 9):
+        for shank in range(1, self.nShanks + 1):
             with open(self.prmTemplate) as f:
                 if not os.path.exists(self.basePath + "Shank" + str(shank)):
                     os.mkdir(self.basePath + "Shank" + str(shank))
@@ -74,10 +77,10 @@ class makePrmPrb:
                             f1.write(line)
 
     def makePrb(self):
-        for shank in range(1, 9):
+        for shank in range(1, self.nShanks):
 
-            chan_start = (shank - 1) * 8
-            chan_end = chan_start + 8
+            chan_start = (shank - 1) * self.nChansPerShank
+            chan_end = chan_start + self.nChansPerShank
             chan_list = self.chan_session[chan_start:chan_end]
             # chan_list = np.arange(chan_start, chan_end).tolist()
             with open(self.prbTemplate) as f:
