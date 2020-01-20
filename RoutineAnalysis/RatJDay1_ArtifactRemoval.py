@@ -11,7 +11,8 @@ SampFreq = 1250
 
 
 Data = np.memmap(fileName, dtype="int16", mode="r")
-
+lenData = len(Data) / 75
+# np.save(folderPath + "numframes_OG.npy", lenData)
 Data1 = np.memmap.reshape(Data, (int(len(Data) / 75), 75))
 
 chanData = Data1[:, 17]
