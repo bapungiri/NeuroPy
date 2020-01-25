@@ -37,11 +37,3 @@ class ExtractChanXml:
 
         np.save(self.filePrefix + "_basics.npy", basics)
 
-
-basePath = "/data/Clustering/SleepDeprivation/RatJ/Day3/"
-filename = basePath + "RatJ_Day3_2019-06-14_04-08-48_basics.npy"
-
-rat1 = ExtractChanXml(basePath)
-
-gh = np.load(filename, allow_pickle=True)
-

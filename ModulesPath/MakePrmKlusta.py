@@ -145,12 +145,3 @@ class makePrmPrb:
                         else:
                             f1.write(line)
 
-
-filename = "template.prm"
-basePath = "/data/Clustering/SleepDeprivation/RatJ/Day3/"
-
-
-RatJDay3 = makePrmPrb(basePath)
-RatJDay3.makePrm()
-RatJDay3.makePrb()
-
