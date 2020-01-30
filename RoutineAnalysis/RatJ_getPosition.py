@@ -1,11 +1,13 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import csv
 import os
-from MakePrmKlusta import makePrmPrb
-from makeChanMap import ExtractChanXml
-from pathlib import Path
+from getPosition import ExtractPosition as getPos
+
 
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day3/",
@@ -16,17 +18,20 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatN/Day4/",
 ]
 nSessions = len(basePath)
-shanks_all = [8]
-shanks_Chan_all = [8]
 
-basics = [ExtractChanXml(basePath[i]) for i in range(nSessions)]
-prmGen = [
-    makePrmPrb(basePath[i], shanks_all[i], shanks_Chan_all[i]) for i in range(nSessions)
-]
-
+posSession = [getPos(basePath[i]) for i in range(nSessions)]
 for i in range(nSessions):
-    # prmGen[i].makePrm()
-    # prmGen[i].makePrb()
-    prmGen[i].makePrmServer()
-    prmGen[i].makePrbServer()
+
+    posSession[i].getMazeFrames()
+    # plt.plot(posSession[i].frames, posSession[i].posZ)
+# RatJDay2 = getPos(basePath)
+# velocity = RatNDay2.Speed()
+# plt.clf()
+# plt.plot(velocity)
+
+# a = [1, 2, 3, 4]
+# b = [5, 6, 7, 8]
+# plt.clf()
+# plt.plot(a, b)
+# pts = plt.ginput(2, timeout=-1)
 
