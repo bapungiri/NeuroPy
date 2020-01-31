@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stat
 
-folderPath = "/data/Clustering/SleepDeprivation/RatJ/Day1/"
+folderPath = "/data/Clustering/SleepDeprivation/RatJ/Day1/og_files/"
 fileName = folderPath + "RatJ_2019-05-31_03-55-36.eeg"
 
 
@@ -11,11 +11,11 @@ SampFreq = 1250
 
 
 Data = np.memmap(fileName, dtype="int16", mode="r")
-lenData = len(Data) / 75
+# lenData = len(Data) / 75
 # np.save(folderPath + "numframes_OG.npy", lenData)
-Data1 = np.memmap.reshape(Data, (int(len(Data) / 75), 75))
+Data = np.memmap.reshape(Data, (int(len(Data) / 75), 75))
 
-chanData = Data1[:, 17]
+chanData = Data[:, 17]
 
 zsc = np.abs(stat.zscore(chanData))
 
@@ -43,6 +43,8 @@ for i in range(1, len(artifact_start)):
 
 secondPass.append(artifact)
 secondPass = np.asarray(secondPass)
+
+np.save(folderPath + "noisy_timestamps_fromOG.npy", secondPass)
 
 Data_start = np.concatenate(([0], secondPass[:, 1])) / 1250
 DatFileOG = folderPath + "/RatJ_2019-05-31_03-55-36.dat"

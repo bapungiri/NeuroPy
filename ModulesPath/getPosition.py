@@ -26,7 +26,7 @@ class ExtractPosition:
 
         # checking if position file already exists
         if os.path.exists(self.basePath + "_position.npy"):
-            posInfo = np.load(self.basePath + "_positon.npy")
+            posInfo = np.load(self.basePath + "_positon.npy", allow_pickle=True)
             self.posX = posInfo.item().get("X")  # in seconds
             self.posY = posInfo.item().get("Y")  # in seconds
             self.frames = posInfo.item().get("frames")  # in seconds
@@ -79,7 +79,7 @@ class ExtractPosition:
                     fileName = posFolder + file
 
                     # k = 830
-                    xpos, ypos, zpos = [], [], []
+
                     with open(fileName) as f:
                         next(f)
                         for i, line in enumerate(f):
@@ -97,7 +97,7 @@ class ExtractPosition:
                                 break
 
                     f.close()
-
+                    xpos, ypos, zpos = [], [], []
                     with open(fileName) as f:
                         for i in range(track_begin):
                             next(f)
