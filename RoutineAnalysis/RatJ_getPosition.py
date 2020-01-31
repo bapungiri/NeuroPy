@@ -23,7 +23,7 @@ posSession = [getPos(basePath[i]) for i in range(nSessions)]
 for i in range(nSessions):
 
     posSession[i].getMazeFrames()
-    # plt.plot(posSession[i].frames, posSession[i].posZ)
+# plt.plot(posSession[i].frames, posSession[i].posZ)
 # RatJDay2 = getPos(basePath)
 # velocity = RatNDay2.Speed()
 # plt.clf()
