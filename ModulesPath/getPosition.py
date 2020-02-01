@@ -28,7 +28,7 @@ class ExtractPosition:
         if os.path.exists(self.basePath + "_position.npy"):
             posInfo = np.load(self.basePath + "_positon.npy", allow_pickle=True)
             self.posX = posInfo.item().get("X")  # in seconds
-            self.posY = posInfo.item().get("Y")  # in seconds
+            self.posZ = posInfo.item().get("Y")  # in seconds
             self.frames = posInfo.item().get("frames")  # in seconds
             self.tbegin = posInfo.item().get("begin")
 
@@ -53,26 +53,6 @@ class ExtractPosition:
                     self.tbegin = datetime.strptime(
                         StartTime[0], "%Y-%m-%d %H.%M.%S.%f %p"
                     )
-                    # print(tbegin)
-
-                    # positionStruct = pd.read_csv(fileName, header=5)
-                    # positionStruct = positionStruct.iloc[:, [0, 1, 6, 7, 8]]
-                    # positionStruct.interpolate(axis=0)
-
-                    # self.frames = positionStruct.iloc[:, 0]
-                    # self.time = positionStruct.iloc[:, 1]
-                    # self.posX = positionStruct.iloc[:, 2]
-                    # self.posY = positionStruct.iloc[:, 3]
-                    # self.posZ = positionStruct.iloc[:, 4]
-                    # self.dt = self.time[1] - self.time[0]
-
-                    # # self.time = self.time + 5.457 + 10041.21
-                    # # posVar = {}
-                    # # posVar["X"] = self.posX
-                    # # posVar["Y"] = self.posZ
-                    # # posVar["time"] = self.time
-
-                    # np.save(basePath + self.subname + "_position.npy", posVar)
 
                 elif file.endswith(".fbx"):
                     print(file)
@@ -80,47 +60,102 @@ class ExtractPosition:
 
                     # k = 830
 
+                    xpos, ypos, zpos = [], [], []
                     with open(fileName) as f:
                         next(f)
                         for i, line in enumerate(f):
 
                             m = "".join(line)
 
-                            if "RawSegs" in m:
-                                track_begin = i + 3
+                            if "KeyCount" in m:
+                                track_begin = i + 2
                                 line_frame = (
-                                    linecache.getline(fileName, i + 3)
+                                    linecache.getline(fileName, i + 2)
                                     .strip()
-                                    .split(",")
+                                    .split(" ")
                                 )
-                                total_frames = float(line_frame[3])
+                                total_frames = int(line_frame[1]) - 1
                                 break
 
                     f.close()
-                    xpos, ypos, zpos = [], [], []
+
                     with open(fileName) as f:
-                        for i in range(track_begin):
+                        for _ in range(track_begin):
                             next(f)
 
                         for i, line in enumerate(f):
-
-                            if i > track_begin:
-                                line = line.strip()
-                                m = line.split(",")
-
-                                xpos.append(m[1])
-                                ypos.append(m[2])
-                                zpos.append(m[3])
-
-                            if i == track_begin + total_frames - 1:
+                            # print(line)
+                            if len(xpos) > total_frames:
                                 break
 
-                        self.posX = list(map(float, xpos))
-                        self.posY = list(map(float, ypos))
-                        self.posZ = list(map(float, zpos))
-                        self.frames = np.arange(1, len(self.posX) + 1)
-                        self.time = np.arange(1, len(self.posX)) * (1 / 120)
+                            elif i < 1:
+                                print(i)
+                                line = line.strip()
+                                m = line.split(",")
+                                pos1 = m[1::5]
+                                print(pos1)
+
+                            else:
+                                line = line.strip()
+                                m = line.split(",")
+                                pos1 = m[2::5]
+
+                            xpos.extend(pos1)
+
+                        for _ in range(5):
+                            next(f)
+
+                        for i, line in enumerate(f):
+                            # print(line)
+                            if len(ypos) > total_frames:
+                                break
+
+                            elif i < 1:
+                                print(i)
+                                line = line.strip()
+                                m = line.split(",")
+                                pos1 = m[1::5]
+                                print(pos1)
+
+                            else:
+                                line = line.strip()
+                                m = line.split(",")
+                                pos1 = m[2::5]
+
+                            ypos.extend(pos1)
+
+                        for _ in range(5):
+                            next(f)
+
+                        for i, line in enumerate(f):
+                            # print(line)
+                            if len(zpos) > total_frames:
+                                break
+
+                            elif i < 1:
+                                print(i)
+                                line = line.strip()
+                                m = line.split(",")
+                                pos1 = m[1::5]
+                                print(pos1)
+
+                            else:
+                                line = line.strip()
+                                m = line.split(",")
+                                pos1 = m[2::5]
+
+                            # line = next(f)
+                            zpos.extend(pos1)
+
                     f.close()
+
+                    xpos = [float(x) for x in xpos]
+                    ypos = [float(x) for x in ypos]
+                    zpos = [float(x) for x in zpos]
+                    self.posX = xpos
+                    self.posY = ypos
+                    self.posZ = zpos
+                    self.frames = np.arange(1, len(xpos) + 1)
 
             posVar = {}
             posVar["X"] = self.posX
