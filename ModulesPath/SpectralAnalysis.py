@@ -98,11 +98,10 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
 
     """
 
-    badChannels = [x - 1 for x in badChannels]  # zero indexing correction
     duration = 3600  # chunk of lfp in seconds
     nyq = 0.5 * sampleRate
-    lowTheta = 5
-    highTheta = 10
+    lowTheta = 5  # in Hz
+    highTheta = 10  # in Hz
 
     for file in os.listdir(basePath):
         if file.endswith(".eeg"):

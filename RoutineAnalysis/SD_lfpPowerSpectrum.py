@@ -2,13 +2,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import scipy.signal as sg
+from SpectralAnalysis import bestThetaChannel
+from sklearn import preprocessing
+from scipy.cluster import vq
 
 # import multiprocessing as mp
 
 
 class SDspect(object):
 
-    nChans = 134
     sampFreq = 1250
 
     def __init__(self, basePath):
@@ -16,7 +18,6 @@ class SDspect(object):
         self.basePath = basePath
         for file in os.listdir(basePath):
             if file.endswith(".eeg"):
-                print(file)
                 self.subname = file[:-4]
                 self.filename = os.path.join(basePath, file)
                 self.filePrefix = os.path.join(basePath, file[:-4])
@@ -28,14 +29,35 @@ class SDspect(object):
         pre = epoch_time.item().get("PRE")  # in seconds
         maze = epoch_time.item().get("MAZE")  # in seconds
         post = epoch_time.item().get("POST")  # in seconds
+        self.basics = np.load(self.filePrefix + "_basics.npy", allow_pickle=True)
+        self.nChans = self.basics.item().get("nChans")
+
+        if not os.path.exists(self.basePath + self.subname + "_BestThetaChan.npy"):
+
+            badChannels = np.load(self.filePrefix + "_badChans.npy")
+
+            self.ThetaChan = bestThetaChannel(
+                self.basePath,
+                sampleRate=self.sampFreq,
+                nChans=self.nChans,
+                badChannels=badChannels,
+                saveThetaChan=1,
+            )
 
         lfpData = np.load(self.filePrefix + "_BestThetaChan.npy", allow_pickle=True)
-        lfpSD = lfpData[int(post[0]) * 1250 : int(post[0]) * 1250 + 5 * 3600 * 1250]
+
+        start_time = int(post[0]) * self.sampFreq
+        end_time = int(post[0]) * self.sampFreq + 5 * 3600 * self.sampFreq
+
+        lfpSD = lfpData[start_time:end_time]
+        # lfpSD = preprocessing.scale(lfpSD)
+        lfpSD = vq.whiten(lfpSD)
+        # plt.plot(lfpSD[: 1250 * 3])
         f, t, sxx = sg.spectrogram(
             lfpSD,
             fs=self.sampFreq,
-            nperseg=10 * self.sampFreq,
-            noverlap=5 * self.sampFreq,
+            nperseg=5 * self.sampFreq,
+            noverlap=2.5 * self.sampFreq,
         )
 
         freq_ind = np.where((f > 1) & (f < 50))[0]
@@ -52,19 +74,19 @@ folderPath = [
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
 ]
-nChans_sessions = [75, 67, 134, 134, 134, 134]
+# nChans_sessions = [75, 67, 134, 134, 134, 134]
 
 nSessions = len(folderPath)
 sleepDep_inst = [SDspect(folderPath[i]) for i in range(nSessions)]
-sessRun = range(4, nSessions)
+# sessRun = range(4, nSessions)
+sessRun = [0, 1, 2, 4, 5]
 
-# pool = mp.Pool(2)
+color = ["#cb7c7c", "#0a9eb8", "#cb7c7c", "#0a9eb8", "#cb7c7c", "#0a9eb8"]
 
-# [pool.apply(howmany_within_range, args=(row, 4, 8)) for row in data]
 for i in sessRun:
-    # sleepDep_inst[i].badChannels = badChannels_all[i]
-    sleepDep_inst[i].nChans = nChans_sessions[i]
+
     sleepDep_inst[i].SpectCalculate()
+    print(sleepDep_inst[i].nChans)
 
 
 fig = plt.figure(1)
@@ -74,12 +96,12 @@ for i in sessRun:
     # plt.subplot(4, 1, i + 1)
     # ax1 = fig.add_subplot(len(sessRun), 1, k)
 
-    plt.plot(sleepDep_inst[i].freq, sleepDep_inst[i].req_sxx_mean)
+    plt.plot(sleepDep_inst[i].freq, sleepDep_inst[i].req_sxx_mean, color=color[i])
     # ax1.plot(
     #     sleepDep_inst[i].freq,
     #     sleepDep_inst[i].req_sxx_mean + sleepDep_inst[i].req_sxx_std,
     # )
     plt.yscale("log")
-    plt.legend(sleepDep_inst[i].subname)
     k += 1
 
+plt.legend([sleepDep_inst[x].subname for x in sessRun])

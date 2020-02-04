@@ -6,28 +6,33 @@ import os
 import linecache
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 
-def posPreprocess(basePath):
+def posPreprocess(basePath, posX, posY, video_starttime):
 
     for file in os.listdir(basePath):
         if file.endswith(".eeg"):
             subname = file[:-4]
+            filePrefix = os.path.join(basePath, file[:-4])
 
-    nframes = np.load(basePath / "og_files" / "numframes_OG.npy")
-    DatFileOG = basePath / "RatJ_Day1_2019-05-31_03-55-36.dat"
-    endFrametime = len(np.memmap(DatFileOG, dtype="int16", mode="r")) / (75 * 30000)
+    eegFileOG = Path(basePath, filePrefix + ".eeg")
+    basics = np.load(filePrefix + "_basics.npy", allow_pickle=True)
+    nChans = basics.item().get("nChans")
+    sRate = basics.item().get("sRate")
+    posX = np.asarray(posX)
+    posY = np.asarray(posY)
 
-    noisyFrames = np.load(basePath / "og_files" / "noisy_timestamps_fromOG.npy")
-    posInfo = np.load(
-        basePath / "og_files" / "RatJ_Day1_2019-05-31_03-55-36_position_OG.npy",
-        allow_pickle=True,
-    )
+    endFrames = len(np.memmap(eegFileOG, dtype="int16", mode="r")) / nChans
 
-    posX = np.asarray(posInfo.item().get("X"))
-    posY = np.asarray(posInfo.item().get("Y"))
-    frames = posInfo.item().get("frames")
-    video_starttime = posInfo.item().get("begin")
+    if os.path.exists(basePath + subname + "/og_files"):
+        noisyFrames = np.load(basePath / "og_files" / "noisy_timestamps_fromOG.npy")
+        nframes = np.load(basePath / "og_files" / "numframes_OG.npy")
+
+    else:
+        noisyFrames = []
+        nframes = endFrames
+
     video_duration = len(posX) / (120 * 3600)
     video_endtime = video_starttime + timedelta(hours=video_duration)
 
@@ -37,38 +42,43 @@ def posPreprocess(basePath):
 
     ephys_duration = nframes / (3600 * 1250)
     ephys_endtime = ephys_starttime + timedelta(hours=ephys_duration)
-    time_record = np.arange(ephys_starttime, ephys_endtime, dtype="datetime64[h]")
+    # time_record = np.arange(ephys_starttime, ephys_endtime, dtype="datetime64[h]")
     time_diff_end = video_endtime - ephys_endtime
 
-    # start = pd.Timestamp(ephys_starttime)
-    # end = pd.Timestamp(ephys_endtime)
-    # tim2 = pd.to_datetime(np.linspace(start.value, end.value, nframes))
-    # tim2 = np.asarray(tim2)
-    # plt.plot(posY)
-
-    t_ephys = np.arange(0, nframes) / 1250
+    # t_ephys = np.arange(0, nframes) / 1250
     t_video = np.linspace(
         -time_diff.total_seconds(),
         nframes / 1250 + time_diff_end.total_seconds(),
         len(posX),
     )
 
-    noisy_time = noisyFrames / 1250
-    t_video_noisy = np.concatenate(
-        [np.where(np.digitize(t_video, x) == 1)[0] for x in noisy_time], axis=0
-    )
+    t_video_outside = np.argwhere((nframes / 1250 < t_video) | (t_video < 0))
 
-    ind_good = np.setdiff1d(np.arange(1, len(posX)), t_video_noisy)
+    if not noisyFrames:
+        ind_good = np.setdiff1d(np.arange(1, len(posX)), t_video_outside)
+        print(len(ind_good))
+
+    else:
+        noisy_time = noisyFrames / 1250
+        t_video_noisy = np.concatenate(
+            [np.where(np.digitize(t_video, x) == 1)[0] for x in noisy_time], axis=0
+        )
+
+        t_video_noisy = np.union1d(t_video_outside, t_video_noisy)
+        ind_good = np.setdiff1d(np.arange(1, len(posX)), t_video_noisy)
+
     t_video_keep = t_video[ind_good]
     posX_keep = posX[ind_good]
     posY_keep = posY[ind_good]
-    t_video_keep = t_video_keep[(0 <= t_video_keep) & (t_video_keep <= nframes / 1250)]
+    time = np.arange(0, len(t_video_keep)) / 120
 
-    posVar = {}
-    posVar["X"] = posX_keep
-    posVar["Y"] = posY_keep
-    posVar["time_orig"] = t_video_keep
-    posVar["time"] = np.arange(0, len(t_video_keep)) / 120
+    # posVar = {}
+    # posVar["X"] = posX_keep
+    # posVar["Y"] = posY_keep
+    # posVar["time_orig"] = t_video_keep
+    # posVar["time"] = np.arange(0, len(t_video_keep)) / 120
+
+    return posX_keep, posY_keep, t_video_keep, time
     # posVar["begin"] = self.tbegin
     # posVar["pos_sRate"] = self.optitrack_sRate
     # np.save(Path(basePath, subname + "_position.npy"), posVar)
@@ -96,10 +106,10 @@ class ExtractPosition:
         if os.path.exists(posfile):
             posInfo = np.load(posfile, allow_pickle=True)
             self.posX = posInfo.item().get("X")  # in seconds
-            self.posZ = posInfo.item().get("Y")  # in seconds
+            self.posY = posInfo.item().get("Y")  # in seconds
             self.time = posInfo.item().get("time")  # in seconds
             # self.tbegin = posInfo.item().get("begin")
-            print(self.time)
+            # print(self.time)
 
         # Run to generate new position file
         else:
@@ -221,23 +231,28 @@ class ExtractPosition:
                     xpos = [float(x) for x in xpos]
                     ypos = [float(x) for x in ypos]
                     zpos = [float(x) for x in zpos]
-                    self.posX = xpos
-                    self.posY = ypos
-                    self.posZ = zpos
-                    self.frames = np.arange(1, len(xpos) + 1)
-
+                    # self.posX = xpos
+                    # self.posY = zpos
+                    # # self.posZ = zpos
+                    # self.frames = np.arange(1, len(xpos) + 1)
+            self.posX, self.posY, self.time_orig, self.time = posPreprocess(
+                self.basePath, xpos, zpos, self.tbegin
+            )
             posVar = {}
             posVar["X"] = self.posX
-            posVar["Y"] = self.posZ
-            posVar["frames"] = self.frames
-            posVar["begin"] = self.tbegin
+            posVar["Y"] = self.posY
+            # posVar["frames"] = np.arange(1, len(self.posX) + 1)
+            # posVar["begin"] = self.tbegin
+            posVar["time_orig"] = self.time_orig
+            posVar["time"] = self.time
             posVar["pos_sRate"] = self.optitrack_sRate
+
             np.save(basePath + self.subname + "_position.npy", posVar)
 
     def plotPosition(self):
 
         plt.clf()
-        plt.plot(self.posX, self.posZ)
+        plt.plot(self.posX, self.posY)
 
     def getMazeFrames(self):
 
@@ -255,7 +270,7 @@ class ExtractPosition:
 
         plt.clf()
         plt.setp(plt.gca(), autoscale_on=True)
-        plt.plot(self.time[::4], self.posZ[::4])
+        plt.plot(self.time[::4], self.posY[::4])
 
         tellme("You will define a rectangle for track, click to begin")
 

@@ -8,8 +8,9 @@ import matplotlib
 
 
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day3/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/",
@@ -36,3 +37,7 @@ for i in range(nSessions):
 # plt.clf()
 # plt.plot(a, b)
 # pts = plt.ginput(2, timeout=-1)
+
+# basePath = "/data/Clustering/SleepDeprivation/RatJ/Day2/"
+# subname = "RatJ_Day2_2019-06-02_03-59-19"
+# os.path.exists(basePath + subname + "/og_files")
