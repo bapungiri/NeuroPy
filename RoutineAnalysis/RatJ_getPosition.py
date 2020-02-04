@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import csv
 import os
 from getPosition import ExtractPosition as getPos
+import matplotlib
 
 
 basePath = [
@@ -23,6 +24,7 @@ posSession = [getPos(basePath[i]) for i in range(nSessions)]
 for i in range(nSessions):
 
     posSession[i].getMazeFrames()
+
 # plt.plot(posSession[i].frames, posSession[i].posZ)
 # RatJDay2 = getPos(basePath)
 # velocity = RatNDay2.Speed()
@@ -34,4 +36,3 @@ for i in range(nSessions):
 # plt.clf()
 # plt.plot(a, b)
 # pts = plt.ginput(2, timeout=-1)
-

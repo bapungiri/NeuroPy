@@ -5,7 +5,7 @@ import csv
 import os
 import linecache
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def posPreprocess(basePath):
@@ -91,12 +91,15 @@ class ExtractPosition:
                 self.filePrefix = os.path.join(basePath, file[:-4])
 
         # checking if position file already exists
-        if os.path.exists(self.basePath + "_position.npy"):
-            posInfo = np.load(self.basePath + "_positon.npy", allow_pickle=True)
+        posfile = self.basePath + self.subname + "_position.npy"
+        print(posfile)
+        if os.path.exists(posfile):
+            posInfo = np.load(posfile, allow_pickle=True)
             self.posX = posInfo.item().get("X")  # in seconds
             self.posZ = posInfo.item().get("Y")  # in seconds
             self.time = posInfo.item().get("time")  # in seconds
             # self.tbegin = posInfo.item().get("begin")
+            print(self.time)
 
         # Run to generate new position file
         else:
@@ -287,9 +290,7 @@ class ExtractPosition:
 
         pre_time = np.array([0, self.maze_start - 1])
         maze_time = np.array([self.maze_start, self.maze_end])
-        post_time = np.array(
-            [self.maze_end + 1, len(self.frames) / self.optitrack_sRate]
-        )
+        post_time = np.array([self.maze_end + 1, self.time[-1]])
         epoch_times = {"PRE": pre_time, "MAZE": maze_time, "POST": post_time}
 
         np.save(self.basePath + self.subname + "_epochs.npy", epoch_times)

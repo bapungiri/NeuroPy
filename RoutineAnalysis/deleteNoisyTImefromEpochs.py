@@ -63,12 +63,12 @@ noisy_time = noisyFrames / 1250
 t_video_noisy = np.concatenate(
     [np.where(np.digitize(t_video, x) == 1)[0] for x in noisy_time], axis=0
 )
-
+t_video_outside = np.argwhere((nframes / 1250 < t_video) | (t_video < 0))
+t_video_noisy = np.union1d(t_video_outside, t_video_noisy)
 ind_good = np.setdiff1d(np.arange(1, len(posX)), t_video_noisy)
 t_video_keep = t_video[ind_good]
 posX_keep = posX[ind_good]
 posY_keep = posY[ind_good]
-t_video_keep = t_video_keep[(0 <= t_video_keep) & (t_video_keep <= nframes / 1250)]
 
 
 posVar = {}
@@ -77,6 +77,7 @@ posVar["Y"] = posY_keep
 posVar["time_orig"] = t_video_keep
 posVar["time"] = np.arange(0, len(t_video_keep)) / 120
 # posVar["begin"] = self.tbegin
-# posVar["pos_sRate"] = self.optitrack_sRate
+# # posVar["pos_sRate"] = self.optitrack_sRate
 np.save(Path(basePath, subname + "_position.npy"), posVar)
+# k = np.load(Path(basePath, subname + "_position.npy"), allow_pickle=True)
 
