@@ -149,20 +149,18 @@ def bestRippleChannel(basePath, sampleRate, nChans, badChannels, saveRippleChan=
 
     """
 
-    badChannels = [x - 1 for x in badChannels]  # zero indexing correction
     duration = 60 * 60  # chunk of lfp in seconds
-    nyq = 0.5 * sampleRate  # Nyquist frequency for sampling rate
+    nyq = 0.5 * sampleRate  # Nyquist frequency
     lowRipple = 150  # ripple lower end frequency in Hz
     highRipple = 250  # ripple higher end frequency in Hz
-    subname = os.path.basename(os.path.normpath(basePath))
-    fileName = basePath + subname + ".eeg"
+    for file in os.listdir(basePath):
+        if file.endswith(".eeg"):
+            subname = file[:-4]
+            fileName = os.path.join(basePath, file)
 
     lfpCA1 = np.memmap(
         fileName, dtype="int16", mode="r", shape=(sampleRate * duration, nChans)
     )
-
-    #    goodChannels = [i for i in range(len(a)) if a[i]==1]
-    #    lfpCA1[:,goodChannels-1]
 
     b, a = sg.butter(3, [lowRipple / nyq, highRipple / nyq], btype="bandpass")
     delta = sg.filtfilt(b, a, lfpCA1, axis=0)
@@ -171,7 +169,6 @@ def bestRippleChannel(basePath, sampleRate, nChans, badChannels, saveRippleChan=
     analytic_signal = sg.hilbert(delta)
     amplitude_envelope = np.abs(analytic_signal)
 
-    # rms_signal = np.sqrt(np.mean(yf**2))
     avgRipple = np.mean(amplitude_envelope, axis=0)
     idx = np.argsort(avgRipple)
     bestChannels = np.setdiff1d(idx, badChannels, assume_unique=True)[::-1]

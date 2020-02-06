@@ -20,9 +20,13 @@ from datetime import datetime
 sns.set_style("darkgrid")
 
 
-def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
+def swr(basePath, sRate, PlotRippleStat=0, savefile=0):
 
-    basePath = lfpfile
+    for file in os.listdir(basePath):
+        if file.endswith(".eeg"):
+            subname = file[:-4]
+            filePrefix = os.path.join(basePath, file[:-4])
+
     SampFreq = sRate
     nyq = 0.5 * SampFreq
     lowFreq = 150
@@ -34,8 +38,8 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     minRippleDuration = 20  # in milliseconds
     maxRippleDuration = 800  # in milliseconds
     maxRipplePower = 60  # in normalized power units
-    subname = os.path.basename(os.path.normpath(basePath))
-    fileName = basePath + subname + "_BestRippleChans.npy"
+
+    fileName = filePrefix + "_BestRippleChans.npy"
     lfpCA1 = np.load(fileName, allow_pickle=True)
 
     signal = lfpCA1.item()
@@ -200,7 +204,7 @@ def swr(lfpfile, sRate, PlotRippleStat=0, savefile=0):
     # detectionParams["Date"] = dt_string
 
     if savefile == 1:
-        np.save(basePath + subname + "_ripples.npy", ripples)
+        np.save(filePrefix + "_ripples.npy", ripples)
 
     return ripples
 

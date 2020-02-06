@@ -5,6 +5,11 @@ import scipy.signal as sg
 from SpectralAnalysis import bestThetaChannel
 from sklearn import preprocessing
 from scipy.cluster import vq
+import matplotlib as mpl
+
+
+mpl.rc("axes", linewidth=1.5)
+mpl.rc("font", size=12)
 
 # import multiprocessing as mp
 
@@ -105,3 +110,9 @@ for i in sessRun:
     k += 1
 
 plt.legend([sleepDep_inst[x].subname for x in sessRun])
+plt.ylabel("Power (A.U.)")
+plt.xlabel("Frequency (Hz)")
+
+
+# plt.axis("off")
+
