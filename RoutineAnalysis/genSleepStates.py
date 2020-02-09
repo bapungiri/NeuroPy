@@ -12,7 +12,7 @@ import os
 # from sklearn.cluster import AgglomerativeClustering
 
 
-basePath = "/data/Clustering/SleepDeprivation/RatN/Day1/"
+basePath = "/data/Clustering/SleepDeprivation/RatN/Day2/"
 
 
 # badChans = [14, 15, 16, 64]
@@ -116,7 +116,7 @@ sleep_stages = sleep_stages[sleep_stages[:, 0].argsort()]
 
 # np.save(basePath + sessionName + "_behavior.npy", sleep_stages)
 
-arr_start = np.argwhere(f > 25)[0]
+arr_start = np.argwhere(f > 300)[0]
 sxx2 = sxx[: arr_start[0]][:]
 # sxx2 = np.flipud(sxx2)
 

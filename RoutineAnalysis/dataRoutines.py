@@ -6,6 +6,8 @@ from pathlib import Path
 
 
 class firstRun:
+    shanks_all = 8
+
     def __init__(self, basePath):
         self.sessionName = basePath.split("/")[-2] + basePath.split("/")[-1]
         self.basePath = basePath
@@ -15,24 +17,37 @@ class firstRun:
                 self.filename = os.path.join(basePath, file)
                 self.filePrefix = os.path.join(basePath, file[:-4])
 
-    #%% generate basics such as channels, sampling rate
+    def genBasics(self):
+        #%% generate basics such as channels, sampling rate
 
-    basics = [ExtractChanXml(basePath[i]) for i in range(nSessions)]
+        ExtractChanXml(self.basePath)
 
-    #%% generates files for klusta
-    # prmGen = [
-    #     makePrmPrb(basePath[i], shanks_all[i], shanks_Chan_all[i]) for i in range(nSessions)
-    # ]
+    def genKlusta(self):
+        #%% generates files for klusta
 
-    # for i in range(nSessions):
-    #     # prmGen[i].makePrm()
-    #     # prmGen[i].makePrb()
-    #     prmGen[i].makePrmServer()
-    #     prmGen[i].makePrbServer()
+        prmGen = [
+            makePrmPrb(basePath[i], shanks_all[i], shanks_Chan_all[i])
+            for i in range(nSessions)
+        ]
 
-    #%% generates best theta channel
+        for i in range(nSessions):
+            prmGen[i].makePrm()
+            prmGen[i].makePrb()
+            prmGen[i].makePrmServer()
+            prmGen[i].makePrbServer()
 
-    #%% generates best ripple channel
+    def genPosition(self):
+        #%% generates best ripple channel
+        pass
+
+    def genTheta(self):
+        #%% generates best theta channel
+
+        pass
+
+    def genRipple(self):
+        #%% generates best ripple channel
+        pass
 
 
 basePath = [
