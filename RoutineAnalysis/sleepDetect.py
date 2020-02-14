@@ -8,34 +8,46 @@ import scipy.stats as stats
 from hmmlearn.hmm import GaussianHMM
 import scipy.ndimage as filtSig
 import os
-
-# from sklearn.cluster import AgglomerativeClustering
+from parsePath import name2path
 
 
 basePath = "/data/Clustering/SleepDeprivation/RatN/Day2/"
 
 
-# badChans = [14, 15, 16, 64]
-
-# bestThetaChan = bestThetaChannel(
-#     basePath, 1250, nChans=134, badChannels=badChans, saveThetaChan=1
-# )
+def spect(data, sampfreq, window, overlap):
+    f, t, sxx = sg.spectrogram(data, fs=sampfreq, nperseg=window, noverlap=overlap)
+    return f, t, sxx
 
 
-class SleepScore:
+class SleepScore(name2path):
     lfpsampleRate = 1250
+    nyq = 0.5 * lfpsampleRate
+
     nshanks = 8
     window = 4  # seconds
     slideby = 2  # seconds
 
-    def __init__(self, basePath):
-        self.sessionName = basePath.split("/")[-2] + basePath.split("/")[-1]
-        self.basePath = basePath
-        for file in os.listdir(basePath):
-            if file.endswith(".eeg"):
-                self.subname = file[:-4]
-                self.filename = os.path.join(basePath, file)
-                self.filePrefix = os.path.join(basePath, file[:-4])
+    def __init__(self):
+        thetafile = basePath + self.sessionName + "_BestThetaChan.npy"
+        bad_chans = np.load(self.filePrefix + "_badChans.npy", allow_pickle=True)
+        basics = np.load(self.filePrefix + "_basics.npy", allow_pickle=True)
+        chan_map = basics.item().get("channels")
+        nChans = basics.item().get("nChans")
+        thetaData = np.load(thetafile, allow_pickle=True)
+        eegdata = np.memmap(self.filename, dtype="int16", mode="r")
+        eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
+
+    def deltaStates(self):
+        highfreq = 4
+        lowfreq = 0.5
+        thetafile = basePath + self.sessionName + "_BestThetaChan.npy"
+        bad_chans = np.load(self.filePrefix + "_badChans.npy", allow_pickle=True)
+        basics = np.load(self.filePrefix + "_basics.npy", allow_pickle=True)
+        chan_map = basics.item().get("channels")
+        nChans = basics.item().get("nChans")
+
+    def thetaStates(self):
+        pass
 
     def thetaDeltaratio(self):
         nyq = 0.5 * self.lfpsampleRate

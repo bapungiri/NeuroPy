@@ -84,7 +84,7 @@ folderPath = [
 nSessions = len(folderPath)
 sleepDep_inst = [SDspect(folderPath[i]) for i in range(nSessions)]
 # sessRun = range(4, nSessions)
-sessRun = [0, 1, 2, 4, 5]
+sessRun = [0, 1, 2, 3, 4, 5]
 
 color = ["#cb7c7c", "#0a9eb8", "#cb7c7c", "#0a9eb8", "#cb7c7c", "#0a9eb8"]
 

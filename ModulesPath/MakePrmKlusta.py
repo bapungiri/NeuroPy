@@ -135,7 +135,7 @@ class makePrmPrb:
             chan_list = self.chan_session[chan_start:chan_end]
             # chan_list = np.arange(chan_start, chan_end).tolist()
             with open(self.prbTemplate) as f:
-                if not os.path.exists(Path(self.serverPath, "Shank" + str(shank))):
+                if not os.path.exists(Path(self.basePath, "Shank" + str(shank))):
                     os.mkdir(self.basePath + "Shank" + str(shank))
                 outfile_prefix = (
                     self.basePath
@@ -174,6 +174,46 @@ class makePrmPrb:
                             f1.write(str(tuple([chan_list[x] for x in [5, 6]])) + ",\n")
                             f1.write(str(tuple([chan_list[x] for x in [5, 7]])) + ",\n")
                             f1.write(str(tuple([chan_list[x] for x in [6, 7]])) + ",\n")
+                            f1.write(str(tuple([chan_list[x] for x in [6, 8]])) + ",\n")
+                            f1.write(str(tuple([chan_list[x] for x in [7, 8]])) + ",\n")
+                            f1.write(str(tuple([chan_list[x] for x in [7, 9]])) + ",\n")
+                            f1.write(str(tuple([chan_list[x] for x in [8, 9]])) + ",\n")
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [8, 10]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [9, 10]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [9, 11]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [10, 11]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [10, 12]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [11, 12]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [11, 13]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [12, 13]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [12, 14]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [13, 14]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [13, 15]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [14, 15]])) + ",\n"
+                            )
 
                             for i in range(13):
                                 next(f)
@@ -181,8 +221,8 @@ class makePrmPrb:
                         elif "geometry" in line:
                             f1.write("'geometry' : {\n")
                             # f1.write("(" +str(chan_list[0])',' +")")
-                            chan_height = np.arange(300, 140, -20)
-                            for i in range(8):
+                            chan_height = np.arange(320, 10, -20)
+                            for i in range(16):
                                 f1.write(
                                     str(chan_list[i])
                                     + ":"
@@ -208,7 +248,7 @@ class makePrmPrb:
             chan_list = self.chan_session[chan_start:chan_end]
             # chan_list = np.arange(chan_start, chan_end).tolist()
             with open(self.prbTemplate) as f:
-                if not os.path.exists(self.basePath + "Shank" + str(shank)):
+                if not os.path.exists(Path(self.serverPath, "Shank" + str(shank))):
                     os.mkdir(Path(self.serverPath, "Shank" + str(shank)))
                 outfile_prefix = Path(
                     self.serverPath,
@@ -243,6 +283,46 @@ class makePrmPrb:
                             f1.write(str(tuple([chan_list[x] for x in [5, 6]])) + ",\n")
                             f1.write(str(tuple([chan_list[x] for x in [5, 7]])) + ",\n")
                             f1.write(str(tuple([chan_list[x] for x in [6, 7]])) + ",\n")
+                            f1.write(str(tuple([chan_list[x] for x in [6, 8]])) + ",\n")
+                            f1.write(str(tuple([chan_list[x] for x in [7, 8]])) + ",\n")
+                            f1.write(str(tuple([chan_list[x] for x in [7, 9]])) + ",\n")
+                            f1.write(str(tuple([chan_list[x] for x in [8, 9]])) + ",\n")
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [8, 10]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [9, 10]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [9, 11]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [10, 11]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [10, 12]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [11, 12]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [11, 13]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [12, 13]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [12, 14]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [13, 14]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [13, 15]])) + ",\n"
+                            )
+                            f1.write(
+                                str(tuple([chan_list[x] for x in [14, 15]])) + ",\n"
+                            )
 
                             for i in range(13):
                                 next(f)
@@ -250,8 +330,8 @@ class makePrmPrb:
                         elif "geometry" in line:
                             f1.write("'geometry' : {\n")
                             # f1.write("(" +str(chan_list[0])',' +")")
-                            chan_height = np.arange(300, 140, -20)
-                            for i in range(8):
+                            chan_height = np.arange(320, 10, -20)
+                            for i in range(16):
                                 f1.write(
                                     str(chan_list[i])
                                     + ":"

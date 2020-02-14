@@ -27,6 +27,7 @@ class ExtractSpikes:
                 print(file)
                 self.subname = file[:-4]
                 print(os.path.join(basePath, file))
+                self.filePrefix = os.path.join(basePath, file[:-4])
 
     def CollectSpikes(self):
         self.spkAll = []
@@ -35,11 +36,10 @@ class ExtractSpikes:
         for i in range(1, 9):
             fileName = self.basePath + "Shank" + str(i) + "/"
             spike_times = np.load(fileName + "spike_times.npy")
-            cluster_labels = pd.read_csv(fileName + "cluster_group.tsv", sep="\t")
+            cluster_labels = pd.read_csv(fileName + "cluster_q.tsv", sep="\t")
             clusterInfo = pd.read_csv(fileName + "cluster_info.tsv", sep="\t")
-            goodCellsID = cluster_labels.cluster_id[
-                cluster_labels["group"] == "good"
-            ].tolist()
+            clusterInfo.head(5)
+            goodCellsID = cluster_labels.cluster_id[cluster_labels["q"] == 1].tolist()
             # goodcells_firingRate = clusterInfo.firing_rate[
             #     clusterInfo["group"] == "good"
             # ].tolist()
@@ -72,7 +72,7 @@ class ExtractSpikes:
 
     def ExpVAr(self):
 
-        epoch_time = np.load(self.basePath + "epochs.npy", allow_pickle=True)
+        epoch_time = np.load(self.filePrefix + "_epochs.npy", allow_pickle=True)
         recording_dur = epoch_time.item().get("POST")[1]  # in seconds
         pre = epoch_time.item().get("PRE")  # in seconds
         maze = epoch_time.item().get("MAZE")  # in seconds
@@ -95,7 +95,7 @@ class ExtractSpikes:
         post_spikecount = np.array([np.histogram(x, bins=post_bin)[0] for x in spkAll])
         post_spikecount = [
             post_spikecount[:, i : i + windowSize]
-            for i in range(0, 14 * windowSize, windowSize)
+            for i in range(0, 10 * windowSize, windowSize)
         ]
 
         pre_corr = np.corrcoef(pre_spikecount)
@@ -147,11 +147,11 @@ RatNDay1.CollectSpikes()
 RatNDay1.ExpVAr()
 
 
-folderPath = "/data/Clustering/SleepDeprivation/RatN/Day2/"
+# folderPath = "/data/Clustering/SleepDeprivation/RatN/Day2/"
 
-RatNDay2 = ExtractSpikes(folderPath)
-RatNDay2.CollectSpikes()
-RatNDay2.ExpVAr()
+# RatNDay2 = ExtractSpikes(folderPath)
+# RatNDay2.CollectSpikes()
+# RatNDay2.ExpVAr()
 
 # plt.clf()
 # plt.plot(RatNDay1.ev_maze_vs_post)

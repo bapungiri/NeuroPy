@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import scipy.stats as stat
 
 folderPath = "/data/Clustering/SleepDeprivation/RatK/Day2/"
-fileName = folderPath + "RatK-Day2-2019-08-08_04-00-00.eeg"
+fileName = folderPath + "RatK_Day2_2019-08-08_04-00-00.eeg"
 
-fileOGDat = folderPath + "RatK-Day2-2019-08-08_04-00-00.dat"
+fileOGDat = folderPath + "RatK_Day2_2019-08-08_04-00-00.dat"
 
 nChansEEG = 134
 SampFreq = 1250

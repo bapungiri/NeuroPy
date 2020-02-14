@@ -11,10 +11,12 @@ import os
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import AgglomerativeClustering
 
+# from sklearn.mixture import GaussianMixture
+
 # from sklearn.cluster import AgglomerativeClustering
 
 
-basePath = "/data/Clustering/SleepDeprivation/RatN/Day2/"
+basePath = "/data/Clustering/SleepDeprivation/RatN/Day1/"
 
 
 # badChans = [14, 15, 16, 64]
@@ -99,9 +101,10 @@ f, t, sxx = sg.spectrogram(
 )
 
 theta_ind = np.where((f > 5) & (f < 10))[0]
-delta_ind = np.where((f < 4) | ((f > 12) & (f < 16)))[
-    0
-]  # delta band 0-4 Hz and 12-15 Hz
+delta_ind = np.where(f < 4)[0]  # delta band 0-4 Hz and 12-15 Hz
+# delta_ind = np.where((f < 4) | ((f > 12) & (f < 16)))[
+#     0
+# ]  # delta band 0-4 Hz and 12-15 Hz
 gamma_ind = np.where((f > 50) & (f < 250))[0]  # delta band 0-4 Hz and 12-15 Hz
 
 theta_sxx = np.mean(sxx[theta_ind, :], axis=0)
@@ -122,6 +125,7 @@ hidden_states = model.predict(feature_comb)
 # mus = np.squeeze(model.means_)
 # sigmas = np.squeeze(np.sqrt(model.covars_))
 # transmat = np.array(model.transmat_)
+
 
 # idx = np.argsort(mus)
 # mus = mus[idx]
@@ -185,7 +189,7 @@ plt.plot(emg_lfp * 50)
 plt.plot(stats.zscore(theta_sxx), stats.zscore(delta_sxx), ".")
 # plt.plot(hidden_states, "r")
 fig = plt.figure(1)
-ax = fig.gca(projection="3d")
+ax = fig.gca(projection="2d")
 
 # z_line = np.linspace(0, 15, 1000)
 # x_line = np.cos(z_line)
@@ -193,12 +197,17 @@ ax = fig.gca(projection="3d")
 
 N = len(theta_sxx)
 a = np.reshape(stats.zscore(theta_sxx), (N, 1))
-b = np.reshape(stats.zscore(theta_sxx), (N, 1))
-c = np.reshape(emg_lfp, (N, 1))
-feature_comb2 = np.hstack((a, b, c))
-cluster = AgglomerativeClustering(n_clusters=3, affinity="euclidean", linkage="ward")
+b = np.reshape(stats.zscore(delta_sxx), (N, 1))
+c1 = np.reshape(emg_lfp, (N, 1))
+feature_comb2 = np.hstack((a, b))
+cluster = AgglomerativeClustering(n_clusters=2, affinity="euclidean", linkage="ward")
 cluster.fit_predict(feature_comb2)
 
-ax.scatter(a, b, c, c=cluster.labels_, cmap="rainbow")
-plt.show()
+plt.scatter(a, b, c=cluster.labels_, cmap="rainbow")
+
+
+cluster = GaussianMixture(n_components=2, covariance_type="full")
+cluster.fit_predict(feature_comb2)
+
+plt.scatter(a, b, c=cluster.labels_, cmap="rainbow")
 

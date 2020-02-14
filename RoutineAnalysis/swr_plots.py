@@ -1,6 +1,7 @@
 #%%====== Import statements==========
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from SpectralAnalysis import bestRippleChannel, bestThetaChannel, lfpSpectrogram
 from lfpDetect import swr
 import os
@@ -9,7 +10,8 @@ from datetime import datetime as dt
 import matplotlib.style
 import matplotlib as mpl
 
-mpl.style.use("default")
+sns.set(style="whitegrid")
+# mpl.style.use("default")
 
 # %load_ext autoreload
 # %autoreload 2
@@ -34,6 +36,7 @@ class RippleDetect:
         epoch_time = np.load(self.filePrefix + "_epochs.npy", allow_pickle=True)
         recording_dur = epoch_time.item().get("POST")[1]  # in seconds
         pre = epoch_time.item().get("PRE")  # in seconds
+        print(pre[1])
         maze = epoch_time.item().get("MAZE")  # in seconds
         post = epoch_time.item().get("POST")  # in seconds
         self.basics = np.load(self.filePrefix + "_basics.npy", allow_pickle=True)
@@ -55,9 +58,22 @@ class RippleDetect:
         self.ripples = np.load(self.filePrefix + "_ripples.npy", allow_pickle=True)
 
         self.ripplesTime = self.ripples.item().get("timestamps")
-        self.rippleStart = self.ripplesTime[:, 0]
+        self.rippleStart = self.ripplesTime[:, 0] / 1250
         self.histRipple, self.edges = np.histogram(self.rippleStart, bins=20)
         self.edges = self.edges / (1250 * 3600)
+
+        bin_epoch = [
+            pre[0],
+            pre[1],
+            post[0],
+            post[0] + 5 * 3600,
+            post[0] + 5 * 3600,
+            post[1],
+        ]
+        bin_dur = np.diff(bin_epoch)
+        self.epochcount, _ = np.histogram(self.rippleStart, bins=bin_epoch)
+        self.ripprate = self.epochcount[::2] / bin_dur[::2]
+        # print(bin_dur / 3600)
 
     # def lfpSpect(self):
     #     self.Pxx, self.freq, self.time, self.sampleData = lfpSpectrogram(
@@ -77,44 +93,37 @@ class RippleDetect:
 basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
 ]
 
 Ripple_inst = [RippleDetect(x) for x in basePath]
 
+
 for i, sess in enumerate(Ripple_inst):
     sess.findRipples()
-    # Ripple_inst[i].findRipples()
 
 
 plt.clf()
-for i, sess in enumerate(Ripple_inst):
-    plt.plot(sess.histRipple)
+ripp_recovery, ripp_nsd = [], []
+for i, sess in enumerate(Ripple_inst[::2]):
+    ripp_recovery.append(sess.ripprate[-1])
+for i, sess in enumerate(Ripple_inst[1::2]):
+    ripp_nsd.append(sess.ripprate[-2])
 
+ripp_rate = [ripp_nsd, ripp_recovery]
+grp_label = ["NSD", "Recovery sleep"]
 
-# fig = plt.figure(1)
-# for i in range(4):
-#     # plt.subplot(4, 1, i + 1)
-#     ax1 = fig.add_subplot(4, 1, i + 1)
-
-#     ax1.imshow(
-#         np.log(Ripple_inst[i].Pxx_req),
-#         cmap="OrRd",
-#         aspect="auto",
-#         vmax=12,
-#         vmin=4,
-#         extent=[
-#             Ripple_inst[i].time[0],
-#             Ripple_inst[i].time[-1],
-#             Ripple_inst[i].f_req[0],
-#             Ripple_inst[i].f_req[-1],
-#         ],
-#     )
-#     ax2 = ax1.twinx()
-#     ax2.plot(Ripple_inst[i].edges[:-1], Ripple_inst[i].histRipple, "k")
-#     plt.xlim([0, Ripple_inst[i].time[-1]])
-#     plt.title(Ripple_inst[i].sessionName)
+ax = sns.barplot(data=ripp_rate)
+ax.set_xticklabels(grp_label)
+ax.set_ylabel("Ripple rate (Hz)")
+ax.set_title("Comparing ripple rate")
+# plt.legend([x.subname[:9] for x in Ripple_inst])
+# plt.xlim([-2, 4])
+# plt.title("Ripple rate")
+# plt.ylabel("Ripple rate (Hz)")
+# # plt.xlabel("Ripple rate (Hz)")
+# plt.xticks([0, 1, 2], ["PRE", "SD", "POST"])
 
