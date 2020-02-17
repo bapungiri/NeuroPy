@@ -1,21 +1,47 @@
 import numpy as np
 import os
 from pathlib import Path as pth
+import matplotlib.pyplot as plt
+import xml.etree.ElementTree as ET
 
 
 basePath = "/data/Clustering/SleepDeprivation/RatJ/Day1/"
 clupath = pth(basePath, "Shank5", "RatJDay1_Shank5.clu.1")
-spk = []
+clu = []
 with open(clupath) as f:
 
-    for i, line in enumerate(f):
-        spk.append(int(line))
-    #     m = "".join(line)
+    for line in f:
+        clu.append(int(line))
+
+num_clust = clu[0]
+clust_id = np.unique(clu[1:])
+spk = clu[1:]
+
+spklist = []
+for clus in clust_id:
+    spklist.append(np.argwhere(spk == clus) / 30000)
+    # spklist.append([i for i in range(len(spk)) if spk[i] == clus])
 
 
-f.close()
+filename = pth(basePath, "Shank5", "RatJDay1_Shank5.xml")
+myroot = ET.parse(filename).getroot()
+
+chan_session = []
+clus_pyr = []
+
+for x in myroot.findall("units"):
+    for y in x.findall("unit"):
+        for z, z1 in zip(y.findall("quality"), y.findall("cluster")):
+
+            if z.text is not None:
+                if (z.text).isdigit():
+
+                    clus_pyr.append([int(z.text), int(z1.text)])
 
 
+# for ind, cell in enumerate(spklist):
+#     plt.plot(cell, ind * np.ones(len(cell)), ".")
+#     m = "".join(line)
 # class ExtractfromClu:
 #     def __init__(self, basePath):
 #         # self.sessionName = os.path.basename(os.path.normpath(basePath))
