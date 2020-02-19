@@ -1,28 +1,16 @@
-import time
+from bokeh.plotting import figure, output_file, show
 
-import numpy as np
-import matplotlib.pyplot as plt
-from parsePath import name2path
+output_file("patch.html")
 
+p = figure(plot_width=400, plot_height=400)
 
-class check(name2path):
-    def __init__(self, basePath):
-        super().__init__(basePath)
+p.multi_line(
+    [[1, 3, 2], [3, 4, 6, 6]],
+    [[2, 1, 4], [4, 7, 8, 5]],
+    color=["firebrick", "navy"],
+    alpha=[0.8, 0.3],
+    line_width=4,
+    legend_label="adsf",
+)
 
-    def mult(self, a, b):
-        return a, b
-
-    def catch(self):
-
-        m = 2
-        n = 3
-        d = self.mult(m, n)
-        print(d)
-
-
-basepath = "/data/Clustering/SleepDeprivation/RatN/Day1/"
-
-sess1 = check(basepath)
-
-sess1.catch()
-
+show(p)

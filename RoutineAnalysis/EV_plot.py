@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.collections import PatchCollection
 
-basePath = "/data/Clustering/SleepDeprivation/RatN/Day1/"
+basePath = "/data/Clustering/SleepDeprivation/RatJ/Day1/"
 
 for file in os.listdir(basePath):
     if file.endswith(".eeg"):
@@ -16,7 +16,7 @@ for file in os.listdir(basePath):
         # print(os.path.join(basePath, file))
 
 expVar = np.load(fileInitial + "_EV.npy")
-# rev = np.load(fileInitial + "_REV.npy")
+rev = np.load(fileInitial + "_REV.npy")
 states = np.load(fileInitial + "_behavior.npy")
 epochs = np.load(fileInitial + "_epochs.npy", allow_pickle=True)
 
@@ -65,7 +65,7 @@ p = PatchCollection(patches, facecolor=color_states, alpha=0.4)
 # p.set_array(np.array(colors))
 
 ax.add_collection(p)
-plt.plot(t / 3600, expVar)
+plt.plot(t / 3600, rev)
 plt.xlabel("Time (h)")
 plt.ylabel("EV")
 
