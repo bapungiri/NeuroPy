@@ -3,44 +3,65 @@ import os
 from pathlib import Path as pth
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
+from spikesUtil import ExtractSpikes as getspk
 
 
 basePath = "/data/Clustering/SleepDeprivation/RatJ/Day1/"
-clupath = pth(basePath, "Shank5", "RatJDay1_Shank5.clu.1")
-clu = []
-with open(clupath) as f:
-
-    for line in f:
-        clu.append(int(line))
-
-num_clust = clu[0]
-clust_id = np.unique(clu[1:])
-spk = clu[1:]
-
 spklist = []
-for clus in clust_id:
-    spklist.append(np.argwhere(spk == clus) / 30000)
-    # spklist.append([i for i in range(len(spk)) if spk[i] == clus])
+for i in range(2, 9):
 
+    clupath = pth(basePath, "Shank" + str(i), "RatJDay1_Shank" + str(i) + ".clu.1")
+    clu = []
+    with open(clupath) as f:
 
-filename = pth(basePath, "Shank5", "RatJDay1_Shank5.xml")
-myroot = ET.parse(filename).getroot()
+        for line in f:
+            clu.append(int(line))
 
-chan_session = []
-clus_pyr = []
+    num_clust = clu[0]
+    clust_id = np.unique(clu[1:])
+    spk = np.asarray(clu[1:])
 
-for x in myroot.findall("units"):
-    for y in x.findall("unit"):
-        for z, z1 in zip(y.findall("quality"), y.findall("cluster")):
+    respath = pth(basePath, "Shank" + str(i), "RatJDay1_Shank" + str(i) + ".res.1")
+    res = []
+    with open(respath) as f:
 
-            if z.text is not None:
-                if (z.text).isdigit():
+        for line in f:
+            res.append(int(line))
 
-                    clus_pyr.append([int(z.text), int(z1.text)])
+    spk_time = np.asarray(res)
+
+    filename = pth(basePath, "Shank" + str(i), "RatJDay1_Shank" + str(i) + ".xml")
+    myroot = ET.parse(filename).getroot()
+
+    chan_session = []
+    clus_pyr = []
+
+    for x in myroot.findall("units"):
+        for y in x.findall("unit"):
+            for z, z1 in zip(y.findall("quality"), y.findall("cluster")):
+
+                if z.text is not None:
+                    if (z.text).isdigit():
+
+                        clus_pyr.append([int(z.text), int(z1.text)])
+
+    clus_pyr = np.asarray(clus_pyr)
+    pyr_id = clus_pyr[:, 1]
+
+    for clus in pyr_id:
+        spklist.append(spk_time[np.where(spk == clus)[0]] / 30000)
+        # spklist.append([i for i in range(len(spk)) if spk[i] == clus])
 
 
 # for ind, cell in enumerate(spklist):
 #     plt.plot(cell, ind * np.ones(len(cell)), ".")
+
+np.save(basePath + "RatJ_Day1_2019-05-31_03-55-36" + "_spikes.npy", spklist)
+
+
+sess1 = getspk(basePath)
+sess1.CollectSpikes()
+sess1.ExpVAr()
 #     m = "".join(line)
 # class ExtractfromClu:
 #     def __init__(self, basePath):
