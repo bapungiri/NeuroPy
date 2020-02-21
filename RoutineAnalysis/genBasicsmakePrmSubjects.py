@@ -7,11 +7,11 @@ from pathlib import Path
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day3/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day3/",
     # "/data/Clustering/SleepDeprivation/RatN/Day4/",
