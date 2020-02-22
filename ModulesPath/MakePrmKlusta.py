@@ -3,26 +3,16 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from pathlib import Path
+from parsePath import name2path
 
 # folderPath = '../'
 
 
-class makePrmPrb:
-
-    nChans = 64
-
-    def __init__(self, basePath, nShanks, nChansPerShank):
-        self.sessionName = basePath.split("/")[-3] + basePath.split("/")[-2]
-        self.name = basePath.split("/")[-3]
-        self.day = basePath.split("/")[-2]
+class makePrmPrb(name2path):
+    def __init__(self, basePath):
+        super().__init__(basePath)
         print(self.sessionName)
-        self.basePath = basePath
-        for file in os.listdir(basePath):
-            if file.endswith(".dat"):
 
-                self.subname = file[:-4]
-                self.filename = os.path.join(basePath, file)
-                self.filePrefix = os.path.join(basePath, file[:-4])
         self.prmTemplate = (
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prm"
         )
@@ -30,30 +20,25 @@ class makePrmPrb:
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prb"
         )
 
-        self.nShanks = nShanks
-        self.nChansPerShank = nChansPerShank
-
         recInfo = np.load(self.filePrefix + "_basics.npy", allow_pickle=True)
         self.sampFreq = recInfo.item().get("sRate")
         self.chan_session = recInfo.item().get("channels")
         self.nChansDat = recInfo.item().get("nChans")
+        self.channelgroups = recInfo.item().get("channelgroups")
+        self.nShanks = recInfo.item().get("nShanks")
 
     def makePrm(self):
         for shank in range(1, self.nShanks + 1):
             with open(self.prmTemplate) as f:
                 if not os.path.exists(self.basePath + "Shank" + str(shank)):
                     os.mkdir(self.basePath + "Shank" + str(shank))
-                outfile_prefix = (
-                    self.basePath
-                    + "Shank"
-                    + str(shank)
-                    + "/"
-                    + self.sessionName
-                    + "sh"
-                    + str(shank)
+                outfile_prm = Path(
+                    self.basePath,
+                    "Shank" + str(shank),
+                    self.sessionName + "sh" + str(shank) + ".prm",
                 )
 
-                with open(outfile_prefix + ".prm", "w") as f1:
+                with outfile_prm.open("w") as f1:
                     for line in f:
 
                         if "experiment_name" in line:
@@ -66,7 +51,11 @@ class makePrmPrb:
                                 + "'\n"
                             )
                         elif "prb_file" in line:
-                            f1.write("prb_file = '" + outfile_prefix + ".prb'\n")
+                            f1.write(
+                                "prb_file = '"
+                                + str(outfile_prm.with_suffix(".prb"))
+                                + "'\n"
+                            )
                         elif "raw_data_files" in line:
                             f1.write(
                                 "   raw_data_files = ['" + self.filePrefix + ".dat'],\n"
@@ -130,24 +119,17 @@ class makePrmPrb:
     def makePrb(self):
         for shank in range(1, self.nShanks + 1):
 
-            chan_start = (shank - 1) * self.nChansPerShank
-            chan_end = chan_start + self.nChansPerShank
-            chan_list = self.chan_session[chan_start:chan_end]
-            # chan_list = np.arange(chan_start, chan_end).tolist()
+            chan_list = self.channelgroups[shank - 1]
             with open(self.prbTemplate) as f:
                 if not os.path.exists(Path(self.basePath, "Shank" + str(shank))):
                     os.mkdir(self.basePath + "Shank" + str(shank))
-                outfile_prefix = (
-                    self.basePath
-                    + "Shank"
-                    + str(shank)
-                    + "/"
-                    + self.sessionName
-                    + "sh"
-                    + str(shank)
+                outfile_prefix = Path(
+                    self.basePath,
+                    "Shank" + str(shank),
+                    self.sessionName + "sh" + str(shank) + ".prb",
                 )
 
-                with open(outfile_prefix + ".prb", "w") as f1:
+                with outfile_prefix.open("w") as f1:
                     for line in f:
 
                         if "Shank index" in line:
@@ -160,61 +142,11 @@ class makePrmPrb:
 
                         elif "graph" in line:
                             f1.write("'graph' : [\n")
-                            # f1.write("(" +str(chan_list[0])',' +")")
-                            f1.write(str(tuple([chan_list[x] for x in [0, 1]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [0, 2]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [1, 2]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [1, 3]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [2, 3]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [2, 4]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [3, 4]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [3, 5]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [4, 5]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [4, 6]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [5, 6]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [5, 7]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [6, 7]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [6, 8]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [7, 8]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [7, 9]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [8, 9]])) + ",\n")
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [8, 10]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [9, 10]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [9, 11]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [10, 11]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [10, 12]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [11, 12]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [11, 13]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [12, 13]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [12, 14]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [13, 14]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [13, 15]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [14, 15]])) + ",\n"
-                            )
+                            for i, chan in enumerate(chan_list[:-2]):
+                                f1.write(f"({chan},{chan_list[i + 1]}),\n")
+                                f1.write(f"({chan},{chan_list[i + 2]}),\n")
 
+                            f1.write(f"({chan_list[-2]},{chan_list[-1]}),\n")
                             for i in range(13):
                                 next(f)
 
@@ -243,10 +175,7 @@ class makePrmPrb:
 
         for shank in range(1, self.nShanks + 1):
 
-            chan_start = (shank - 1) * self.nChansPerShank
-            chan_end = chan_start + self.nChansPerShank
-            chan_list = self.chan_session[chan_start:chan_end]
-            # chan_list = np.arange(chan_start, chan_end).tolist()
+            chan_list = self.channelgroups[shank - 1]
             with open(self.prbTemplate) as f:
                 if not os.path.exists(Path(self.serverPath, "Shank" + str(shank))):
                     os.mkdir(Path(self.serverPath, "Shank" + str(shank)))
@@ -269,60 +198,11 @@ class makePrmPrb:
 
                         elif "graph" in line:
                             f1.write("'graph' : [\n")
-                            # f1.write("(" +str(chan_list[0])',' +")")
-                            f1.write(str(tuple([chan_list[x] for x in [0, 1]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [0, 2]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [1, 2]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [1, 3]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [2, 3]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [2, 4]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [3, 4]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [3, 5]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [4, 5]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [4, 6]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [5, 6]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [5, 7]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [6, 7]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [6, 8]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [7, 8]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [7, 9]])) + ",\n")
-                            f1.write(str(tuple([chan_list[x] for x in [8, 9]])) + ",\n")
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [8, 10]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [9, 10]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [9, 11]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [10, 11]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [10, 12]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [11, 12]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [11, 13]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [12, 13]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [12, 14]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [13, 14]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [13, 15]])) + ",\n"
-                            )
-                            f1.write(
-                                str(tuple([chan_list[x] for x in [14, 15]])) + ",\n"
-                            )
+                            for i, chan in enumerate(chan_list[:-2]):
+                                f1.write(f"({chan},{chan_list[i + 1]}),\n")
+                                f1.write(f"({chan},{chan_list[i + 2]}),\n")
+
+                            f1.write(f"({chan_list[-2]},{chan_list[-1]}),\n")
 
                             for i in range(13):
                                 next(f)

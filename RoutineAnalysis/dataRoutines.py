@@ -49,6 +49,10 @@ class firstRun:
         #%% generates best ripple channel
         pass
 
+    def getSpikes(self):
+        #%% generates best ripple channel
+        pass
+
 
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
