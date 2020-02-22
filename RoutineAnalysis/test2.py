@@ -1,16 +1,8 @@
-from bokeh.plotting import figure, output_file, show
+import numpy as np
+import os
+from pathlib import Path
 
-output_file("patch.html")
 
-p = figure(plot_width=400, plot_height=400)
-
-p.multi_line(
-    [[1, 3, 2], [3, 4, 6, 6]],
-    [[2, 1, 4], [4, 7, 8, 5]],
-    color=["firebrick", "navy"],
-    alpha=[0.8, 0.3],
-    line_width=4,
-    legend_label="adsf",
-)
-
-show(p)
+basePath = Path("/data/clustering/")
+shank = 1
+a = Path(basePath, "Shank" + str(shank), "sh" + str(shank) + ".prs")
