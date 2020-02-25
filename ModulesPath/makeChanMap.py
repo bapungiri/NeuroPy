@@ -9,7 +9,6 @@ class ExtractChanXml(name2path):
 
     def __init__(self, basePath):
         super().__init__(basePath)
-        print(self.sessionName)
 
         myroot = ET.parse(self.filename).getroot()
 
@@ -20,7 +19,6 @@ class ExtractChanXml(name2path):
                 for z in y.findall("group"):
                     chan_group = []
                     for chan in z.findall("channel"):
-                        self.chan_session.append(int(chan.text))
                         self.chan_session.append(int(chan.text))
                         chan_group.append(int(chan.text))
                     self.channelgroups.append(chan_group)
@@ -36,9 +34,10 @@ class ExtractChanXml(name2path):
             "nChans": self.nChans,
             "channelgroups": self.channelgroups,
             "nShanks": self.nShanks,
-            "filePrefix": self.filePrefix,
+            "subname": self.subname,
             "sessionName": self.sessionName,
         }
 
         np.save(self.filePrefix + "_basics.npy", basics)
+        print(f"_basics.npy created for {self.sessionName}")
 

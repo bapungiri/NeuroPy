@@ -9,6 +9,7 @@ from hmmlearn.hmm import GaussianHMM
 import scipy.ndimage as filtSig
 import os
 from parsePath import name2path
+import pathlib as Path
 
 
 def hmmfit1d(Data):
@@ -80,14 +81,16 @@ class SleepScore(name2path):
     def __init__(self, basePath):
         super().__init__(basePath)
 
-        thetafile = self.filePrefix + "_BestThetaChan.npy"
+        thetafile = self.basePath / (self.subname + "_BestThetaChan.npy")
         self.thetaData = np.load(thetafile, allow_pickle=True)
-
-        self.bad_chans = np.load(self.filePrefix + "_badChans.npy", allow_pickle=True)
-        basics = np.load(self.filePrefix + "_basics.npy", allow_pickle=True)
+        print(self.filePrefix)
+        self.bad_chans = np.load(
+            str(self.filePrefix) + "_badChans.npy", allow_pickle=True
+        )
+        basics = np.load(str(self.filePrefix) + "_basics.npy", allow_pickle=True)
         self.chan_map = basics.item().get("channels")
         self.nChans = basics.item().get("nChans")
-        eegdata = np.memmap(self.filename, dtype="int16", mode="r")
+        eegdata = np.memmap(self.eegfile, dtype="int16", mode="r")
         self.eegdata = np.memmap.reshape(
             eegdata, (int(len(eegdata) / self.nChans), self.nChans)
         )
@@ -107,9 +110,6 @@ class SleepScore(name2path):
         f, t, sxx = self.spect(self.thetaData)
 
         delta_ind = np.where((f > 1) & (f < 4))[0]  # delta band 0-4 Hz and
-        theta_ind = np.where((f > 4) & (f < 11))[0]  # theta band 0-4 Hz and
-
-        theta_sxx = np.mean(sxx[theta_ind, :], axis=0)
 
         delta_sxx = np.mean(sxx[delta_ind, :], axis=0)
         delta_smooth = filtSig.gaussian_filter1d(delta_sxx, 10, axis=0)
@@ -128,13 +128,17 @@ class SleepScore(name2path):
 
         state_prune = genepoch(state_start, state_end)
         self.sec = state_prune
-        print(len(state_prune))
+        # print(len(state_prune))
         self.sws_time = np.vstack((t[state_prune[:, 0]], t[state_prune[:, 1]])).T
         self.delta_t = t
-        # sleep_stages.extend(firstPass)
 
-        # sleep_stages = np.asarray(sleep_stages)
-        # self.sleep_stages = sleep_stages[sleep_stages[:, 0].argsort()]
+        sws = {
+            "sws_epochs": self.sws_time,
+            "delta_raw": self.deltaraw,
+            "delta_smooth": self.delta,
+            "delta_time": self.delta_t,
+        }
+        np.save(str(self.filePrefix) + "_sws.npy", sws)
 
     def thetaStates(self):
         f, _, sxx = self.spect(self.thetaData)

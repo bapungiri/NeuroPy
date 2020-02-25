@@ -25,10 +25,15 @@ time = position.item().get("time")
 
 # t_eeg = np.linspace(0, nframes / 1250, nframes)
 
+# neuroscope only displays positive values so translating the coordinates
+xcoord = xcoord + abs(min(xcoord))
+ycoord = ycoord + abs(min(ycoord))
 
 with open(filePrefix + ".pos", "w") as f:
     # f.write(str(5.3) + " " + str(6.3))
     for x, y in zip(xcoord, ycoord):
-        f.write("{} {}\n".format(x + 540, y + 650))
+        f.write(f"{x} {y}/n")
+        # f.write("{} {}\n".format(x + 540, y + 650))
         # sleep(0.001)
-
+# if a >= b:
+#     a  5

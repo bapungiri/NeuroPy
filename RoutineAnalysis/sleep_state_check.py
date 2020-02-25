@@ -151,16 +151,4 @@ p.toolbar.logo = None
 p2.toolbar.logo = None
 p3.toolbar.logo = None
 show(row(p, column(p2, p3)))
-# grid = gridplot(row(p, column(p2, p3)))
-# m = r([p2, p, p3], nrows=3)
-
-
-# m = gridplot([[p, p2], [p3, None]], merge_tools=False)
-# show(m)
-
-# plt.plot(all_sws)
-# plt.plot(all_sws, ".")
-# plt.plot(sess.delta, "k")
-# plt.plot(sess.delta_states)
-# plt.plot(sess.state_prune[:, 0], np.ones(len(sess.state_prune)), "g.")
 

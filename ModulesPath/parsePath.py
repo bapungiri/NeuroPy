@@ -8,9 +8,11 @@ class name2path:
         self.sessionName = basePath.split("/")[-3] + basePath.split("/")[-2]
         self.name = basePath.split("/")[-3]
         self.day = basePath.split("/")[-2]
-        self.basePath = basePath
+        self.basePath = Path(basePath)
         for file in os.listdir(basePath):
             if file.endswith(".xml"):
-                self.subname = file[:-4]
-                self.filename = os.path.join(basePath, file)
-                self.filePrefix = os.path.join(basePath, file[:-4])
+                self.xmlfile = self.basePath / file
+                self.subname = self.xmlfile.stem
+                self.filePrefix = self.xmlfile.with_suffix("")
+                self.eegfile = self.xmlfile.with_suffix(".eeg")
+                self.datfile = self.xmlfile.with_suffix(".dat")
