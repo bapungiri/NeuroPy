@@ -108,15 +108,10 @@ def bestThetaChannel(basePath, sampleRate, nChans, badChannels, saveThetaChan=0)
             print(file)
             subname = file[:-4]
             fileName = os.path.join(basePath, file)
-    # subname = os.path.basename(os.path.normpath(basePath))
-    # fileName = basePath + subname + ".eeg"
 
     lfpCA1 = np.memmap(
         fileName, dtype="int16", mode="r", shape=(sampleRate * duration, nChans)
     )
-
-    #    goodChannels = [i for i in range(len(a)) if a[i]==1]
-    #    lfpCA1[:,goodChannels-1]
 
     b, a = sg.butter(3, [lowTheta / nyq, highTheta / nyq], btype="bandpass")
     yf = sg.filtfilt(b, a, lfpCA1, axis=0)

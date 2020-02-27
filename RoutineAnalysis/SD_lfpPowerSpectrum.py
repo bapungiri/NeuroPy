@@ -84,7 +84,7 @@ folderPath = [
 nSessions = len(folderPath)
 sleepDep_inst = [SDspect(folderPath[i]) for i in range(nSessions)]
 # sessRun = range(4, nSessions)
-sessRun = [0, 1, 2, 3, 4, 5]
+sessRun = [0, 2, 4]
 
 color = ["#cb7c7c", "#0a9eb8", "#cb7c7c", "#0a9eb8", "#cb7c7c", "#0a9eb8"]
 
@@ -101,7 +101,7 @@ for i in sessRun:
     # plt.subplot(4, 1, i + 1)
     # ax1 = fig.add_subplot(len(sessRun), 1, k)
 
-    plt.plot(sleepDep_inst[i].freq, sleepDep_inst[i].req_sxx_mean, color=color[i])
+    plt.plot(sleepDep_inst[i].freq, sleepDep_inst[i].req_sxx_mean)
     # ax1.plot(
     #     sleepDep_inst[i].freq,
     #     sleepDep_inst[i].req_sxx_mean + sleepDep_inst[i].req_sxx_std,
@@ -109,7 +109,7 @@ for i in sessRun:
     plt.yscale("log")
     k += 1
 
-plt.legend([sleepDep_inst[x].subname for x in sessRun])
+plt.legend([sleepDep_inst[x].subname[:9] for x in sessRun])
 plt.ylabel("Power (A.U.)")
 plt.xlabel("Frequency (Hz)")
 

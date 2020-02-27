@@ -11,16 +11,14 @@ class pf(name2path):
     timeWindow = 3600  # in seconds
 
     def pf1d(self):
-        spkAll = np.load(
-            self.basePath + self.subname + "_spikes.npy", allow_pickle=True
-        )
-        position = np.load(self.filePrefix + "_position.npy", allow_pickle=True)
+        spkAll = np.load(str(self.filePrefix) + "_spikes.npy", allow_pickle=True)
+        position = np.load(str(self.filePrefix) + "_position.npy", allow_pickle=True)
 
         xcoord = position.item().get("X")
         ycoord = position.item().get("Y")
         time = position.item().get("time")
 
-        epochs = np.load(self.filePrefix + "_epochs.npy", allow_pickle=True)
+        epochs = np.load(str(self.filePrefix) + "_epochs.npy", allow_pickle=True)
 
         maze = epochs.item().get("MAZE")  # in seconds
 
@@ -46,7 +44,7 @@ class pf(name2path):
             spk_x = np.interp(spk_maze, self.t, self.x)
 
             # speed threshold
-            spd_ind = np.where(spk_spd > 5)
+            spd_ind = np.where(spk_spd > 2)
             spk_spd = spk_spd[spd_ind]
             spk_x = spk_x[spd_ind]
             spk_y = spk_y[spd_ind]

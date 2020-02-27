@@ -4,6 +4,8 @@ from pfPlot import pf
 import pandas as pd
 import seaborn as sns
 
+import altair as alt
+
 # from bokeh.plotting import figure, save, output_file, show
 # from bokeh.models import Legend, LegendItem
 # from bokeh.layouts import row, column, grid, gridplot, layout

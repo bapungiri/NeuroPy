@@ -29,7 +29,7 @@ basePath = [
 ]
 
 sessions = [name2path(_) for _ in basePath]
-freq = np.linspace(1, 200, 2000)
+freq = np.linspace(1, 500, 5000)
 
 sws_dur = []
 psd_sess_pre, psd_sess_post = [], []
@@ -103,14 +103,21 @@ for i, sess in enumerate(sessions):
 # ax = sns.lineplot(x="freq", y="mean_psd", data=psd_data)
 plt.clf()
 for ft_post in psd_sess_post:
-    ft_post[0] = filtSig.gaussian_filter1d(ft_post[0], 5)
+    ft_post[0] = filtSig.gaussian_filter1d(ft_post[0], 2)
 
     if ft_post[1] == "sd":
         plt.plot(freq, ft_post[0], color="red")
     else:
         plt.plot(freq, ft_post[0], color="green")
 
+plt.xscale("log")
+plt.yscale("log")
 plt.xlabel("Frequency(Hz)")
-plt.ylabel("Power (a.u.)")
-plt.legend([x.sessionName for x in sessions])
+plt.ylabel("Amplitude (a.u.)")
+# plt.legend([x.sessionName for x in sessions])
+plt.legend(["sd", "nsd"])
 plt.savefig("test_1.png", dpi=150)
+plt.title(
+    "Comparison of frequencies in sws epochs (>7 minutes) between recovery and normal sleep "
+)
+

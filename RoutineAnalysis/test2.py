@@ -1,16 +1,11 @@
+import altair as alt
 import numpy as np
-import matplotlib.pyplot as plt
-import scipy.fftpack
+import pandas as pd
 
-# Number of samplepoints
-N = 6000
-# sample spacing
-T = 1.0 / 800.0
-x = np.linspace(0.0, N * T, N)
-y = np.sin(50.0 * 2.0 * np.pi * x) + 0.5 * np.sin(80.0 * 2.0 * np.pi * x)
-yf = scipy.fftpack.fft(y)
-xf = np.linspace(0.0, 1.0 / (2.0 * T), N / 2)
+a = pd.DataFrame(columns=["state", "time", "delta"])
 
-# fig, ax = plt.subplots()
-# ax.plot(xf, 2.0 / N * np.abs(yf[: N // 2]))
+for i in range(5):
 
+    st_data = pd.DataFrame({"state": i, "time": [1, 2, 3], "delta": [5, 6, 7]})
+
+    a = a.append(st_data)

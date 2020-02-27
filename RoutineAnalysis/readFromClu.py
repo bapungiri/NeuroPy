@@ -46,7 +46,7 @@ for i in range(2, 9):
                         clus_pyr.append([int(z.text), int(z1.text)])
 
     clus_pyr = np.asarray(clus_pyr)
-    pyr_id = clus_pyr[:, 1]
+    pyr_id = clus_pyr[clus_pyr[:, 0] == 9, 1]
 
     for clus in pyr_id:
         spklist.append(spk_time[np.where(spk == clus)[0]] / 30000)
@@ -59,9 +59,9 @@ for i in range(2, 9):
 np.save(basePath + "RatJ_Day1_2019-05-31_03-55-36" + "_spikes.npy", spklist)
 
 
-sess1 = getspk(basePath)
-sess1.CollectSpikes()
-sess1.ExpVAr()
+# sess1 = getspk(basePath)
+# sess1.CollectSpikes()
+# sess1.ExpVAr()
 #     m = "".join(line)
 # class ExtractfromClu:
 #     def __init__(self, basePath):
