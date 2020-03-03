@@ -7,9 +7,10 @@ from pathlib import Path
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day3/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day3/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day3/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/",
     # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
@@ -22,9 +23,10 @@ basics = [ExtractChanXml(basePath[i]) for i in range(nSessions)]
 
 prmGen = [makePrmPrb(basePath[i]) for i in range(nSessions)]
 
-for i in range(nSessions):
+for sess in prmGen:
     # prmGen[i].makePrm()
     # prmGen[i].makePrb()
-    prmGen[i].makePrmServer()
-    prmGen[i].makePrbServer()
+    # prmGen[i].makePrmServer()
+    # prmGen[i].makePrbServer()
+    sess.makePrbCircus(probetype="buzsaki")
 

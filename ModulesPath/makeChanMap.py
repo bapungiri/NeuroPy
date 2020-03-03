@@ -10,7 +10,7 @@ class ExtractChanXml(name2path):
     def __init__(self, basePath):
         super().__init__(basePath)
 
-        myroot = ET.parse(self.filename).getroot()
+        myroot = ET.parse(self.xmlfile).getroot()
 
         self.chan_session = []
         self.channelgroups = []
@@ -38,6 +38,6 @@ class ExtractChanXml(name2path):
             "sessionName": self.sessionName,
         }
 
-        np.save(self.filePrefix + "_basics.npy", basics)
+        np.save(str(self.filePrefix) + "_basics.npy", basics)
         print(f"_basics.npy created for {self.sessionName}")
 

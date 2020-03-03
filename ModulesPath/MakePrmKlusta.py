@@ -20,7 +20,7 @@ class makePrmPrb(name2path):
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prb"
         )
 
-        recInfo = np.load(self.filePrefix + "_basics.npy", allow_pickle=True)
+        recInfo = np.load(str(self.filePrefix) + "_basics.npy", allow_pickle=True)
         self.sampFreq = recInfo.item().get("sRate")
         self.chan_session = recInfo.item().get("channels")
         self.nChansDat = recInfo.item().get("nChans")
@@ -225,56 +225,32 @@ class makePrmPrb(name2path):
                         else:
                             f1.write(line)
 
-    def makePrbCircus(self):
+    def makePrbCircus(self, probetype):
         circus_prb = (self.filePrefix).with_suffix(".prb")
+        if probetype == "buzsaki":
+            xpos = [0, 37, 4, 33, 8, 29, 12, 20]
+            ypos = np.arange(140, 0, -20)
+        if probetype == "diagbio":
+            xpos = []
+            ypos = []
         with circus_prb.open("w") as f:
+            f.write(f"total_nb_channels = {self.nChansDat} \n")
+            f.write(f"radius = 100 \n")
+            f.write("channel_groups = { \n")
 
             for shank in range(1, self.nShanks + 1):
-
                 chan_list = self.channelgroups[shank - 1]
-                if not os.path.exists(Path(self.basePath, "Shank" + str(shank))):
-                    os.mkdir(self.basePath + "Shank" + str(shank))
-                outfile_prefix = Path(
-                    self.basePath,
-                    "Shank" + str(shank),
-                    self.sessionName + "sh" + str(shank) + ".prb",
-                )
 
-                with outfile_prefix.open("w") as f1:
-                    for line in f:
+                f.write(f"{shank}: {{ \n")
+                f.write(f"'channels' : {chan_list} ,\n")
+                f.write("'graph' : [],\n")
+                f.write("'geometry' : { \n")
 
-                        if "Shank index" in line:
-                            f1.write("# Shank index. \n")
-                            f1.write(str(shank - 1) + ":\n")
-                            next(f)
+                for chan, x, y in zip(chan_list, xpos, ypos):
+                    f.write(f"{chan}: [{x+(shank-1)*300},{y}],\n")
 
-                        elif "channels" in line:
-                            f1.write("'channels' : " + str(chan_list) + ",")
+                f.write("}\n")
+                f.write("},\n")
 
-                        elif "graph" in line:
-                            f1.write("'graph' : [\n")
-                            for i, chan in enumerate(chan_list[:-2]):
-                                f1.write(f"({chan},{chan_list[i + 1]}),\n")
-                                f1.write(f"({chan},{chan_list[i + 2]}),\n")
+            f.write("}\n")
 
-                            f1.write(f"({chan_list[-2]},{chan_list[-1]}),\n")
-                            for i in range(13):
-                                next(f)
-
-                        elif "geometry" in line:
-                            f1.write("'geometry' : {\n")
-                            # f1.write("(" +str(chan_list[0])',' +")")
-                            chan_height = np.arange(320, 10, -20)
-                            for i in range(16):
-                                f1.write(
-                                    str(chan_list[i])
-                                    + ":"
-                                    + str((0, chan_height[i]))
-                                    + ",\n"
-                                )
-
-                            for i in range(8):
-                                next(f)
-
-                        else:
-                            f1.write(line)
