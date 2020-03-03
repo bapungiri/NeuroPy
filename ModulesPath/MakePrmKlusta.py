@@ -225,3 +225,56 @@ class makePrmPrb(name2path):
                         else:
                             f1.write(line)
 
+    def makePrbCircus(self):
+        circus_prb = (self.filePrefix).with_suffix(".prb")
+        with circus_prb.open("w") as f:
+
+            for shank in range(1, self.nShanks + 1):
+
+                chan_list = self.channelgroups[shank - 1]
+                if not os.path.exists(Path(self.basePath, "Shank" + str(shank))):
+                    os.mkdir(self.basePath + "Shank" + str(shank))
+                outfile_prefix = Path(
+                    self.basePath,
+                    "Shank" + str(shank),
+                    self.sessionName + "sh" + str(shank) + ".prb",
+                )
+
+                with outfile_prefix.open("w") as f1:
+                    for line in f:
+
+                        if "Shank index" in line:
+                            f1.write("# Shank index. \n")
+                            f1.write(str(shank - 1) + ":\n")
+                            next(f)
+
+                        elif "channels" in line:
+                            f1.write("'channels' : " + str(chan_list) + ",")
+
+                        elif "graph" in line:
+                            f1.write("'graph' : [\n")
+                            for i, chan in enumerate(chan_list[:-2]):
+                                f1.write(f"({chan},{chan_list[i + 1]}),\n")
+                                f1.write(f"({chan},{chan_list[i + 2]}),\n")
+
+                            f1.write(f"({chan_list[-2]},{chan_list[-1]}),\n")
+                            for i in range(13):
+                                next(f)
+
+                        elif "geometry" in line:
+                            f1.write("'geometry' : {\n")
+                            # f1.write("(" +str(chan_list[0])',' +")")
+                            chan_height = np.arange(320, 10, -20)
+                            for i in range(16):
+                                f1.write(
+                                    str(chan_list[i])
+                                    + ":"
+                                    + str((0, chan_height[i]))
+                                    + ",\n"
+                                )
+
+                            for i in range(8):
+                                next(f)
+
+                        else:
+                            f1.write(line)

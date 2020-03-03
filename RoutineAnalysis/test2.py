@@ -1,11 +1,19 @@
 import altair as alt
-import numpy as np
-import pandas as pd
+from vega_datasets import data
 
-a = pd.DataFrame(columns=["state", "time", "delta"])
+alt.renderers.enable("html")
 
-for i in range(5):
+source = data.population.url
 
-    st_data = pd.DataFrame({"state": i, "time": [1, 2, 3], "delta": [5, 6, 7]})
+chart = (
+    alt.Chart(source)
+    .mark_area()
+    .encode(
+        x="age:O",
+        y=alt.Y("sum(people):Q", title="Population"),
+        facet=alt.Facet("year:O", columns=5),
+    )
+    .properties(width=100, height=80)
+)
 
-    a = a.append(st_data)
+chart.save("filename.html")
