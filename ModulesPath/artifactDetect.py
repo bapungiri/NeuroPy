@@ -73,3 +73,65 @@ class findartifact(name2path):
         self.zsc_signal = zsc
         self.artifact_time = artifact_s
 
+    def createCleanDat(self):
+
+        for shankID in range(3, 9):
+            print(shankID)
+
+            DatFileOG = (
+                folderPath
+                + "Shank"
+                + str(shankID)
+                + "/RatJDay2_Shank"
+                + str(shankID)
+                + ".dat"
+            )
+            DestFolder = (
+                folderPath
+                + "Shank"
+                + str(shankID)
+                + "/RatJDay2_Shank"
+                + str(shankID)
+                + "_denoised.dat"
+            )
+
+            nChans = 8
+            SampFreq = 30000
+
+            b = []
+            for i in range(len(Data_start)):
+
+                start_time = Data_start[i]
+                end_time = Data_end[i]
+
+                duration = end_time - start_time  # in seconds
+                b.append(
+                    np.memmap(
+                        DatFileOG,
+                        dtype="int16",
+                        mode="r",
+                        offset=2 * nChans * int(SampFreq * start_time),
+                        shape=(nChans * int(SampFreq * duration)),
+                    )
+                )
+
+            c = np.memmap(
+                DestFolder, dtype="int16", mode="w+", shape=sum([len(x) for x in b])
+            )
+
+            del c
+            d = np.memmap(
+                DestFolder, dtype="int16", mode="r+", shape=sum([len(x) for x in b])
+            )
+
+            sizeb = [0]
+            sizeb.extend([len(x) for x in b])
+            sizeb = np.cumsum(sizeb)
+
+            for i in range(len(b)):
+
+                d[sizeb[i] : sizeb[i + 1]] = b[i]
+                # d[len(b[i]) : len(b1) + len(b2)] = b2
+            del d
+            del b
+

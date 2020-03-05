@@ -1,19 +1,37 @@
-import altair as alt
-from vega_datasets import data
+class hiding:
+    # class attribute, "__" befor an attribute will make it to hide
+    a = 10
 
-alt.renderers.enable("html")
+    def __init__(self):
+        self.__n = 0
 
-source = data.population.url
+        print(self.a)
 
-chart = (
-    alt.Chart(source)
-    .mark_area()
-    .encode(
-        x="age:O",
-        y=alt.Y("sum(people):Q", title="Population"),
-        facet=alt.Facet("year:O", columns=5),
-    )
-    .properties(width=100, height=80)
-)
 
-chart.save("filename.html")
+class check:
+    # class attribute, "__" befor an attribute will make it to hide
+    a = 10
+
+    def __init__(self):
+
+        self.m = 10
+        # print(self.a)
+
+
+class check2(check):
+    # class attribute, "__" befor an attribute will make it to hide
+
+    def __init__(self):
+        super().__init__()
+
+        # self.a = 10
+
+    def gf(self):
+        print(self.a)
+
+
+a = hiding()
+# b = check2()
+# b.a = 20
+# b.gf()
+

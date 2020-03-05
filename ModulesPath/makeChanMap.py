@@ -10,6 +10,8 @@ class ExtractChanXml(name2path):
     def __init__(self, basePath):
         super().__init__(basePath)
 
+    def makebasics(self):
+
         myroot = ET.parse(self.xmlfile).getroot()
 
         self.chan_session = []

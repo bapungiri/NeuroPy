@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Mar 20 13:42:34 2019
-
-@author: bapung
-"""
-
 import numpy as np
 import scipy.signal as sg
 import scipy.fftpack as ft
@@ -20,13 +12,9 @@ from datetime import datetime
 sns.set_style("darkgrid")
 
 
-def swr(basePath, sRate, PlotRippleStat=0, savefile=0):
+def swr(lfp, sRate, PlotRippleStat=0):
 
-    for file in os.listdir(basePath):
-        if file.endswith(".eeg"):
-            subname = file[:-4]
-            filePrefix = os.path.join(basePath, file[:-4])
-
+    # setting thresholds
     SampFreq = sRate
     nyq = 0.5 * SampFreq
     lowFreq = 150
@@ -39,11 +27,7 @@ def swr(basePath, sRate, PlotRippleStat=0, savefile=0):
     maxRippleDuration = 800  # in milliseconds
     maxRipplePower = 60  # in normalized power units
 
-    fileName = filePrefix + "_BestRippleChans.npy"
-    lfpCA1 = np.load(fileName, allow_pickle=True)
-
-    signal = lfpCA1.item()
-    signal = signal["BestChan"]
+    signal = lfp
     signal = np.array(signal, dtype=np.float)  # convert data to float
     zscoreRawSig = stat.zscore(signal)
 
@@ -52,10 +36,6 @@ def swr(basePath, sRate, PlotRippleStat=0, savefile=0):
 
     squared_signal = np.square(yf)
     normsquaredsignal = stat.zscore(squared_signal)
-
-    # getting an envelope of the signal
-    # analytic_signal = sg.hilbert(yf)
-    # amplitude_envelope = stat.zscore(np.abs(analytic_signal))
 
     windowLength = SampFreq / SampFreq * 11
     window = np.ones((int(windowLength),)) / windowLength
@@ -130,7 +110,7 @@ def swr(basePath, sRate, PlotRippleStat=0, savefile=0):
     sixthPass = np.delete(fifthPass, highRawInd, 0)
     peakNormalizedPower = np.delete(peakNormalizedPower, highRawInd)
 
-    print(sixthPass.shape)
+    print(f"{len(sixthPass.shape)} ripples detected")
     # TODO delete sharp ripple like artifacts
     # Maybe unrelistic high power has taken care of this but check to confirm
 
@@ -182,7 +162,8 @@ def swr(basePath, sRate, PlotRippleStat=0, savefile=0):
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
     ripples = dict()
-    ripples["timestamps"] = sixthPass
+    ripples["timestamps"] = sixthPass / SampFreq
+    ripples["peakPower"] = peakNormalizedPower
     ripples["DetectionParams"] = {
         "lowThres": lowthresholdFactor,
         "highThresh": highThresholdFactor,
@@ -194,17 +175,6 @@ def swr(basePath, sRate, PlotRippleStat=0, savefile=0):
         "maxDuration": maxRippleDuration,
     }
     ripples["Info"] = {"Date": dt_string, "DetectorName": "lfpDetect/swr"}
-
-    # other_measures = dict()
-    # other_measures["example_ripples"] = [example_ripples, example_ripples_duration]
-    # other_measures["zscore_dist"] = [hist_zscoresignal, edges_zscoresignal]
-
-    # detectionParams = dict()
-    # detectionParams["example_ripples"] = [example_ripples, example_ripples_duration]
-    # detectionParams["Date"] = dt_string
-
-    if savefile == 1:
-        np.save(filePrefix + "_ripples.npy", ripples)
 
     return ripples
 
