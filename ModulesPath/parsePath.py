@@ -3,10 +3,6 @@ from pathlib import Path
 
 import numpy as np
 
-from lfpEvent import swr, hwsa
-from makeChanMap import ExtractChanXml
-from MakePrmKlusta import makePrmPrb
-
 
 class name2path:
     # common parameters used frequently
@@ -31,10 +27,6 @@ class name2path:
         self.f_ripple_evt = Path(str(self.filePrefix) + "_ripples.npy")
         self.f_theta_evt = Path(str(self.filePrefix) + "_thetaevents.npy")
         self.f_sessionepoch = Path(str(self.filePrefix) + "_epochs.npy")
+        self.f_slow_wave = Path(str(self.filePrefix) + "_hswa.npy")
+        self.f_hwsa_ripple = Path(str(self.filePrefix) + "_hswa_ripple.npy")
 
-        # parameters used across
-
-
-class session(ExtractChanXml, makePrmPrb, swr, hwsa):
-    def __init__(self, basePath):
-        super().__init__(basePath)

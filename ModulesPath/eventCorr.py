@@ -1,85 +1,120 @@
-import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
-from parsePath import name2path
+import numpy as np
+import pandas as pd
+import scipy.ndimage as filtSig
 import scipy.signal as sg
 import scipy.stats as stat
-import pandas as pd
 from numpy.fft import fft
-import scipy.ndimage as filtSig
+
+from parsePath import name2path
+
+cmap = matplotlib.cm.get_cmap("Spectral")
 
 
-class event_event(name2path):
+def psth(event_reference, event_post, trange, nbins=150):
+    """
+    calcualtes psth for event_post with respect to event_reference with trange around the reference event 
 
-    lfpsRate = 1250
-    binSize = 0.250  # in seconds
+    event_reference = stimulus timings in seconds
+    event_post = events whose occurences will be calculated w.r.t reference
+    trange = [seconds before , seconds after] 
+    """
+    bins_refer = [
+        np.linspace(x - trange[0], x + trange[1], nbins) for x in event_reference
+    ]
+    t_hist = np.linspace(-trange[0], trange[1], nbins)
+
+    ripple_co = [np.histogram(event_post, bins=x)[0] for x in bins_refer]
+    ripple_co = np.asarray(ripple_co)
+
+    histall = np.sum(ripple_co)
+    count_per_event = ripple_co
+
+    return histall, count_per_event, t_hist
+
+
+class hswa_ripple(name2path):
+
     nQuantiles = 10
 
     def __init__(self, basePath):
         super().__init__(basePath)
 
-    def hswa_ripple(self):
+    def plot_psth_hswa_ripple(self):
         """
         calculating the psth for ripple and slow wave oscillation and making n quantiles for plotting 
         """
+        # TODO make it general event to event psth which work with time slice instead
         epochs = np.load(str(self.filePrefix) + "_epochs.npy", allow_pickle=True).item()
         pre = epochs["PRE"]  # in seconds
         maze = epochs["MAZE"]  # in seconds
         post = epochs["POST"]  # in seconds
-        ripples = np.load(
-            str(self.filePrefix) + "_ripples.npy", allow_pickle=True
-        ).item()
+        ripples = np.load(self.f_ripple_evt, allow_pickle=True).item()
         ripplesTime = ripples["timestamps"]
-        rippleStart = ripplesTime[:, 0] / self.lfpsRate
+        rippleStart = ripplesTime[:, 0]
 
-        delta_epochs = np.load(
-            str(self.filePrefix) + "_hswa.npy", allow_pickle=True
-        ).item()
-        delta_osc = delta_epochs["delta_lfp"]
-        delta_t = delta_epochs["delta_t"]
+        delta_evts = np.load(self.f_slow_wave, allow_pickle=True).item()
+        delta_amp = delta_evts["delta_amp"]
+        delta_amp_t = delta_evts["delta_t"]
 
-        delta_amp, delta_amp_t = [], []
-
-        for osc, t in zip(delta_osc, delta_t):
-
-            signal = osc
-            signal_t = t
-
-            # finding peaks and trough for delta oscillations
-            peaks, _ = sg.find_peaks(signal)
-            troughs, _ = sg.find_peaks(-signal)
-
-            # making sure they come in pairs and chopping half waves
-            if peaks[0] > troughs[0]:
-                troughs = troughs[1:]
-
-            if peaks[-1] > troughs[-1]:
-                peaks = peaks[:-1]
-
-            for i in range(len(peaks) - 1):
-                delta_peak = signal[peaks[i + 1]]
-                delta_trough = signal[troughs[i]]
-
-                delta_amp.extend([delta_peak - delta_trough])
-                delta_amp_t.append(signal_t[troughs[i]])
+        thetalfp = np.load(self.f_thetalfp).item()
+        theta_t = np.linspace(0, len(thetalfp) / self.lfpsRate, len(thetalfp))
 
         # binning with 500ms before and 1 sec after
-        bins = [np.linspace(x - 0.5, x + 1, 150) for x in delta_amp_t]
-        t_hist = np.linspace(-0.5, 1, 150)
+        ripple_hist, ripple_co, t_hist = psth(delta_amp_t, rippleStart, [0.5, 1])
 
-        ripple_co = [np.histogram(rippleStart, bins=x)[0] for x in bins]
-        ripple_co = np.asarray(ripple_co)
+        self.psth_hwsa_ripple = {
+            "hwsa_ripple_comb": ripple_hist,
+            "hwsa_ripple_per_event": ripple_co,
+            "hwsa_ripple_time": t_hist,
+            "delta_t": delta_amp,
+        }
 
         quantiles = pd.qcut(delta_amp, self.nQuantiles, labels=False)
 
-        hwsa_ripple_hist = pd.DataFrame(columns=["name", "quant", "swrs", "time"])
+        # hwsa_ripple_hist = pd.DataFrame(columns=["name", "quant", "swrs", "time"])
+        fig = plt.figure(figsize=(6, 10))
+
+        num_trials = len(delta_amp)
+
+        trial = 0
         for category in range(self.nQuantiles):
-            indx = np.where(quantiles == category)
+            indx = np.where(quantiles == category)[0]
             ripple_hist = np.sum(ripple_co[indx], axis=0)
             ripple_hist = filtSig.gaussian_filter1d(ripple_hist, 2)
+            all_ts = [[] for x in range(len(indx))]
+            all_y = [[] for x in range(len(indx))]
+            for i, ind in enumerate(indx):
 
-            temp = pd.DataFrame(
-                {"quant": category, "swrs": ripple_hist, "time": t_hist[:-1]}
+                ripple_around = np.where(
+                    (rippleStart > delta_amp_t[ind] - 0.5)
+                    & (rippleStart < delta_amp_t[ind] + 1)
+                )[0]
+                ripple_ts = rippleStart[ripple_around]
+
+                # trial_on = raster_data.time_ranges[0, trial]
+                # trial_off = raster_data.time_ranges[1, trial]
+                # ind1 = ts >= trial_on
+                # ind2 = ts < trial_off
+                # trial_ts = ts[ind1 & ind2]
+                all_ts[i] = ripple_ts - delta_amp_t[ind]
+                all_y[i] = (trial + 1) * np.ones(len(ripple_ts))
+                trial += 1
+
+            # random selection of slow wave within the quantile
+
+            ax2 = fig.add_subplot(4, 1, 1)
+            ax2.plot(t_hist[:-1], ripple_hist, color=cmap(category / self.nQuantiles))
+
+            ax1 = fig.add_subplot(4, 1, 3)
+            all_x = np.concatenate(all_ts)
+            all_y = np.concatenate(all_y)
+            ax1.plot(
+                all_x, all_y, ".", markersize=1, color=cmap(category / self.nQuantiles)
             )
-            hwsa_ripple_hist = hwsa_ripple_hist.append(temp)
 
-        self.hswa_ripple_hist = hwsa_ripple_hist.append(temp)
+        # temp = pd.DataFrame(
+        #     {"quant": category, "swrs": ripple_hist, "time": t_hist[:-1]}
+        # )
+        # hwsa_ripple_hist = hwsa_ripple_hist.append(temp)

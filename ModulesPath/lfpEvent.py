@@ -14,12 +14,12 @@ from lfpDetect import swr as spwrs
 from parsePath import name2path
 
 
-class hwsa(name2path):
+class hswa(name2path):
     def __init__(self, basePath):
         super().__init__(basePath)
 
     ##======= hippocampal slow wave detection =============
-    def detecthswa(self):
+    def detect_hswa(self):
         """
         fileName: name of the .eeg file
         sampleRate: sampling frequency of eeg
@@ -51,11 +51,43 @@ class hwsa(name2path):
 
             delta_epochs.append([delta_st, t_st])
 
-        self.delta_epochs = {
-            "delta_t": [x[1] for x in delta_epochs],
-            "delta_lfp": [x[0] for x in delta_epochs],
-        }
-        np.save(str(self.filePrefix) + "_hswa.npy", self.delta_epochs)
+        # self.delta_epochs = {
+        #     "delta_t": [x[1] for x in delta_epochs],
+        #     "delta_lfp": [x[0] for x in delta_epochs],
+        # }
+        # np.save(str(self.filePrefix) + "_hswa.npy", self.delta_epochs)
+
+        delta_t = [x[1] for x in delta_epochs]
+        delta_osc = [x[0] for x in delta_epochs]
+
+        delta_amp, delta_amp_t = [], []
+
+        for osc, t in zip(delta_osc, delta_t):
+
+            signal = osc
+            signal_t = t
+
+            # finding peaks and trough for delta oscillations
+            peaks, _ = sg.find_peaks(signal)
+            troughs, _ = sg.find_peaks(-signal)
+
+            # making sure they come in pairs and chopping half waves
+            if peaks[0] > troughs[0]:
+                troughs = troughs[1:]
+
+            if peaks[-1] > troughs[-1]:
+                peaks = peaks[:-1]
+
+            for i in range(len(peaks) - 1):
+                delta_peak = signal[peaks[i + 1]]
+                delta_trough = signal[troughs[i]]
+
+                delta_amp.extend([delta_peak - delta_trough])
+                delta_amp_t.append(signal_t[troughs[i]])
+
+        hipp_slow_wave = {"delta_t": delta_amp_t, "delta_amp": delta_amp}
+
+        np.save(self.f_slow_wave, hipp_slow_wave)
 
 
 class swr(name2path):

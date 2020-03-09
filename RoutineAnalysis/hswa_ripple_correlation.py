@@ -4,7 +4,6 @@ from pfPlot import pf
 import pandas as pd
 import seaborn as sns
 import altair as alt
-from lfpEvent import fromLfp
 import scipy.signal as sg
 from numpy.fft import fft
 import scipy.ndimage as filtSig
