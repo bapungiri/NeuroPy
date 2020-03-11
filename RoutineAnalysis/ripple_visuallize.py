@@ -13,19 +13,19 @@ from sessionObj import session
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # # "/data/Clustering/SleepDeprivation/RatJ/Day3/",
-    # # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day3/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/"
 ]
 
 sessions = [session(_) for _ in basePath]
 
 
 for sess_id, sess in enumerate(sessions):
-    # sess.detect_hswa()
+    sess.detect_hswa()
     # sess.findswr()
     # sess.load_swr_evt()
     sess.plot_psth_hswa_ripple()
