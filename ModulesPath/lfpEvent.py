@@ -12,6 +12,7 @@ import scipy.stats as stat
 
 from lfpDetect import swr as spwrs
 from parsePath import name2path
+from signal_process import filter_sig as filt
 
 
 class hswa(name2path):
@@ -21,55 +22,38 @@ class hswa(name2path):
     ##======= hippocampal slow wave detection =============
     def detect_hswa(self):
         """
-        fileName: name of the .eeg file
-        sampleRate: sampling frequency of eeg
+        filters the channel which has highest ripple power.
+        Caculate peaks and troughs in the filtered lfp
+
+        ripplechan --> filter delta --> identify peaks and troughs within sws epochs only --> identifies a slow wave as trough to peak --> thresholds for 100ms minimum duration
+
         """
 
-        nyq = 0.5 * self.lfpsRate
-        lowdelta = 0.5  # in Hz
-        highdelta = 4  # in Hz
+        # parameters
+        min_swa_duration = 0.1  # 100 milliseconds
+
+        # filtering best ripple channel in delta band
         deltachan = np.load(self.f_ripplelfp, allow_pickle=True).item()
         deltachan = deltachan["BestChan"]
-        deltastates = np.load(str(self.filePrefix) + "_sws.npy", allow_pickle=True)
+        delta_sig = filt.filter_delta(deltachan)
+        delta = stat.zscore(delta_sig)  # normalization w.r.t session
 
-        b, a = sg.butter(3, [lowdelta / nyq, highdelta / nyq], btype="bandpass")
-        delta_sig = sg.filtfilt(b, a, deltachan)
+        # epochs which have high slow wave amplitude
+        deltastates = np.load(self.f_sws_states, allow_pickle=True).item()
+        states = deltastates["sws_epochs"]
 
-        delta = stat.zscore(delta_sig)
         t = np.linspace(0, len(deltachan) / self.lfpsRate, len(deltachan))
 
-        states = deltastates.item().get("sws_epochs")
+        # finding peaks and trough for delta oscillations
 
-        # delta_epochs = pd.DataFrame(columns=["state", "time", "delta"])
-        delta_epochs = []
-        for _, st in enumerate(states):
-            idx = np.where((t > st[0]) & (t < st[1]))
+        delta_amp, delta_amp_t = [], []
+        for epoch in states:
+            idx = np.where((t > epoch[0]) & (t < epoch[1]))
             delta_st = delta[idx]
             t_st = t[idx]
 
-            # st_data = pd.DataFrame({"state": _, "time": t_st, "delta": delta_st})
-
-            delta_epochs.append([delta_st, t_st])
-
-        # self.delta_epochs = {
-        #     "delta_t": [x[1] for x in delta_epochs],
-        #     "delta_lfp": [x[0] for x in delta_epochs],
-        # }
-        # np.save(str(self.filePrefix) + "_hswa.npy", self.delta_epochs)
-
-        delta_t = [x[1] for x in delta_epochs]
-        delta_osc = [x[0] for x in delta_epochs]
-
-        delta_amp, delta_amp_t = [], []
-
-        for osc, t in zip(delta_osc, delta_t):
-
-            signal = osc
-            signal_t = t
-
-            # finding peaks and trough for delta oscillations
-            peaks, _ = sg.find_peaks(signal)
-            troughs, _ = sg.find_peaks(-signal)
+            peaks, _ = sg.find_peaks(delta_st)
+            troughs, _ = sg.find_peaks(-delta_st)
 
             # making sure they come in pairs and chopping half waves
             if peaks[0] > troughs[0]:
@@ -79,13 +63,18 @@ class hswa(name2path):
                 peaks = peaks[:-1]
 
             for i in range(len(peaks) - 1):
-                delta_peak = signal[peaks[i + 1]]
-                delta_trough = signal[troughs[i]]
+                swa_peak = delta_st[peaks[i + 1]]
+                swa_trough = delta_st[troughs[i]]
+                swa_duration = abs(t_st[peaks[i + 1]] - t_st[troughs[i]])
 
-                delta_amp.extend([delta_peak - delta_trough])
-                delta_amp_t.append(signal_t[troughs[i]])
+                if swa_duration > min_swa_duration:
+                    delta_amp.extend([abs(swa_peak - swa_trough)])
+                    delta_amp_t.append(t_st[troughs[i]])
 
-        hipp_slow_wave = {"delta_t": delta_amp_t, "delta_amp": delta_amp}
+        hipp_slow_wave = {
+            "delta_t": np.asarray(delta_amp_t),
+            "delta_amp": np.asarray(delta_amp),
+        }
 
         np.save(self.f_slow_wave, hipp_slow_wave)
 
