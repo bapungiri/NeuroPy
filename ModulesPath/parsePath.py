@@ -31,3 +31,16 @@ class name2path:
         self.f_hwsa_ripple = Path(str(self.filePrefix) + "_hswa_ripple.npy")
         self.f_sws_states = Path(str(self.filePrefix) + "_sws.npy")
 
+
+class ripple:
+
+    a = [1, 2, 3]
+    # return a
+
+
+class epoch:
+    @property
+    def time(self):
+
+        a = [1, 2, 3]
+        return a

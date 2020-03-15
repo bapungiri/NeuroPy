@@ -7,6 +7,10 @@ import scipy.signal as sg
 import scipy.stats as stat
 from matplotlib.gridspec import GridSpec
 from numpy.fft import fft
+import matplotlib.style
+import matplotlib as mpl
+
+mpl.style.use("default")
 
 from parsePath import name2path
 from signal_process import filter_sig as filt
@@ -51,6 +55,8 @@ class hswa_ripple(name2path):
 
         # parameters
         swa_amp_thresh = 0.1
+        tbefore = 0.5  # seconds before delta trough
+        tafter = 1  # seconds after delta trough
 
         epochs = np.load(str(self.filePrefix) + "_epochs.npy", allow_pickle=True).item()
         pre = epochs["PRE"]  # in seconds
@@ -74,36 +80,29 @@ class hswa_ripple(name2path):
         lfp_delta = filt.filter_delta(lfp)
         lfp_t = np.linspace(0, len(lfp) / self.lfpsRate, len(lfp))
 
-        # binning with 500ms before and 1 sec after
-        ripple_hist, ripple_co, t_hist = psth(swa_amp_t, rippleStart, [0.5, 1])
+        # binning with tbefore and tafter delta trough
+        _, ripple_co, t_hist = psth(swa_amp_t, rippleStart, [tbefore, tafter])
 
         quantiles = pd.qcut(swa_amp, self.nQuantiles, labels=False)
 
         fig = plt.figure(figsize=(6, 10))
-        gs = GridSpec(3, 3, figure=fig)
+        gs = GridSpec(2, 2, figure=fig)
 
-        trial = 0
-        plt_lfp = 0
+        trial, plt_lfp = 0, 0
 
         for category in range(self.nQuantiles):
             indx = np.where(quantiles == category)[0]
             ripple_hist = np.sum(ripple_co[indx], axis=0)
-            ripple_hist = filtSig.gaussian_filter1d(ripple_hist, 2)
+            # ripple_hist = filtSig.gaussian_filter1d(ripple_hist, 2)
+
             all_ts = [[] for x in range(len(indx))]
             all_y = [[] for x in range(len(indx))]
             for i, ind in enumerate(indx):
 
-                ripple_around = np.where(
-                    (rippleStart > swa_amp_t[ind] - 0.5)
-                    & (rippleStart < swa_amp_t[ind] + 1)
-                )[0]
-                ripple_ts = rippleStart[ripple_around]
+                ind1 = rippleStart > (swa_amp_t[ind] - tbefore)
+                ind2 = rippleStart < (swa_amp_t[ind] + tafter)
+                ripple_ts = rippleStart[ind1 & ind2]
 
-                # trial_on = raster_data.time_ranges[0, trial]
-                # trial_off = raster_data.time_ranges[1, trial]
-                # ind1 = ts >= trial_on
-                # ind2 = ts < trial_off
-                # trial_ts = ts[ind1 & ind2]
                 all_ts[i] = ripple_ts - swa_amp_t[ind]
                 all_y[i] = (trial + 1) * np.ones(len(ripple_ts))
                 trial += 1
@@ -122,16 +121,19 @@ class hswa_ripple(name2path):
                 lfp_ripple_zsc = stat.zscore(lfp_ripple[ind_theta])
                 lfp_delta_zsc = stat.zscore(lfp_delta[ind_theta])
                 y_lfp = (plt_lfp + 2) * np.ones(len(lfp_zsc))
-                ax1.plot(
-                    np.linspace(-0.5, 1, len(lfp_zsc)),
-                    lfp_ripple_zsc * 0.4 + y_lfp,
-                    color=cmap(category / self.nQuantiles),
-                )
+
                 ax1.plot(
                     np.linspace(-0.5, 1, len(lfp_zsc)),
                     lfp_delta_zsc * 1.2 + y_lfp,
                     color="k",
                 )
+                ax1.plot(
+                    np.linspace(-0.5, 1, len(lfp_zsc)),
+                    lfp_ripple_zsc * 0.4 + y_lfp,
+                    color=cmap(category / self.nQuantiles),
+                    alpha=0.7,
+                )
+
                 plt_lfp += 3
 
             ax2 = fig.add_subplot(gs[0, 0])
