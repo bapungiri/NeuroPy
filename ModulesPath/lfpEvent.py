@@ -11,13 +11,26 @@ import scipy.signal as sg
 import scipy.stats as stat
 
 from lfpDetect import swr as spwrs
-from parsePath import name2path
+
+# from parsePath import name2path
 from signal_process import filter_sig as filt
+from pathlib import Path
+
+# from sessionObj import session
+
+# from parsePath import name2path
+from parsePath import path2files
+
+# from callfunc import processData
 
 
-class hswa(name2path):
-    def __init__(self, basePath):
-        super().__init__(basePath)
+class hswa(path2files):
+    def __init__(self, basepath):
+        super().__init__(basepath)
+
+        evt = np.load(self._files.slow_wave, allow_pickle=True).item()
+        self.amp = evt["delta_amp"]
+        self.time = evt["delta_t"]
 
     ##======= hippocampal slow wave detection =============
     def detect_hswa(self):
@@ -79,14 +92,23 @@ class hswa(name2path):
         np.save(self.f_slow_wave, hipp_slow_wave)
 
 
-class swr(name2path):
-    def __init__(self, basePath):
-        super().__init__(basePath)
+class ripple(path2files):
+    def __init__(self, basepath):
+        super().__init__(basepath)
+
+        ripple_evt = np.load(self._files.ripple_evt, allow_pickle=True).item()
+        self.time = ripple_evt["timestamps"]
+
+    @property
+    def best_chan_lfp(self):
+
+        lfp = np.load(self._files.ripplelfp, allow_pickle=True).item()
+
+        return lfp["BestChan"]
 
     def findswr(self):
-        ripplechan = np.load(self.f_ripplelfp, allow_pickle=True).item()
-        ripplechan = ripplechan["BestChan"]
-        self.__ripples = spwrs(ripplechan, self.lfpsRate)
+        ripplechan = self.best_chan_lfp
+        self.__ripples = spwrs(ripplechan, self.__lfpsRate)
 
         np.save(self.f_ripple_evt, self.__ripples)
         print(f"{self.f_ripple_evt.name} created")

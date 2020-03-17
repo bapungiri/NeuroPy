@@ -12,8 +12,11 @@ import matplotlib as mpl
 
 mpl.style.use("default")
 
-from parsePath import name2path
 from signal_process import filter_sig as filt
+from lfpEvent import ripple, hswa
+from parsePath import path2files
+from behavior import behavior_epochs
+from makeChanMap import recinfo
 
 cmap = matplotlib.cm.get_cmap("jet")
 
@@ -40,14 +43,25 @@ def psth(event_reference, event_post, trange, nbins=150):
     return histall, count_per_event, t_hist
 
 
-class hswa_ripple(name2path):
+class event_event:
+    def __init__(self, basePath):
+
+        self.hswa_ripple = hswa_ripple(basePath)
+        # self.__ripples = ripple(basePath)
+
+
+class hswa_ripple(path2files):
 
     nQuantiles = 10
 
     def __init__(self, basePath):
-        super().__init__(basePath)
 
-    def plot_psth_hswa_ripple(self):
+        self._myinfo = recinfo(basePath)
+        self._ripples = ripple(basePath)
+        self._epochs = behavior_epochs(basePath)
+        self._swa = hswa(basePath)
+
+    def plot(self):
         """
         calculating the psth for ripple and slow wave oscillation and making n quantiles for plotting 
         """
@@ -58,27 +72,20 @@ class hswa_ripple(name2path):
         tbefore = 0.5  # seconds before delta trough
         tafter = 1  # seconds after delta trough
 
-        epochs = np.load(str(self.filePrefix) + "_epochs.npy", allow_pickle=True).item()
-        pre = epochs["PRE"]  # in seconds
-        maze = epochs["MAZE"]  # in seconds
-        post = epochs["POST"]  # in seconds
-        ripples = np.load(self.f_ripple_evt, allow_pickle=True).item()
-        ripplesTime = ripples["timestamps"]
+        pre = self._epochs.pre
+        ripplesTime = self._ripples.time
         rippleStart = ripplesTime[:, 0]
-
-        delta_evts = np.load(self.f_slow_wave, allow_pickle=True).item()
-        swa_amp = delta_evts["delta_amp"]
-        swa_amp_t = delta_evts["delta_t"]
+        swa_amp = self._swa.amp
+        swa_amp_t = self._swa.time
 
         ind_above_thresh = np.where(swa_amp > swa_amp_thresh)[0]
         swa_amp = swa_amp[ind_above_thresh]
         swa_amp_t = swa_amp_t[ind_above_thresh]
 
-        lfp = np.load(self.f_ripplelfp, allow_pickle=True).item()
-        lfp = lfp["BestChan"]
+        lfp = self._ripples.best_chan_lfp
         lfp_ripple = filt.filter_ripple(lfp)
         lfp_delta = filt.filter_delta(lfp)
-        lfp_t = np.linspace(0, len(lfp) / self.lfpsRate, len(lfp))
+        lfp_t = np.linspace(0, len(lfp) / self._myinfo.lfpSrate, len(lfp))
 
         # binning with tbefore and tafter delta trough
         _, ripple_co, t_hist = psth(swa_amp_t, rippleStart, [tbefore, tafter])

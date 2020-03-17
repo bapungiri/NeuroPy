@@ -1,18 +1,30 @@
 import os
 import numpy as np
 import xml.etree.ElementTree as ET
-from parsePath import name2path
+from parsePath import path2files
 
 
-class ExtractChanXml(name2path):
+class recinfo(path2files):
     nShanks = 8
 
     def __init__(self, basePath):
         super().__init__(basePath)
+        # self.__basics = path2files(basePath)
+
+        myinfo = np.load(self._files.basics, allow_pickle=True).item()
+        # print(recinfo.keys())
+        self.sampfreq = myinfo["sRate"]
+        self.channels = myinfo["channels"]
+        self.nChans = myinfo["nChans"]
+        self.lfpSrate = 1250
+        # # self.channelgroups = recinfo["channelgroups"]
+
+    # def loadbasics(self):
+    # pass
 
     def makebasics(self):
 
-        myroot = ET.parse(self.xmlfile).getroot()
+        myroot = ET.parse(self.__basics.xmlfile).getroot()
 
         self.chan_session = []
         self.channelgroups = []
@@ -36,10 +48,11 @@ class ExtractChanXml(name2path):
             "nChans": self.nChans,
             "channelgroups": self.channelgroups,
             "nShanks": self.nShanks,
-            "subname": self.subname,
-            "sessionName": self.sessionName,
+            "subname": self.__basics.subname,
+            "sessionName": self.__basics.sessionName,
+            "lfpSrate": 1250,
         }
 
-        np.save(str(self.filePrefix) + "_basics.npy", basics)
-        print(f"_basics.npy created for {self.sessionName}")
+        np.save(self.__basics.files.basics, basics)
+        print(f"_basics.npy created for {self.__basics.sessionName}")
 

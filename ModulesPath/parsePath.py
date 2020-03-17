@@ -4,43 +4,49 @@ from pathlib import Path
 import numpy as np
 
 
-class name2path:
-    # common parameters used frequently
-    lfpsRate = 1250
-
+class path2files:
     def __init__(self, basePath):
+        basePath = Path(basePath)
+
+        for file in os.listdir(basePath):
+            if file.endswith(".xml"):
+                xmlfile = basePath / file
+                filePrefix = xmlfile.with_suffix("")
+        self._session = sessionname(basePath)
+        self._files = files(filePrefix)
+        self._recfiles = recfiles(filePrefix)
+
+
+class files:
+    def __init__(self, f_prefix):
+
+        self.basics = Path(str(f_prefix) + "_basics.npy")
+        self.epochs = Path(str(f_prefix) + "_epochs.npy")
+        self.ripplelfp = Path(str(f_prefix) + "_BestRippleChans.npy")
+        self.ripple_evt = Path(str(f_prefix) + "_ripples.npy")
+
+        self.thetalfp = Path(str(f_prefix) + "_BestThetaChan.npy")
+        self.theta_evt = Path(str(f_prefix) + "_thetaevents.npy")
+        self.sessionepoch = Path(str(f_prefix) + "_epochs.npy")
+        self.hwsa_ripple = Path(str(f_prefix) + "_hswa_ripple.npy")
+        self.sws_states = Path(str(f_prefix) + "_sws.npy")
+        self.slow_wave = Path(str(f_prefix) + "_hswa.npy")
+
+
+class recfiles:
+    def __init__(self, f_prefix):
+
+        self.xmlfile = f_prefix.with_suffix(".xml")
+        self.eegfile = f_prefix.with_suffix(".eeg")
+        self.datfile = f_prefix.with_suffix(".dat")
+
+
+class sessionname:
+    def __init__(self, f_prefix):
+        basePath = str(f_prefix.parent)
         self.sessionName = basePath.split("/")[-3] + basePath.split("/")[-2]
         self.name = basePath.split("/")[-3]
         self.day = basePath.split("/")[-2]
         self.basePath = Path(basePath)
-        for file in os.listdir(basePath):
-            if file.endswith(".xml"):
-                self.xmlfile = self.basePath / file
-                self.subname = self.xmlfile.stem
-                self.filePrefix = self.xmlfile.with_suffix("")
-                self.eegfile = self.xmlfile.with_suffix(".eeg")
-                self.datfile = self.xmlfile.with_suffix(".dat")
+        self.subname = f_prefix.stem
 
-        self.f_basics = Path(str(self.filePrefix) + "_basics.npy")
-        self.f_ripplelfp = Path(str(self.filePrefix) + "_BestRippleChans.npy")
-        self.f_thetalfp = Path(str(self.filePrefix) + "_BestThetaChan.npy")
-        self.f_ripple_evt = Path(str(self.filePrefix) + "_ripples.npy")
-        self.f_theta_evt = Path(str(self.filePrefix) + "_thetaevents.npy")
-        self.f_sessionepoch = Path(str(self.filePrefix) + "_epochs.npy")
-        self.f_slow_wave = Path(str(self.filePrefix) + "_hswa.npy")
-        self.f_hwsa_ripple = Path(str(self.filePrefix) + "_hswa_ripple.npy")
-        self.f_sws_states = Path(str(self.filePrefix) + "_sws.npy")
-
-
-class ripple:
-
-    a = [1, 2, 3]
-    # return a
-
-
-class epoch:
-    @property
-    def time(self):
-
-        a = [1, 2, 3]
-        return a

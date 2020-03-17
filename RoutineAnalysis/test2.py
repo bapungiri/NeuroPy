@@ -1,27 +1,26 @@
-import numpy as np
 from dataclasses import dataclass
 
 
-@dataclass
-class session(object):
-    basepath: str
+# @dataclass
+class Car:
+    def __init__(self, color, mileage):
+        self.color = color
+        self.mileage = mileage
+        setattr(self, "sdf", "ghy")
 
-    # @property
-    def __post_init__(self):
-        self.ripple = ripple()
+        self.__v = 10
 
-
-class ripple:
-    def __init__(self):
-
-        self.a = [1, 2, 3]
+    def __str__(self):
+        return "a {self.color} car".format(self=self)
 
 
-class compute(session):
-    def printripple(self):
-        t = self.ripple
-        print(t)
+class child(Car):
+    def __init__(self, color, mileage):
+        super().__init__(color, mileage)
+        self.c = 4
 
 
-m = compute("fg")
+m = Car("red", 54)
+
+# setattr(m, "sdf", "ghy")
 
