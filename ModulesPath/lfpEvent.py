@@ -20,6 +20,7 @@ from pathlib import Path
 
 # from parsePath import name2path
 from parsePath import path2files
+from makeChanMap import recinfo
 
 # from callfunc import processData
 
@@ -46,8 +47,7 @@ class hswa(path2files):
         min_swa_duration = 0.1  # 100 milliseconds
 
         # filtering best ripple channel in delta band
-        deltachan = np.load(self.f_ripplelfp, allow_pickle=True).item()
-        deltachan = deltachan["BestChan"]
+        deltachan = ripple.best_chan_lfp
         delta_sig = filt.filter_delta(deltachan)
         delta = stat.zscore(delta_sig)  # normalization w.r.t session
 
@@ -108,15 +108,8 @@ class ripple(path2files):
 
     def findswr(self):
         ripplechan = self.best_chan_lfp
-        self.__ripples = spwrs(ripplechan, self.__lfpsRate)
+        ripples = spwrs(ripplechan, self._lfpsRate)
 
-        np.save(self.f_ripple_evt, self.__ripples)
+        np.save(self._files.ripple_evt, ripples)
         print(f"{self.f_ripple_evt.name} created")
-
-    def load_swr_evt(self):
-        self.ripples = np.load(self.f_ripple_evt, allow_pickle=True).item()
-
-        # self.peakripplePower = self.ripples["peakPower"]
-        print(f"ripple events loaded .....")
-        # print(f"following keys {list(self.ripples.keys())} can be used")
 

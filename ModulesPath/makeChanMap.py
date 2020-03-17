@@ -22,9 +22,9 @@ class recinfo(path2files):
     # def loadbasics(self):
     # pass
 
-    def makebasics(self):
+    def makerecinfo(self):
 
-        myroot = ET.parse(self.__basics.xmlfile).getroot()
+        myroot = ET.parse(self._recfiles.xmlfile).getroot()
 
         self.chan_session = []
         self.channelgroups = []
@@ -48,11 +48,11 @@ class recinfo(path2files):
             "nChans": self.nChans,
             "channelgroups": self.channelgroups,
             "nShanks": self.nShanks,
-            "subname": self.__basics.subname,
-            "sessionName": self.__basics.sessionName,
+            "subname": self._session.subname,
+            "sessionName": self._session.sessionName,
             "lfpSrate": 1250,
         }
 
-        np.save(self.__basics.files.basics, basics)
-        print(f"_basics.npy created for {self.__basics.sessionName}")
+        np.save(self._files.basics, basics)
+        print(f"_basics.npy created for {self._session.sessionName}")
 

@@ -24,15 +24,4 @@ sessions = [processData(_) for _ in basePath]
 for sess in sessions:
     sess.eventpsth.hswa_ripple.nQuantiles = 5
     sess.eventpsth.hswa_ripple.plot()
-#     # sess.findswr()
-#     # sess.load_swr_evt()
-#     sess.plot_psth_hswa_ripple()
-
-
-# plt.clf()
-# for sess_id, sess in enumerate(sessions, 1):
-#     pk_power = sess.ripples["peakPower"]
-
-#     plt.subplot(3, 2, sess_id)
-#     plt.plot(pk_power)
 
