@@ -1,4 +1,3 @@
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -10,7 +9,12 @@ from numpy.fft import fft
 import matplotlib.style
 import matplotlib as mpl
 
-mpl.style.use("default")
+mpl.interactive(False)
+# mpl.style.use("seaborn-white")
+# import seaborn as sns
+
+mpl.style.use("figPublish")
+# sns.set_style("ticks")
 
 from signal_process import filter_sig as filt
 from lfpEvent import ripple, hswa
@@ -19,6 +23,8 @@ from behavior import behavior_epochs
 from makeChanMap import recinfo
 
 cmap = matplotlib.cm.get_cmap("jet")
+
+# mpl.use("GtkAgg")
 
 
 def psth(event_reference, event_post, trange, nbins=150):
@@ -152,3 +158,21 @@ class hswa_ripple(path2files):
             ax3.plot(
                 all_x, all_y, ".", markersize=1, color=cmap(category / self.nQuantiles)
             )
+
+        # plotting aesthetics and labelling
+        ax1.spines["left"].set_visible(False)
+        ax1.set_yticklabels([])
+        ax1.set_ylim(-1, 50)
+        ax1.set_xlabel("Time (s)")
+
+        ax2.set_xlabel("Time (s)")
+        ax2.set_ylabel("# ripples")
+
+        ax3.spines["left"].set_visible(False)
+        ax3.set_yticklabels([])
+        ax3.set_xlabel("Time (s)")
+
+        # sns.despine(ax=ax, right=False)
+        # plt.close()  # suppressing the output figure
+        return fig
+

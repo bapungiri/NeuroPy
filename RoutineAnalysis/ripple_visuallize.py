@@ -2,8 +2,13 @@ import altair as alt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import matplotlib as mpl
+import matplotlib
 
+# mpl.style.use("figPublish")
 
+# plt.style.use("figPublish")
+# matplotlib.use("Qt5Agg")
 from callfunc import processData
 
 # TODO thoughts on using data class for loading data into function
@@ -21,7 +26,17 @@ basePath = [
 
 sessions = [processData(_) for _ in basePath]
 
+plt.close()
 for sess in sessions:
     sess.eventpsth.hswa_ripple.nQuantiles = 5
-    sess.eventpsth.hswa_ripple.plot()
+    fig = sess.eventpsth.hswa_ripple.plot()
 
+    # for f in fig:
+# fig.axes[0].set_facecolor("white")
+# fig.axes[0].spines["left"].set_visible(False)
+# fig.axes[0].spines["bottom"].set_visible(True)
+# fig.show()
+# with plt.style.context("figPublish"):
+# fig.draw
+fig.show()
+# fig.axes.spines["left"].set_visible(False)
