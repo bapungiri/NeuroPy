@@ -98,6 +98,7 @@ class ripple(path2files):
 
         ripple_evt = np.load(self._files.ripple_evt, allow_pickle=True).item()
         self.time = ripple_evt["timestamps"]
+        self.peakpower = ripple_evt["peakPower"]
 
     @property
     def best_chan_lfp(self):

@@ -5,11 +5,8 @@ import scipy.ndimage as smth
 import scipy.stats as stat
 import numpy.random as rnd
 import os
-import seaborn as sns
 import matplotlib.pyplot as plt
 from datetime import datetime
-
-sns.set_style("darkgrid")
 
 
 def swr(lfp, sRate, PlotRippleStat=0):

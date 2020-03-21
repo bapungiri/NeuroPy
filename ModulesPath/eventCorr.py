@@ -6,7 +6,6 @@ import scipy.signal as sg
 import scipy.stats as stat
 from matplotlib.gridspec import GridSpec
 from numpy.fft import fft
-import matplotlib.style
 import matplotlib as mpl
 
 mpl.interactive(False)
@@ -22,7 +21,7 @@ from parsePath import path2files
 from behavior import behavior_epochs
 from makeChanMap import recinfo
 
-cmap = matplotlib.cm.get_cmap("jet")
+cmap = mpl.cm.get_cmap("jet")
 
 # mpl.use("GtkAgg")
 
@@ -78,7 +77,7 @@ class hswa_ripple(path2files):
         tbefore = 0.5  # seconds before delta trough
         tafter = 1  # seconds after delta trough
 
-        pre = self._epochs.pre
+        # pre = self._epochs.pre
         ripplesTime = self._ripples.time
         rippleStart = ripplesTime[:, 0]
         swa_amp = self._swa.amp
@@ -99,19 +98,23 @@ class hswa_ripple(path2files):
         quantiles = pd.qcut(swa_amp, self.nQuantiles, labels=False)
 
         fig = plt.figure(figsize=(6, 10))
-        gs = GridSpec(2, 2, figure=fig)
+        gs = GridSpec(3, 2, figure=fig)
 
         trial, plt_lfp = 0, 0
-
         for category in range(self.nQuantiles):
             indx = np.where(quantiles == category)[0]
             ripple_hist = np.sum(ripple_co[indx], axis=0)
+            # av_ripple_power = np.sum(ripple_co[indx], axis=0)
             # ripple_hist = filtSig.gaussian_filter1d(ripple_hist, 2)
 
-            all_ts = [[] for x in range(len(indx))]
-            all_y = [[] for x in range(len(indx))]
+            nMember_grp = len(indx)
+            all_ts = [[] for x in range(nMember_grp)]
+            all_y = [[] for x in range(nMember_grp)]
+            # ripple_power_arr = []
+
             for i, ind in enumerate(indx):
 
+                # for ripple number
                 ind1 = rippleStart > (swa_amp_t[ind] - tbefore)
                 ind2 = rippleStart < (swa_amp_t[ind] + tafter)
                 ripple_ts = rippleStart[ind1 & ind2]
@@ -119,6 +122,19 @@ class hswa_ripple(path2files):
                 all_ts[i] = ripple_ts - swa_amp_t[ind]
                 all_y[i] = (trial + 1) * np.ones(len(ripple_ts))
                 trial += 1
+
+                # for ripple power
+                # ind1 = np.where(
+                #     (lfp_t > (swa_amp_t[ind] - tbefore))
+                #     & (lfp_t < (swa_amp_t[ind] + tafter))
+                # )
+                # # ind2 = lfp_t < (swa_amp_t[ind] + tafter)
+                # ripple_power = lfp_ripple[ind1]
+                # ripple_power_arr.append(ripple_power)
+
+            # ripple_power_arr = np.asarray(ripple_power_arr)
+            # mean_ripple_power_grp = np.mean(ripple_power_arr, axis=0)
+            # mean_ripple_power_t = np.linspace(-0.5, 1, len(mean_ripple_power_grp))
 
             # random selection of slow wave within the quantile
             rand_ind = np.random.choice(indx, 3, replace=False)
@@ -159,8 +175,16 @@ class hswa_ripple(path2files):
                 all_x, all_y, ".", markersize=1, color=cmap(category / self.nQuantiles)
             )
 
+            # ax4 = fig.add_subplot(gs[2, 0])
+            # ax4.plot(
+            #     mean_ripple_power_t,
+            #     mean_ripple_power_grp,
+            #     color=cmap(category / self.nQuantiles),
+            # )
+
         # plotting aesthetics and labelling
         ax1.spines["left"].set_visible(False)
+        ax1.set_yticks([])
         ax1.set_yticklabels([])
         ax1.set_ylim(-1, 50)
         ax1.set_xlabel("Time (s)")
@@ -175,4 +199,3 @@ class hswa_ripple(path2files):
         # sns.despine(ax=ax, right=False)
         # plt.close()  # suppressing the output figure
         return fig
-
