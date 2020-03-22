@@ -3,15 +3,16 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from pathlib import Path
-from parsePath import name2path
+from parsePath import path2files
+from makeChanMap import recinfo
 
 # folderPath = '../'
 
 
-class makePrmPrb(name2path):
+class makePrmPrb(path2files):
     def __init__(self, basePath):
         super().__init__(basePath)
-        print(self.sessionName)
+        # print(self.sessionName)
 
         self.prmTemplate = (
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prm"
@@ -20,12 +21,14 @@ class makePrmPrb(name2path):
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prb"
         )
 
-        recInfo = np.load(str(self.filePrefix) + "_basics.npy", allow_pickle=True)
-        self.sampFreq = recInfo.item().get("sRate")
-        self.chan_session = recInfo.item().get("channels")
-        self.nChansDat = recInfo.item().get("nChans")
-        self.channelgroups = recInfo.item().get("channelgroups")
-        self.nShanks = recInfo.item().get("nShanks")
+        self._myinfo = recinfo(basePath)
+
+        # recInfo = np.load(self._files.basics, allow_pickle=True)
+        # self.sampFreq = recInfo.item().get("sRate")
+        # self.chan_session = recInfo.item().get("channels")
+        # self.nChansDat = recInfo.item().get("nChans")
+        # self.channelgroups = recInfo.item().get("channelgroups")
+        # self.nShanks = recInfo.item().get("nShanks")
 
     def makePrm(self):
         for shank in range(1, self.nShanks + 1):
@@ -226,20 +229,20 @@ class makePrmPrb(name2path):
                             f1.write(line)
 
     def makePrbCircus(self, probetype):
-        circus_prb = (self.filePrefix).with_suffix(".prb")
+        circus_prb = (self._files.filePrefix).with_suffix(".prb")
         if probetype == "buzsaki":
             xpos = [0, 37, 4, 33, 8, 29, 12, 20]
             ypos = np.arange(140, 0, -20)
-        if probetype == "diagbio":
-            xpos = []
-            ypos = []
+        elif probetype == "diagbio":
+            xpos = [16 * (_ % 2) for _ in range(16)]
+            ypos = [15 * 16 - _ * 15 for _ in range(16)]
         with circus_prb.open("w") as f:
-            f.write(f"total_nb_channels = {self.nChansDat} \n")
+            f.write(f"total_nb_channels = {self._myinfo.nChans} \n")
             f.write(f"radius = 100 \n")
             f.write("channel_groups = { \n")
 
-            for shank in range(1, self.nShanks + 1):
-                chan_list = self.channelgroups[shank - 1]
+            for shank in range(1, self._myinfo.nShanks + 1):
+                chan_list = self._myinfo.channelgroups[shank - 1]
 
                 f.write(f"{shank}: {{ \n")
                 f.write(f"'channels' : {chan_list} ,\n")
@@ -253,4 +256,3 @@ class makePrmPrb(name2path):
                 f.write("},\n")
 
             f.write("}\n")
-

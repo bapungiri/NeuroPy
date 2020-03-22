@@ -17,7 +17,7 @@ class recinfo(path2files):
         self.channels = myinfo["channels"]
         self.nChans = myinfo["nChans"]
         self.lfpSrate = 1250
-        # # self.channelgroups = recinfo["channelgroups"]
+        self.channelgroups = myinfo["channelgroups"]
 
     # def loadbasics(self):
     # pass
@@ -55,4 +55,3 @@ class recinfo(path2files):
 
         np.save(self._files.basics, basics)
         print(f"_basics.npy created for {self._session.sessionName}")
-

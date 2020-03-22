@@ -12,13 +12,15 @@ class path2files:
             if file.endswith(".xml"):
                 xmlfile = basePath / file
                 filePrefix = xmlfile.with_suffix("")
-        self._session = sessionname(basePath)
+
+        self._session = sessionname(filePrefix)
         self._files = files(filePrefix)
         self._recfiles = recfiles(filePrefix)
 
 
 class files:
     def __init__(self, f_prefix):
+        self.filePrefix = f_prefix
 
         self.basics = Path(str(f_prefix) + "_basics.npy")
         self.epochs = Path(str(f_prefix) + "_epochs.npy")
@@ -44,9 +46,8 @@ class recfiles:
 class sessionname:
     def __init__(self, f_prefix):
         basePath = str(f_prefix.parent)
-        self.sessionName = basePath.split("/")[-3] + basePath.split("/")[-2]
+        self.sessionName = basePath.split("/")[-2] + basePath.split("/")[-1]
         self.name = basePath.split("/")[-3]
         self.day = basePath.split("/")[-2]
         self.basePath = Path(basePath)
         self.subname = f_prefix.stem
-

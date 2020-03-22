@@ -7,6 +7,8 @@ import scipy.stats as stat
 from matplotlib.gridspec import GridSpec
 from numpy.fft import fft
 import matplotlib as mpl
+import time
+import scipy.signal as sg
 
 mpl.interactive(False)
 # mpl.style.use("seaborn-white")
@@ -91,6 +93,8 @@ class hswa_ripple(path2files):
         lfp_ripple = filt.filter_ripple(lfp)
         lfp_delta = filt.filter_delta(lfp)
         lfp_t = np.linspace(0, len(lfp) / self._myinfo.lfpSrate, len(lfp))
+        analytic_signal = sg.hilbert(lfp_ripple)
+        amplitude_envelope = np.abs(analytic_signal)
 
         # binning with tbefore and tafter delta trough
         _, ripple_co, t_hist = psth(swa_amp_t, rippleStart, [tbefore, tafter])
@@ -110,7 +114,7 @@ class hswa_ripple(path2files):
             nMember_grp = len(indx)
             all_ts = [[] for x in range(nMember_grp)]
             all_y = [[] for x in range(nMember_grp)]
-            # ripple_power_arr = []
+            ripple_power_arr = []
 
             for i, ind in enumerate(indx):
 
@@ -124,24 +128,21 @@ class hswa_ripple(path2files):
                 trial += 1
 
                 # for ripple power
-                # ind1 = np.where(
-                #     (lfp_t > (swa_amp_t[ind] - tbefore))
-                #     & (lfp_t < (swa_amp_t[ind] + tafter))
-                # )
-                # # ind2 = lfp_t < (swa_amp_t[ind] + tafter)
-                # ripple_power = lfp_ripple[ind1]
-                # ripple_power_arr.append(ripple_power)
+                swa_frame = int(swa_amp_t[ind] * 1250)
+                ripple_power = amplitude_envelope[swa_frame - 625 : swa_frame + 1250]
+                ripple_power_arr.append(ripple_power)
 
-            # ripple_power_arr = np.asarray(ripple_power_arr)
-            # mean_ripple_power_grp = np.mean(ripple_power_arr, axis=0)
-            # mean_ripple_power_t = np.linspace(-0.5, 1, len(mean_ripple_power_grp))
+            ripple_power_arr = np.asarray(ripple_power_arr)
+            mean_ripple_power_grp = np.mean(ripple_power_arr, axis=0)
+            ripple_std = np.std(ripple_power_arr, axis=0) / np.sqrt(nMember_grp)
+            mean_ripple_power_t = np.linspace(-0.5, 1, len(mean_ripple_power_grp))
 
             # random selection of slow wave within the quantile
             rand_ind = np.random.choice(indx, 3, replace=False)
 
             ax1 = fig.add_subplot(gs[:, 1])
             for ind in rand_ind:
-                print(swa_amp[ind])
+                # print(swa_amp[ind])
                 ind_theta = np.where(
                     (lfp_t > swa_amp_t[ind] - 0.5) & (lfp_t < swa_amp_t[ind] + 1)
                 )[0]
@@ -175,26 +176,36 @@ class hswa_ripple(path2files):
                 all_x, all_y, ".", markersize=1, color=cmap(category / self.nQuantiles)
             )
 
-            # ax4 = fig.add_subplot(gs[2, 0])
-            # ax4.plot(
-            #     mean_ripple_power_t,
-            #     mean_ripple_power_grp,
-            #     color=cmap(category / self.nQuantiles),
-            # )
+            ax4 = fig.add_subplot(gs[2, 0])
+            ax4.fill_between(
+                mean_ripple_power_t,
+                mean_ripple_power_grp + ripple_std,
+                mean_ripple_power_grp - ripple_std,
+                color=cmap(category / self.nQuantiles),
+                alpha=0.6,
+            )
+            ax4.plot(
+                mean_ripple_power_t,
+                mean_ripple_power_grp,
+                color=cmap(category / self.nQuantiles),
+            )
 
         # plotting aesthetics and labelling
         ax1.spines["left"].set_visible(False)
         ax1.set_yticks([])
         ax1.set_yticklabels([])
         ax1.set_ylim(-1, 50)
-        ax1.set_xlabel("Time (s)")
 
         ax2.set_xlabel("Time (s)")
         ax2.set_ylabel("# ripples")
 
         ax3.spines["left"].set_visible(False)
+        ax1.set_yticks([])
         ax3.set_yticklabels([])
         ax3.set_xlabel("Time (s)")
+
+        ax4.set_xlabel("Time (s)")
+        ax4.set_ylabel("Hilbert amplitude")
 
         # sns.despine(ax=ax, right=False)
         # plt.close()  # suppressing the output figure

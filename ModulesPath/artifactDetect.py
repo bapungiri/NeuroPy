@@ -1,23 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from parsePath import name2path
+from parsePath import path2files
 import scipy.signal as sg
 import scipy.stats as stat
 import pandas as pd
 from numpy.fft import fft
 import scipy.ndimage as filtSig
 from pathlib import Path
+from makeChanMap import recinfo
 
 
-class findartifact(name2path):
+class findartifact(path2files):
 
     lfpsRate = 1250
     art_thresh = 1.5
 
     def __init__(self, basePath):
         super().__init__(basePath)
+        self._myinfo = recinfo(basePath)
 
-    def gen_artifact_epoch(self):
+    def usingZscore(self):
         """
         calculating periods to exclude for analysis using simple z-score measure 
         """
@@ -26,9 +28,12 @@ class findartifact(name2path):
         # thetachan = np.load(
         #     str(self.filePrefix) + "_BestThetaChan.npy", allow_pickle=True
         # ).item()
-        Data = np.memmap(str(self.eegfile), dtype="int16", mode="r")
-        Data1 = np.memmap.reshape(Data, (int(len(Data) / 67), 67))
-        chanData = Data1[:, 17]
+        # Data = np.memmap(self._recfiles.eegfile, dtype="int16", mode="r")
+        # Data1 = np.memmap.reshape(
+        #     Data, (int(len(Data) / self._myinfo.nChans), self._myinfo.nChans)
+        # )
+        # chanData = Data1[:, 17]
+        self.chanData = chanData = np.load(self._files.thetalfp)
 
         zsc = np.abs(stat.zscore(chanData))
 
@@ -59,9 +64,9 @@ class findartifact(name2path):
         artifact_s = np.asarray(secondPass) / self.lfpsRate  # seconds
 
         # writing to file for visualizing in neuroscope and spyking circus
-        start_neuroscope = self.filePrefix.with_suffix(".evt.sta")
-        end_neuroscope = self.filePrefix.with_suffix(".evt.end")
-        circus_file = self.filePrefix.with_suffix(".dead")
+        start_neuroscope = self._files.filePrefix.with_suffix(".evt.sta")
+        end_neuroscope = self._files.filePrefix.with_suffix(".evt.end")
+        circus_file = self._files.filePrefix.with_suffix(".dead")
         with start_neuroscope.open("w") as a, end_neuroscope.open(
             "w"
         ) as b, circus_file.open("w") as c:
@@ -70,8 +75,35 @@ class findartifact(name2path):
                 b.write(f"{stop} end\n")
                 c.write(f"{beg} {stop}\n")
 
+        return zsc
+        # self.artifact_time = artifact_s
+
+    def usingCorrelation(self):
+
+        Data = np.memmap(self._recfiles.eegfile, dtype="int16", mode="r")
+        Data1 = np.memmap.reshape(
+            Data, (int(len(Data) / self._myinfo.nChans), self._myinfo.nChans)
+        )
+        chan1 = Data1[:, 17]
+        chan2 = Data1[:, 18]
+
+        corr = []
+        for i in range(0, len(chan1) - 1250, 1250):
+
+            x = chan1[i : i + 1250]
+            y = chan2[i : i + 1250]
+
+            corr.append(np.correlate(x, y))
+
+        return corr
+
+    @property
+    def plot(self):
+
         self.zsc_signal = zsc
         self.artifact_time = artifact_s
+
+        plt.plot(self.zsc_signal)
 
     def createCleanDat(self):
 
@@ -134,4 +166,3 @@ class findartifact(name2path):
                 # d[len(b[i]) : len(b1) + len(b2)] = b2
             del d
             del b
-
