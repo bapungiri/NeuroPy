@@ -2,39 +2,44 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib as mpl
 
-# import seaborn as sns
 
-mpl.style.use("figPublish")
-
-fig1 = plt.figure(figsize=(6, 10))
-# gs = GridSpec(3, 2, figure=fig)
-ax1 = fig1.add_subplot(1, 1, 1)
-ax1.plot([1, 3, 5])
-
-fig2 = plt.figure(figsize=(6, 10))
-# gs = GridSpec(3, 2, figure=fig)
-ax2 = fig2.add_subplot(2, 1, 1)
-ax2.set_figure(fig1)
-# ax1 = fig1.add_subplot(2, 1, 1)
-# ax1.plot([1, 3, 5])
+class names:
+    def __init__(self):
+        self.string = "gh"
 
 
-# class session:
-#     def __init__(self):
-#         self.a = 4
-#         self.b = 5
-#         self.ripple = [5, 4]
-#         self.child = child(self)
+class session:
+    t = 5
+
+    def __init__(self):
+        obj = names()
+        # obj.trange =
+        self.trange = [4, 5]
+        obj.trange = self.trange
+        self.child1 = child1(obj)
+
+        obj.child1 = self.child1
+        self.child2 = child2(obj)
+        self.string = "mg"
 
 
-# class child:
-#     def __init__(self, sess):
-#         self.m = sess.a
-#         self.time = sess.ripple
+class child1:
+    def __init__(self, obj):
+        print(hasattr(obj, "child1"))
+        self.time = np.array([1, 2, 3, 5, 6, 7])
+        # self.time = self.time[ind]
 
 
-# m = session()
+class child2:
+    def __init__(self, obj):
+        print(obj.child1.time)
 
-# plt.plot([1, 3, 5])
+        # self.obj = obj
+        print(hasattr(obj, "child1"))
 
-fig2.show()
+        self.time = np.array([11, 2, 3, 8, 1, 9, 0, 3])
+        # self.time = self.time[ind]
+        # self.b = obj.child2.time
+
+
+m = session()
