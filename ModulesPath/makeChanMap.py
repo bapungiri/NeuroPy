@@ -1,17 +1,16 @@
 import os
 import numpy as np
 import xml.etree.ElementTree as ET
-from parsePath import path2files
 
 
-class recinfo(path2files):
+class recinfo:
     nShanks = 8
 
-    def __init__(self, basePath):
-        super().__init__(basePath)
-        # self.__basics = path2files(basePath)
+    def __init__(self, obj):
 
-        myinfo = np.load(self._files.basics, allow_pickle=True).item()
+        self._obj = obj
+
+        myinfo = np.load(self._obj.files.basics, allow_pickle=True).item()
         # print(recinfo.keys())
         self.sampfreq = myinfo["sRate"]
         self.channels = myinfo["channels"]

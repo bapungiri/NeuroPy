@@ -1,9 +1,9 @@
 import os
 from pathlib import Path
 
-# from parsePath import path2files
+from parsePath import path2files
 
-from lfpEvent import ripple
+from lfpEvent import ripple, hswa
 import numpy as np
 
 from makeChanMap import recinfo
@@ -18,8 +18,11 @@ class processData:
     _lfpsRate = 1250
 
     def __init__(self, basePath):
-        self.recinfo = recinfo(basePath)
-        self.epochs = behavior_epochs(basePath)
+        self.sessinfo = path2files(basePath)
+        self.recinfo = recinfo(self.sessinfo)
+        self.sessinfo.recinfo = self.recinfo
+
+        self.epochs = behavior_epochs(self.sessinfo)
         self._trange = None
 
     @property
@@ -29,7 +32,13 @@ class processData:
     @trange.setter
     def trange(self, period):
         self._trange = period
-        self.spksrt_param = makePrmPrb(basePath)
-        self.ripple = ripple(basePath)
-        self.eventpsth = event_event(basePath)
-        self.artifact = findartifact(basePath)
+        self.sessinfo.trange = period
+        # self.spksrt_param = makePrmPrb(sessinfo)
+        self.ripple = ripple(self.sessinfo)
+        self.swa = hswa(self.sessinfo)
+        # self.artifact = findartifact(sessinfo)
+
+        # for peristimuus histogram which needs ripple and swa
+        self.sessinfo.swa = self.swa
+        self.sessinfo.ripple = self.ripple
+        self.eventpsth = event_event(self.sessinfo)

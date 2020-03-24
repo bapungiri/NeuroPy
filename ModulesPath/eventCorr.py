@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.ndimage as filtSig
-import scipy.signal as sg
+
 import scipy.stats as stat
 from matplotlib.gridspec import GridSpec
 from numpy.fft import fft
@@ -18,12 +18,10 @@ mpl.style.use("figPublish")
 # sns.set_style("ticks")
 
 from signal_process import filter_sig as filt
-from lfpEvent import ripple, hswa
-from parsePath import path2files
-from behavior import behavior_epochs
-from makeChanMap import recinfo
 
 cmap = mpl.cm.get_cmap("jet")
+from bokeh.plotting import figure, output_file, show
+
 
 # mpl.use("GtkAgg")
 
@@ -51,22 +49,18 @@ def psth(event_reference, event_post, trange, nbins=150):
 
 
 class event_event:
-    def __init__(self, basePath):
+    def __init__(self, obj):
+        print("eving")
 
-        self.hswa_ripple = hswa_ripple(basePath)
-        # self.__ripples = ripple(basePath)
+        self.hswa_ripple = hswa_ripple(obj)
 
 
-class hswa_ripple(path2files):
+class hswa_ripple:
 
     nQuantiles = 10
 
-    def __init__(self, basePath):
-
-        self._myinfo = recinfo(basePath)
-        self._ripples = ripple(basePath)
-        self._epochs = behavior_epochs(basePath)
-        self._swa = hswa(basePath)
+    def __init__(self, obj):
+        self._obj = obj
 
     def plot(self):
         """
@@ -80,19 +74,20 @@ class hswa_ripple(path2files):
         tafter = 1  # seconds after delta trough
 
         # pre = self._epochs.pre
-        ripplesTime = self._ripples.time
+        print("event swh running")
+        ripplesTime = self._obj.ripple.time
         rippleStart = ripplesTime[:, 0]
-        swa_amp = self._swa.amp
-        swa_amp_t = self._swa.time
+        swa_amp = self._obj.swa.amp
+        swa_amp_t = self._obj.swa.time
 
         ind_above_thresh = np.where(swa_amp > swa_amp_thresh)[0]
         swa_amp = swa_amp[ind_above_thresh]
         swa_amp_t = swa_amp_t[ind_above_thresh]
 
-        lfp = self._ripples.best_chan_lfp
+        lfp, lfp_t = self._obj.ripple.best_chan_lfp
         lfp_ripple = filt.filter_ripple(lfp)
         lfp_delta = filt.filter_delta(lfp)
-        lfp_t = np.linspace(0, len(lfp) / self._myinfo.lfpSrate, len(lfp))
+
         analytic_signal = sg.hilbert(lfp_ripple)
         amplitude_envelope = np.abs(analytic_signal)
 
@@ -128,9 +123,18 @@ class hswa_ripple(path2files):
                 trial += 1
 
                 # for ripple power
-                swa_frame = int(swa_amp_t[ind] * 1250)
-                ripple_power = amplitude_envelope[swa_frame - 625 : swa_frame + 1250]
-                ripple_power_arr.append(ripple_power)
+                if self._obj.trange.any():
+                    frame = int(self._obj.trange[0] * 1250)
+                    swa_frame = int(swa_amp_t[ind] * 1250) - frame
+                else:
+                    swa_frame = int(swa_amp_t[ind] * 1250)
+
+                # making sure swa_frame are inside array indices of trange lfp
+                if swa_frame > 625 and swa_frame + 1250 < len(lfp):
+                    ripple_power = amplitude_envelope[
+                        swa_frame - 625 : swa_frame + 1250
+                    ]
+                    ripple_power_arr.append(ripple_power)
 
             ripple_power_arr = np.asarray(ripple_power_arr)
             mean_ripple_power_grp = np.mean(ripple_power_arr, axis=0)
@@ -209,4 +213,4 @@ class hswa_ripple(path2files):
 
         # sns.despine(ax=ax, right=False)
         # plt.close()  # suppressing the output figure
-        return fig
+        return ax4

@@ -14,8 +14,8 @@ class path2files:
                 filePrefix = xmlfile.with_suffix("")
 
         self._session = sessionname(filePrefix)
-        self._files = files(filePrefix)
-        self._recfiles = recfiles(filePrefix)
+        self.files = files(filePrefix)
+        self.recfiles = recfiles(filePrefix)
 
 
 class files:

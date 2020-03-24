@@ -12,26 +12,24 @@ import scipy.stats as stat
 
 from lfpDetect import swr as spwrs
 
-# from parsePath import name2path
 from signal_process import filter_sig as filt
 from pathlib import Path
 
-# from sessionObj import session
 
-# from parsePath import name2path
-from parsePath import path2files
-from makeChanMap import recinfo
+class hswa:
+    def __init__(self, obj):
 
-# from callfunc import processData
-
-
-class hswa(path2files):
-    def __init__(self, basepath):
-        super().__init__(basepath)
-
-        evt = np.load(self._files.slow_wave, allow_pickle=True).item()
+        print("hswa running")
+        self._obj = obj
+        evt = np.load(self._obj.files.slow_wave, allow_pickle=True).item()
         self.amp = evt["delta_amp"]
         self.time = evt["delta_t"]
+
+        if obj.trange.any():
+            start, end = obj.trange
+            indwhere = np.where((self.time > start) & (self.time < end))
+            self.time = self.time[indwhere]
+            self.amp = self.amp[indwhere]
 
     ##======= hippocampal slow wave detection =============
     def detect_hswa(self):
@@ -92,20 +90,35 @@ class hswa(path2files):
         np.save(self.f_slow_wave, hipp_slow_wave)
 
 
-class ripple(path2files):
-    def __init__(self, basepath):
-        super().__init__(basepath)
-
-        ripple_evt = np.load(self._files.ripple_evt, allow_pickle=True).item()
+class ripple:
+    def __init__(self, obj):
+        self._obj = obj
+        print("hello")
+        ripple_evt = np.load(obj.files.ripple_evt, allow_pickle=True).item()
         self.time = ripple_evt["timestamps"]
         self.peakpower = ripple_evt["peakPower"]
 
+        if obj.trange.any():
+            start, end = obj.trange
+            indwhere = np.where((self.time[:, 0] > start) & (self.time[:, 0] < end))
+            self.time = self.time[indwhere]
+            self.peakpower = self.peakpower[indwhere]
+
     @property
     def best_chan_lfp(self):
+        lfpsrate = self._obj.recinfo.lfpSrate
 
-        lfp = np.load(self._files.ripplelfp, allow_pickle=True).item()
+        lfp = np.load(self._obj.files.ripplelfp, allow_pickle=True).item()
+        lfp = lfp["BestChan"]
+        lfp_t = np.linspace(0, len(lfp) / lfpsrate, len(lfp))
 
-        return lfp["BestChan"]
+        if self._obj.trange.any():
+            # convert to frames
+            start, end = self._obj.trange * lfpsrate
+            lfp = lfp[int(start) : int(end)]
+            lfp_t = np.linspace(int(start) / lfpsrate, int(end) / lfpsrate, len(lfp))
+
+        return lfp, lfp_t
 
     def findswr(self):
         ripplechan = self.best_chan_lfp
@@ -113,4 +126,3 @@ class ripple(path2files):
 
         np.save(self._files.ripple_evt, ripples)
         print(f"{self.f_ripple_evt.name} created")
-

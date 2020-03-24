@@ -15,31 +15,42 @@ from callfunc import processData
 # TODO thoughts on using data class for loading data into function
 
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day3/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/"
 ]
+
 
 sessions = [processData(_) for _ in basePath]
 
 
-plt.close()
+plt.close("all")
 fig = []
 for sess in sessions:
+
+    sess.trange = np.asarray([sess.epochs.post[0] + 5 * 3600, sess.epochs.post[1]])
     # sess.recinfo.makerecinfo()
     # sess.spksrt_param.makePrbCircus(probetype="diagbio")
-    sig_zscore = sess.artifact.usingZscore()
+    # sig_zscore = sess.artifact.usingZscore()
     # sess.artifact.plot
-    plt.plot(sig_zscore)
-    # sess.eventpsth.hswa_ripple.nQuantiles = 5
-    # temp = sess.eventpsth.hswa_ripple.plot()
-    # fig.append(temp)
+    # plt.plot(sig_zscore)
+    sess.eventpsth.hswa_ripple.nQuantiles = 5
+
+    temp = sess.eventpsth.hswa_ripple.plot()
+
+    fig.append(temp)
+
+# for f in fig:
+#     f.ax1()
+
+
+fig1 = plt.figure()
+fig1.add
+#  axes.append(fig[0])
 
 plt.show()
-# for f in fig:
-#     f.show()
