@@ -4,28 +4,8 @@ from bokeh.models import ColumnDataSource
 
 import matplotlib as mpl
 
-cmap = mpl.cm.get_cmap("jet")
+impo
 
-from bokeh.plotting import figure, output_file, show
-from bokeh.palettes import viridis
-
-output_file("vline_stack.html")
-
-col = viridis(10)
-
-
-def plotcheck():
-    x = np.linspace(0, 100, 100)
-    y1 = np.sin(x)
-    y2 = np.cos(x)
-
-    # source = ColumnDataSource(data=dict(x=x, y1=y1, y2=y2))
-
-    plt.figure()
-    ax = plt.gca()
-    ax.plot(x, y1)
-
-    return ax
 
 
 # p = figure(plot_width=400, plot_height=400)
