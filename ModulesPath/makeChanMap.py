@@ -23,7 +23,7 @@ class recinfo:
 
     def makerecinfo(self):
 
-        myroot = ET.parse(self._recfiles.xmlfile).getroot()
+        myroot = ET.parse(self._obj.recfiles.xmlfile).getroot()
 
         self.chan_session = []
         self.channelgroups = []
@@ -47,10 +47,10 @@ class recinfo:
             "nChans": self.nChans,
             "channelgroups": self.channelgroups,
             "nShanks": self.nShanks,
-            "subname": self._session.subname,
-            "sessionName": self._session.sessionName,
+            "subname": self._obj.session.subname,
+            "sessionName": self._obj.session.sessionName,
             "lfpSrate": 1250,
         }
 
-        np.save(self._files.basics, basics)
-        print(f"_basics.npy created for {self._session.sessionName}")
+        np.save(self._obj.files.basics, basics)
+        print(f"_basics.npy created for {self._obj.session.sessionName}")

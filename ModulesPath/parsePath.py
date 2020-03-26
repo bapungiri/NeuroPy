@@ -13,7 +13,7 @@ class path2files:
                 xmlfile = basePath / file
                 filePrefix = xmlfile.with_suffix("")
 
-        self._session = sessionname(filePrefix)
+        self.session = sessionname(filePrefix)
         self.files = files(filePrefix)
         self.recfiles = recfiles(filePrefix)
 

@@ -1,23 +1,54 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from bokeh.models import ColumnDataSource
+
 import matplotlib as mpl
 
+cmap = mpl.cm.get_cmap("jet")
 
-import matplotlib.pyplot as plt
+from bokeh.plotting import figure, output_file, show
+from bokeh.palettes import viridis
 
-plt.close("all")
-fig1, (ax1, ax2) = plt.subplots(2, 1)
-ax1.plot(range(10))
-ax2.plot(range(20))
+output_file("vline_stack.html")
 
-allxes = fig1.get_axes()
-
-# plt.close()
-fig2, ax3 = plt.subplots()
-ax3 = ax1.draw
+col = viridis(10)
 
 
-fig2.show()
+def plotcheck():
+    x = np.linspace(0, 100, 100)
+    y1 = np.sin(x)
+    y2 = np.cos(x)
+
+    # source = ColumnDataSource(data=dict(x=x, y1=y1, y2=y2))
+
+    plt.figure()
+    ax = plt.gca()
+    ax.plot(x, y1)
+
+    return ax
+
+
+# p = figure(plot_width=400, plot_height=400)
+
+# p.line(x, y1, color=col[0])
+# p.title = "sdf"
+# show(p)
+
+# import matplotlib.pyplot as plt
+
+# plt.close("all")
+# fig1, (ax1, ax2) = plt.subplots(2, 1)
+# ax1.plot(range(10))
+# ax2.plot(range(20))
+
+# allxes = fig1.get_axes()
+
+# # plt.close()
+# fig2, ax3 = plt.subplots()
+# ax3.add_artist(ax1)
+
+
+# fig2.show()
 # X = [1, 2, 3, 4, 5, 6, 7]
 # Y = [1, 3, 4, 2, 5, 8, 6]
 

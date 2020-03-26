@@ -19,9 +19,9 @@ mpl.style.use("figPublish")
 
 from signal_process import filter_sig as filt
 
-cmap = mpl.cm.get_cmap("jet")
+# cmap = mpl.cm.get_cmap("jet")
 from bokeh.plotting import figure, output_file, show
-
+from bokeh.palettes import viridis
 
 # mpl.use("GtkAgg")
 
@@ -50,7 +50,6 @@ def psth(event_reference, event_post, trange, nbins=150):
 
 class event_event:
     def __init__(self, obj):
-        print("eving")
 
         self.hswa_ripple = hswa_ripple(obj)
 
@@ -86,7 +85,7 @@ class hswa_ripple:
 
         lfp, lfp_t = self._obj.ripple.best_chan_lfp
         lfp_ripple = filt.filter_ripple(lfp)
-        lfp_delta = filt.filter_delta(lfp)
+        # lfp_delta = filt.filter_delta(lfp)
 
         analytic_signal = sg.hilbert(lfp_ripple)
         amplitude_envelope = np.abs(analytic_signal)
@@ -96,15 +95,24 @@ class hswa_ripple:
 
         quantiles = pd.qcut(swa_amp, self.nQuantiles, labels=False)
 
-        fig = plt.figure(figsize=(6, 10))
-        gs = GridSpec(3, 2, figure=fig)
+        # fig = plt.figure(figsize=(6, 10))
+        # gs = GridSpec(3, 2, figure=fig)
+        p1 = figure(
+            plot_width=600, plot_height=400, title=self._obj.session.sessionName
+        )
+        p2 = figure(
+            plot_width=600, plot_height=400, title=self._obj.session.sessionName
+        )
+        col = viridis(self.nQuantiles)
 
+        ripple_psth = []
         trial, plt_lfp = 0, 0
         for category in range(self.nQuantiles):
             indx = np.where(quantiles == category)[0]
             ripple_hist = np.sum(ripple_co[indx], axis=0)
             # av_ripple_power = np.sum(ripple_co[indx], axis=0)
             # ripple_hist = filtSig.gaussian_filter1d(ripple_hist, 2)
+            ripple_psth.append(ripple_hist)
 
             nMember_grp = len(indx)
             all_ts = [[] for x in range(nMember_grp)]
@@ -141,76 +149,94 @@ class hswa_ripple:
             ripple_std = np.std(ripple_power_arr, axis=0) / np.sqrt(nMember_grp)
             mean_ripple_power_t = np.linspace(-0.5, 1, len(mean_ripple_power_grp))
 
-            # random selection of slow wave within the quantile
-            rand_ind = np.random.choice(indx, 3, replace=False)
+            p1.line(t_hist[:-1], ripple_hist, color=col[category], line_width=2)
 
-            ax1 = fig.add_subplot(gs[:, 1])
-            for ind in rand_ind:
-                # print(swa_amp[ind])
-                ind_theta = np.where(
-                    (lfp_t > swa_amp_t[ind] - 0.5) & (lfp_t < swa_amp_t[ind] + 1)
-                )[0]
+            p2.line(mean_ripple_power_t, mean_ripple_power_grp)
 
-                lfp_zsc = stat.zscore(lfp[ind_theta])
-                lfp_ripple_zsc = stat.zscore(lfp_ripple[ind_theta])
-                lfp_delta_zsc = stat.zscore(lfp_delta[ind_theta])
-                y_lfp = (plt_lfp + 2) * np.ones(len(lfp_zsc))
-
-                ax1.plot(
-                    np.linspace(-0.5, 1, len(lfp_zsc)),
-                    lfp_delta_zsc * 1.2 + y_lfp,
-                    color="k",
-                )
-                ax1.plot(
-                    np.linspace(-0.5, 1, len(lfp_zsc)),
-                    lfp_ripple_zsc * 0.4 + y_lfp,
-                    color=cmap(category / self.nQuantiles),
-                    alpha=0.7,
-                )
-
-                plt_lfp += 3
-
-            ax2 = fig.add_subplot(gs[0, 0])
-            ax2.plot(t_hist[:-1], ripple_hist, color=cmap(category / self.nQuantiles))
-
-            ax3 = fig.add_subplot(gs[1, 0])
-            all_x = np.concatenate(all_ts)
-            all_y = np.concatenate(all_y)
-            ax3.plot(
-                all_x, all_y, ".", markersize=1, color=cmap(category / self.nQuantiles)
-            )
-
-            ax4 = fig.add_subplot(gs[2, 0])
-            ax4.fill_between(
+            p2.varea(
                 mean_ripple_power_t,
                 mean_ripple_power_grp + ripple_std,
                 mean_ripple_power_grp - ripple_std,
-                color=cmap(category / self.nQuantiles),
+                color=col[category],
                 alpha=0.6,
             )
-            ax4.plot(
-                mean_ripple_power_t,
-                mean_ripple_power_grp,
-                color=cmap(category / self.nQuantiles),
-            )
 
-        # plotting aesthetics and labelling
-        ax1.spines["left"].set_visible(False)
-        ax1.set_yticks([])
-        ax1.set_yticklabels([])
-        ax1.set_ylim(-1, 50)
+            p1.xaxis.axis_label = "Time (s)"
+            p1.yaxis.axis_label = "#SWRs"
+            p2.xaxis.axis_label = "Time (s)"
+            p2.yaxis.axis_label = "Hilbert amplitude"
 
-        ax2.set_xlabel("Time (s)")
-        ax2.set_ylabel("# ripples")
+        # random selection of slow wave within the quantile
+        # rand_ind = np.random.choice(indx, 3, replace=False)
 
-        ax3.spines["left"].set_visible(False)
-        ax1.set_yticks([])
-        ax3.set_yticklabels([])
-        ax3.set_xlabel("Time (s)")
+        # ax1 = fig.add_subplot(gs[:, 1])
+        # for ind in rand_ind:
+        #     # print(swa_amp[ind])
+        #     ind_theta = np.where(
+        #         (lfp_t > swa_amp_t[ind] - 0.5) & (lfp_t < swa_amp_t[ind] + 1)
+        #     )[0]
 
-        ax4.set_xlabel("Time (s)")
-        ax4.set_ylabel("Hilbert amplitude")
+        #     lfp_zsc = stat.zscore(lfp[ind_theta])
+        #     lfp_ripple_zsc = stat.zscore(lfp_ripple[ind_theta])
+        #     lfp_delta_zsc = stat.zscore(lfp_delta[ind_theta])
+        #     y_lfp = (plt_lfp + 2) * np.ones(len(lfp_zsc))
+
+        #     ax1.plot(
+        #         np.linspace(-0.5, 1, len(lfp_zsc)),
+        #         lfp_delta_zsc * 1.2 + y_lfp,
+        #         color="k",
+        #     )
+        #     ax1.plot(
+        #         np.linspace(-0.5, 1, len(lfp_zsc)),
+        #         lfp_ripple_zsc * 0.4 + y_lfp,
+        #         color=cmap(category / self.nQuantiles),
+        #         alpha=0.7,
+        #     )
+
+        #     plt_lfp += 3
+
+        #     ax2 = fig.add_subplot(gs[0, 0])
+        #     ax2.plot(t_hist[:-1], ripple_hist, color=cmap(category / self.nQuantiles))
+
+        #     ax3 = fig.add_subplot(gs[1, 0])
+        #     all_x = np.concatenate(all_ts)
+        #     all_y = np.concatenate(all_y)
+        #     ax3.plot(
+        #         all_x, all_y, ".", markersize=1, color=cmap(category / self.nQuantiles)
+        #     )
+
+        #     ax4 = fig.add_subplot(gs[2, 0])
+        #     ax4.fill_between(
+        #         mean_ripple_power_t,
+        #         mean_ripple_power_grp + ripple_std,
+        #         mean_ripple_power_grp - ripple_std,
+        #         color=cmap(category / self.nQuantiles),
+        #         alpha=0.6,
+        #     )
+        #     ax4.plot(
+        #         mean_ripple_power_t,
+        #         mean_ripple_power_grp,
+        #         color=cmap(category / self.nQuantiles),
+        #     )
+
+        # # plotting aesthetics and labelling
+        # ax1.spines["left"].set_visible(False)
+        # ax1.set_yticks([])
+        # ax1.set_yticklabels([])
+        # ax1.set_ylim(-1, 50)
+
+        # ax2.set_xlabel("Time (s)")
+        # ax2.set_ylabel("# ripples")
+
+        # ax3.spines["left"].set_visible(False)
+        # ax1.set_yticks([])
+        # ax3.set_yticklabels([])
+        # ax3.set_xlabel("Time (s)")
+
+        # ax4.set_xlabel("Time (s)")
+        # ax4.set_ylabel("Hilbert amplitude")
 
         # sns.despine(ax=ax, right=False)
         # plt.close()  # suppressing the output figure
-        return ax4
+
+        return p1, p2

@@ -22,12 +22,12 @@ class hswa:
         print("hswa running")
         self._obj = obj
         evt = np.load(self._obj.files.slow_wave, allow_pickle=True).item()
-        self.amp = evt["delta_amp"]
-        self.time = evt["delta_t"]
+        self.amp = np.asarray(evt["delta_amp"])
+        self.time = np.asarray(evt["delta_t"])
 
         if obj.trange.any():
             start, end = obj.trange
-            indwhere = np.where((self.time > start) & (self.time < end))
+            indwhere = np.where((self.time > start) & (self.time < end))[0]
             self.time = self.time[indwhere]
             self.amp = self.amp[indwhere]
 
@@ -122,7 +122,7 @@ class ripple:
 
     def findswr(self):
         ripplechan = self.best_chan_lfp
-        ripples = spwrs(ripplechan, self._lfpsRate)
+        ripples = spwrs(ripplechan, self._obj.recinfo.lfpSrate)
 
-        np.save(self._files.ripple_evt, ripples)
-        print(f"{self.f_ripple_evt.name} created")
+        np.save(self._obj.files.ripple_evt, ripples)
+        print(f"{self._obj.ripple_evt.name} created")
