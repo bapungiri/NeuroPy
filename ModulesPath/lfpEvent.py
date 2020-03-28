@@ -19,7 +19,6 @@ from pathlib import Path
 class hswa:
     def __init__(self, obj):
 
-        print("hswa running")
         self._obj = obj
         evt = np.load(self._obj.files.slow_wave, allow_pickle=True).item()
         self.amp = np.asarray(evt["delta_amp"])
@@ -93,7 +92,6 @@ class hswa:
 class ripple:
     def __init__(self, obj):
         self._obj = obj
-        print("hello")
         ripple_evt = np.load(obj.files.ripple_evt, allow_pickle=True).item()
         self.time = ripple_evt["timestamps"]
         self.peakpower = ripple_evt["peakPower"]

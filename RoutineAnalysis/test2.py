@@ -4,9 +4,6 @@ from bokeh.models import ColumnDataSource
 
 import matplotlib as mpl
 
-impo
-
-
 
 # p = figure(plot_width=400, plot_height=400)
 

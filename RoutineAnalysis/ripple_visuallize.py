@@ -81,4 +81,4 @@ for sub, (sess_pre, sess_post) in enumerate(zip(sessions_pre, sessions_post)):
 # ax1.set_xlabel("Time (h)")
 # ax2.set_xlabel("Time (h)")
 
-fig.show()
+# fig.show()
