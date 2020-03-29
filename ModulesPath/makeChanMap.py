@@ -11,12 +11,14 @@ class recinfo:
         self._obj = obj
 
         myinfo = np.load(self._obj.files.basics, allow_pickle=True).item()
+        badchans = np.load(self._obj.files.badchans)
         # print(recinfo.keys())
         self.sampfreq = myinfo["sRate"]
         self.channels = myinfo["channels"]
         self.nChans = myinfo["nChans"]
         self.lfpSrate = 1250
         self.channelgroups = myinfo["channelgroups"]
+        self.badchans = badchans
 
     # def loadbasics(self):
     # pass

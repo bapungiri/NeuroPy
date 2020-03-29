@@ -1,111 +1,74 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from bokeh.models import ColumnDataSource
+import scipy.signal as sg
 
-import matplotlib as mpl
-
-
-# p = figure(plot_width=400, plot_height=400)
-
-# p.line(x, y1, color=col[0])
-# p.title = "sdf"
-# show(p)
-
-# import matplotlib.pyplot as plt
-
-# plt.close("all")
-# fig1, (ax1, ax2) = plt.subplots(2, 1)
-# ax1.plot(range(10))
-# ax2.plot(range(20))
-
-# allxes = fig1.get_axes()
-
-# # plt.close()
-# fig2, ax3 = plt.subplots()
-# ax3.add_artist(ax1)
+fs = 10e3
+N = 1e5
+amp = 2 * np.sqrt(2)
+noise_power = 0.01 * fs / 2
+time = np.arange(N) / float(fs)
+mod = 500 * np.cos(2 * np.pi * 0.25 * time)
+carrier = amp * np.sin(2 * np.pi * 3e3 * time + mod)
+noise = np.random.normal(scale=np.sqrt(noise_power), size=time.shape)
+noise *= np.exp(-time / 5)
+x = carrier + noise
+f, t, Sxx = sg.spectrogram(x, fs, nperseg=1250, noverlap=625.0)
+plt.pcolormesh(t, f, Sxx)
+plt.ylabel("Frequency [Hz]")
+plt.xlabel("Time [sec]")
+plt.show()
 
 
-# fig2.show()
-# X = [1, 2, 3, 4, 5, 6, 7]
-# Y = [1, 3, 4, 2, 5, 8, 6]
-
-# axes1 = fig.add_axes([0.1, 0.1, 0.9, 0.9])  # main axes
-# axes2 = fig.add_axes([0.2, 0.6, 0.4, 0.3])  # inset axes
-
-# axes1.plot(ax2)
-# # ax.plot()
-# plt.axes(ax)
-
-# # fig2, ax3 = plt.figure()
-# # ax3.axes(ax)
-
-# plt.show()
-
-
-# import scipy.signal as sg
-# from signal_process import filter_sig as filt
-
-# basepath = "/data/Clustering/SleepDeprivation/RatK/Day1/"
-
-# filename = basepath + "RatN_Day1_2019-10-09_03-52-32_BestRippleChans.npy"
-
-# lfp = np.load(filename, allow_pickle=True).item()
-# lfp = lfp["BestChan"]
-# lfp_ripple = filt.filter_ripple(lfp)
-
-# analytic_signal = sg.hilbert(lfp_ripple)
-# amplitude_envelope = np.abs(analytic_signal)
-
-
-# class names:
-#     def __init__(self):
-#         self.string = "gh"
+# import matplotlib as mpl
 
 
 # class session:
-#     t = 5
-
 #     def __init__(self):
-#         self.obj = names()
-#         # obj.trange =
-#         self.trange = [4, 5]
-#         self.obj.trange = self.trange
-#         self.child1 = child1(self.obj)
-
-#         self.obj.child1 = self.child1
-#         self.child2 = child2(self.obj)
-#         self.string = "mg"
+#         self._trange = [4, 5]
 
 
-# class child1:
-#     def __init__(self, obj):
-#         print(hasattr(obj, "child1"))
-#         self.time = np.array([1, 2, 3, 5, 6, 7])
-#         self.a = 5
-#         # self.time = self.time[ind]
+# class event(session):
+#     def __init__(self):
+#         self.ripple = child1()
 
-#         if self.a > 2:
+#     @property
+#     def trange(self):
+#         return self._trange
 
-#             @property
-#             def gh(self):
-#                 print("gh")
+#     @trange.setter
+#     def trange(self, period):
 
-
-# class child2:
-#     def __init__(self, obj):
-#         print(obj.child1.time)
-
-#         # self.obj = obj
-#         print(hasattr(obj, "child1"))
-
-#         self.time = np.array([11, 2, 3, 8, 1, 9, 0, 3])
-#         # self.time = self.time[ind]
-#         # self.b = obj.child2.time
+#         self.ripple.trange = period
 
 
-# m = session()
+# class child1(session):
+#     def __init__(self):
+#         self.a = [1, 2, 3]
+#         super().__init__()
 
-# a = None
-# a = np.array([3, 5])
-# if a.any():
-#     print("a is not empty")
+#     @property
+#     def trange(self):
+#         return self._trange
+
+#     @trange.setter
+#     def trange(self, period):
+
+#         self.a = ["d", "b"]
+
+
+# class child3(event):
+#     def __init__(self):
+#         self.c = [1, 2, 3]
+
+#         print(self.ripple.trange)
+
+
+# class child2(event, child3):
+#     def __init__(self):
+#         self.b = 5
+
+#         super().__init__()
+
+
+# m = child2()
+# m.trange = [5, 6]
