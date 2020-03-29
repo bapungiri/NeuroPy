@@ -11,6 +11,7 @@ from MakePrmKlusta import makePrmPrb
 from eventCorr import event_event
 from artifactDetect import findartifact
 from behavior import behavior_epochs
+from sleepDetect import SleepScore
 
 
 class processData:
@@ -33,6 +34,7 @@ class processData:
     def trange(self, period):
         self._trange = period
         self.sessinfo.trange = period
+        self.sessinfo.epochs = self.epochs
         # self.spksrt_param = makePrmPrb(sessinfo)
         self.ripple = ripple(self.sessinfo)
         self.swa = hswa(self.sessinfo)
@@ -42,3 +44,5 @@ class processData:
         self.sessinfo.swa = self.swa
         self.sessinfo.ripple = self.ripple
         self.eventpsth = event_event(self.sessinfo)
+
+        self.brainstates = SleepScore(self.sessinfo)
