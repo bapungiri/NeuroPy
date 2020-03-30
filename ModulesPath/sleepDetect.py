@@ -13,6 +13,7 @@ import pathlib as Path
 
 def hmmfit1d(Data):
     # hmm states on 1d data and returns labels with highest mean = highest label
+    Data = (np.asarray(Data)).reshape(-1, 1)
     model = GaussianHMM(n_components=2, n_iter=100).fit(Data)
     hidden_states = model.predict(Data)
     mus = np.squeeze(model.means_)
@@ -78,8 +79,15 @@ class SleepScore:
         self._obj = obj
 
     def detect(self):
+        nChans = self._obj.recinfo.nChans
+        eegdata = np.memmap(self._obj.recfiles.eegfile, dtype="int16", mode="r")
+        eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
 
-        self.pre_params, self.sxx = self._getparams(self._obj.epochs.post)
+        a = np.array([self._obj.epochs.pre[0], self._obj.epochs.maze[1]])
+        self.pre_params, self.sxx = self._getparams(a)
+        # self.maze_params, self.maze_spect = self._getparams(self._obj.epochs.maze)
+        # self.maze_params, self.sxx = self._getparams(self._obj.epochs.maze)
+        # self.post_params, self.sxx = self._getparams(self._obj.epochs.post)
 
     def _getparams(self, interval):
         sRate = self._obj.recinfo.lfpSrate
@@ -87,18 +95,25 @@ class SleepScore:
         frames = (interval * sRate).astype(int)
 
         lfp = np.load(self._obj.files.thetalfp, allow_pickle=True)
+        lfp = stats.zscore(lfp)
         lfp = lfp[frames[0] : frames[1]]
 
         eegdata = np.memmap(self._obj.recfiles.eegfile, dtype="int16", mode="r")
         eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
-        eegdata = eegdata[frames[0] : frames[1], :]
+        # eegdata = eegdata[frames[0] : frames[1], :]
 
-        theta, sxx = self._theta(lfp)
+        theta, sxx_thetachan = self._theta(lfp)
+        theta_label = hmmfit1d(theta)
+
         delta, _ = self._delta(lfp)
+        delta_label = hmmfit1d(delta)
+
         emg = self._emgfromlfp(eegdata)
+        emg_label = hmmfit1d(emg)
+
         data = pd.DataFrame({"theta": theta, "delta": delta, "emg": emg})
 
-        return data, sxx
+        return data, sxx_thetachan
 
     def _spect(self, lfp):
 
@@ -111,32 +126,33 @@ class SleepScore:
         return f, t, sxx
 
     def _delta(self, lfp):
-        lfp = stats.zscore(lfp)
-        f, t, sxx = self._spect(lfp)
+        # lfp = stats.zscore(lfp)
+        f, _, sxx = self._spect(lfp)
 
-        delta_ind = np.where((f > 0.5) & (f < 4))[0]  # delta band 0-4 Hz and
+        delta_ind = np.where(((f > 0.5) & (f < 4)) | ((f > 12) & (f < 15)))[0]
+        # delta_ind = np.where(((f > 0.5) & (f < 16)))[0]
 
         delta_sxx = np.mean(sxx[delta_ind, :], axis=0)
-        delta_smooth = filtSig.gaussian_filter1d(delta_sxx, 3, axis=0)
+        delta_smooth = filtSig.gaussian_filter1d(delta_sxx, 10, axis=0)
         # delta_smooth = np.reshape(delta_smooth, [len(delta_smooth), 1])
 
         return delta_smooth, sxx
 
     def _theta(self, lfp):
-        lfp = stats.zscore(lfp)
+        # lfp = stats.zscore(lfp)
         f, _, sxx = self._spect(lfp)
 
-        theta_ind = np.where((f > 5) & (f < 10))[0]  # theta band 0-4 Hz and 12-15 Hz
+        theta_ind = np.where((f > 5) & (f < 11))[0]  # theta band 0-4 Hz and 12-15 Hz
 
         theta_sxx = np.mean(sxx[theta_ind, :], axis=0)
-        theta_smooth = filtSig.gaussian_filter1d(theta_sxx, 3, axis=0)
+        theta_smooth = filtSig.gaussian_filter1d(theta_sxx, 10, axis=0)
         # theta_smooth = np.reshape(theta_smooth, [len(theta_smooth), 1])
 
         return theta_smooth, sxx
 
     def _emgfromlfp(self, eegdata):
         highfreq = 600
-        lowfreq = 400
+        lowfreq = 300
         sRate = self._obj.recinfo.lfpSrate
         nyq = 0.5 * sRate
         nShanks = self._obj.recinfo.nShanks
@@ -154,9 +170,7 @@ class SleepScore:
         chan_map_select = np.union1d(chan_top, chan_bottom)
 
         # filtering for high frequency band
-
-        chan_good = chan_map_select
-        lfp_req = eegdata[:, chan_good]
+        lfp_req = eegdata[:, chan_map_select]
         b, a = sg.butter(3, [lowfreq / nyq, highfreq / nyq], btype="bandpass")
         yf = sg.filtfilt(b, a, lfp_req, axis=0)
 
@@ -173,7 +187,7 @@ class SleepScore:
             corr_all = corr_chan[np.tril_indices(len(corr_chan), k=-1)]
             emg_lfp.append(np.mean(corr_all))
 
-        emg_smooth = filtSig.gaussian_filter1d(emg_lfp, 3, axis=0)
+        emg_smooth = filtSig.gaussian_filter1d(emg_lfp, 10, axis=0)
 
         return emg_smooth
 
