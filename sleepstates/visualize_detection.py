@@ -55,12 +55,12 @@ for sub, sess in enumerate(sessions):
 plt.close("all")
 plt.clf()
 fig = plt.figure(1, figsize=(6, 10))
-gs = GridSpec(5, 1, figure=fig)
+gs = GridSpec(6, 1, figure=fig)
 fig.subplots_adjust(hspace=0.4)
 
 ax1 = fig.add_subplot(gs[0, 0])
 ax1.imshow(
-    sess.brainstates.sxx[:, :],
+    sess.brainstates.sxx[:40, :],
     cmap="YlGn",
     aspect="auto",
     # extent=[0, max(t) / 3600, 0, 30.0],
@@ -87,32 +87,19 @@ theta_delta_ratio = (
 ax5.plot(theta_delta_ratio)
 
 
-fig2 = plt.figure(2)
-ax = fig2.add_subplot(111)
-ax.scatter(theta_delta_ratio, sess.brainstates.pre_params.emg, s=1)
+ax6 = fig.add_subplot(gs[5, 0], sharex=ax1)
 
+states = sess.brainstates.pre_params["state"]
+x = np.arange(0, len(states))
 
-df = pd.DataFrame({"x": theta_delta_ratio, "y": sess.brainstates.pre_params.emg})
-colmap = {1: "r", 2: "g", 3: "b", 4: "k"}
-kmeans = KMeans(n_clusters=4)
-kmeans.fit(df)
-labels = kmeans.predict(df)
-centroids = kmeans.cluster_centers_
-fig = plt.figure(figsize=(5, 5))
+nrem = np.where(states == 1, 1, 0)
+ax6.fill_between(x, nrem, 0, color="#6b90d1")
 
-colors = map(lambda x: colmap[x + 1], labels)
+rem = np.where(states == 2, 1, 0)
+ax6.fill_between(x, rem, 0, color="#eb9494")
 
-plt.scatter(df["x"], df["y"], color=list(colors), alpha=0.5, edgecolor="k")
-for idx, centroid in enumerate(centroids):
-    plt.scatter(*centroid, color=colmap[idx + 1])
-# plt.xlim(0, 80)
-# plt.ylim(0, 80)
-plt.show()
+qw = np.where(states == 3, 1, 0)
+ax6.fill_between(x, qw, 0, color="#b6afaf")
 
-
-var = np.asarray(theta_delta_ratio).reshape(-1, 1)
-
-states = hmmfit1d(var)
-
-plt.plot(states)
-plt.plot(var)
+active = np.where(states == 4, 1, 0)
+ax6.fill_between(x, active, 0, color="#201d1d")

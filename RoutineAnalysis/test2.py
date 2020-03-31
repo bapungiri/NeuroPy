@@ -1,25 +1,44 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.signal as sg
+from dataclasses import dataclass
+from collections import namedtuple
 
-fs = 10e3
-N = 1e5
-amp = 2 * np.sqrt(2)
-noise_power = 0.01 * fs / 2
-time = np.arange(N) / float(fs)
-mod = 500 * np.cos(2 * np.pi * 0.25 * time)
-carrier = amp * np.sin(2 * np.pi * 3e3 * time + mod)
-noise = np.random.normal(scale=np.sqrt(noise_power), size=time.shape)
-noise *= np.exp(-time / 5)
-x = carrier + noise
-f, t, Sxx = sg.spectrogram(x, fs, nperseg=1250, noverlap=625.0)
-plt.pcolormesh(t, f, Sxx)
-plt.ylabel("Frequency [Hz]")
-plt.xlabel("Time [sec]")
-plt.show()
+
+def callcheck(str):
+
+    Point = namedtuple("Point", ["x", "y"])
+
+    p = Point(1, 2)
+
+    return p
+
+
+b = callcheck("fg")
+
+a = {"sdf": 1}
+a["theta"] = [1, 2, 3]
+# fs = 10e3
+# N = 1e5
+# amp = 2 * np.sqrt(2)
+# noise_power = 0.01 * fs / 2
+# time = np.arange(N) / float(fs)
+# mod = 500 * np.cos(2 * np.pi * 0.25 * time)
+# carrier = amp * np.sin(2 * np.pi * 3e3 * time + mod)
+# noise = np.random.normal(scale=np.sqrt(noise_power), size=time.shape)
+# noise *= np.exp(-time / 5)
+# x = carrier + noise
+# f, t, Sxx = sg.spectrogram(x, fs, nperseg=1250, noverlap=625.0)
+# plt.pcolormesh(t, f, Sxx)
+# plt.ylabel("Frequency [Hz]")
+# plt.xlabel("Time [sec]")
+# plt.show()
 
 
 # import matplotlib as mpl
+arr = np.max([1, 2, 3])
+# def
+# @dataclass
 
 
 # class session:

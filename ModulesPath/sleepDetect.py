@@ -9,30 +9,7 @@ from hmmlearn.hmm import GaussianHMM
 import scipy.ndimage as filtSig
 import os
 import pathlib as Path
-
-
-def hmmfit1d(Data):
-    # hmm states on 1d data and returns labels with highest mean = highest label
-    Data = (np.asarray(Data)).reshape(-1, 1)
-    model = GaussianHMM(n_components=2, n_iter=100).fit(Data)
-    hidden_states = model.predict(Data)
-    mus = np.squeeze(model.means_)
-    sigmas = np.squeeze(np.sqrt(model.covars_))
-    transmat = np.array(model.transmat_)
-
-    idx = np.argsort(mus)
-    mus = mus[idx]
-    sigmas = sigmas[idx]
-    transmat = transmat[idx, :][:, idx]
-
-    state_dict = {}
-    states = [i for i in range(4)]
-    for i in idx:
-        state_dict[idx[i]] = states[i]
-
-    relabeled_states = [state_dict[h] for h in hidden_states]
-    # relabeled_states = hidden_states
-    return relabeled_states
+from signal_process import spectrogramBands
 
 
 def genepoch(start, end):
@@ -70,176 +47,165 @@ def genepoch(start, end):
     return thirdPass
 
 
+def hmmfit1d(Data):
+    # hmm states on 1d data and returns labels with highest mean = highest label
+    Data = (np.asarray(Data)).reshape(-1, 1)
+    model = GaussianHMM(n_components=2, n_iter=100).fit(Data)
+    hidden_states = model.predict(Data)
+    mus = np.squeeze(model.means_)
+    sigmas = np.squeeze(np.sqrt(model.covars_))
+    transmat = np.array(model.transmat_)
+
+    idx = np.argsort(mus)
+    mus = mus[idx]
+    sigmas = sigmas[idx]
+    transmat = transmat[idx, :][:, idx]
+
+    state_dict = {}
+    states = [i for i in range(4)]
+    for i in idx:
+        state_dict[idx[i]] = states[i]
+
+    relabeled_states = np.asarray([state_dict[h] for h in hidden_states])
+    relabeled_states[:2] = [0, 0]
+    relabeled_states[-2:] = [0, 0]
+
+    state_diff = np.diff(relabeled_states)
+    start = np.where(state_diff == 1)[0]
+    stop = np.where(state_diff == -1)[0]
+
+    for s, e in zip(start, stop):
+        if e - s < 50:
+            relabeled_states[s + 1 : e] = 0
+    # print(start_ripple.shape, stop_ripple.shape)
+    # states = np.concatenate((start_ripple, stop_ripple), axis=1)
+
+    # relabeled_states = hidden_states
+    return relabeled_states
+
+
 class SleepScore:
 
     window = 1  # seconds
-    slideby = 0.5  # seconds
+    overlap = 0.8  # seconds
 
     def __init__(self, obj):
         self._obj = obj
 
     def detect(self):
-        nChans = self._obj.recinfo.nChans
-        eegdata = np.memmap(self._obj.recfiles.eegfile, dtype="int16", mode="r")
-        eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
 
         a = np.array([self._obj.epochs.pre[0], self._obj.epochs.maze[1]])
         self.pre_params, self.sxx = self._getparams(a)
+
         # self.maze_params, self.maze_spect = self._getparams(self._obj.epochs.maze)
         # self.maze_params, self.sxx = self._getparams(self._obj.epochs.maze)
         # self.post_params, self.sxx = self._getparams(self._obj.epochs.post)
 
+    @staticmethod
+    def _label2states(theta_delta, delta_l, emg_l):
+
+        state = np.zeros(len(theta_delta))
+        for i, (ratio, delta, emg) in enumerate(zip(theta_delta, delta_l, emg_l)):
+
+            if ratio == 1 and emg == 1:
+                state[i] = 4
+            elif ratio == 0 and emg == 1 and delta == 0:
+                state[i] = 3
+            elif ratio == 1 and emg == 0:
+                state[i] = 2
+            elif ratio == 0 and emg == 1 and delta == 1:
+                state[i] = 1
+            elif ratio == 0 and emg == 0:
+                state[i] = 1
+
+        return state
+
     def _getparams(self, interval):
         sRate = self._obj.recinfo.lfpSrate
-        nChans = self._obj.recinfo.nChans
-        frames = (interval * sRate).astype(int)
 
-        lfp = np.load(self._obj.files.thetalfp, allow_pickle=True)
+        lfp = np.load(self._obj.files.thetalfp)
         lfp = stats.zscore(lfp)
-        lfp = lfp[frames[0] : frames[1]]
+        bands = spectrogramBands(lfp)
+        time = bands.time
 
-        eegdata = np.memmap(self._obj.recfiles.eegfile, dtype="int16", mode="r")
-        eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
-        # eegdata = eegdata[frames[0] : frames[1], :]
-
-        theta, sxx_thetachan = self._theta(lfp)
-        theta_label = hmmfit1d(theta)
-
-        delta, _ = self._delta(lfp)
+        ind = np.where((time > interval[0]) & (time < interval[1]))[0]
+        theta = bands.theta[ind]
+        delta = bands.delta[ind]
+        theta_delta_ratio = stats.zscore(theta / delta)
+        theta_delta_label = hmmfit1d(theta_delta_ratio)
         delta_label = hmmfit1d(delta)
+        sxx = bands.sxx[:, ind]
 
-        emg = self._emgfromlfp(eegdata)
+        emg = self._emgfromlfp(fromfile=1)
         emg_label = hmmfit1d(emg)
+        emg = emg[ind]
+        emg_label = emg_label[ind]
 
-        data = pd.DataFrame({"theta": theta, "delta": delta, "emg": emg})
+        states = self._label2states(theta_delta_label, delta_label, emg_label)
 
-        return data, sxx_thetachan
+        data = pd.DataFrame(
+            {"theta": theta, "delta": delta, "emg": emg, "state": states}
+        )
+        # data_label = pd.DataFrame({"theta_delta": theta_delta_label, "emg": emg_label})
 
-    def _spect(self, lfp):
+        return data, sxx
 
-        sampfreq = self._obj.recinfo.lfpSrate
-        nperseg = self.window * sampfreq
-        noverlap = self.slideby * sampfreq
+    def _emgfromlfp(self, fromfile=0):
 
-        f, t, sxx = sg.spectrogram(lfp, fs=sampfreq, nperseg=nperseg, noverlap=noverlap)
+        if fromfile:
+            emg_lfp = np.load(self._obj.files.corr_emg)
 
-        return f, t, sxx
+        else:
+            highfreq = 600
+            lowfreq = 300
+            sRate = self._obj.recinfo.lfpSrate
+            nChans = self._obj.recinfo.nChans
+            nyq = 0.5 * sRate
+            nShanks = self._obj.recinfo.nShanks
+            channels = self._obj.recinfo.channels
+            changroup = self._obj.recinfo.channelgroups
+            changroup = changroup[:nShanks]
+            badchans = self._obj.recinfo.badchans
+            chan_top = [
+                np.setdiff1d(channels, badchans, assume_unique=True)[0]
+                for channels in changroup
+            ]
+            chan_middle = [
+                np.setdiff1d(channels, badchans, assume_unique=True)[8]
+                for channels in changroup
+            ]
+            chan_bottom = [
+                np.setdiff1d(channels, badchans, assume_unique=True)[1]
+                for channels in changroup
+            ]
+            chan_map_select = chan_top + chan_bottom
+            # chan_map_select = np.union1d(chan_top, chan_bottom)
+            # chan_map_select = np.setdiff1d(channels, badchans, assume_unique=True)
 
-    def _delta(self, lfp):
-        # lfp = stats.zscore(lfp)
-        f, _, sxx = self._spect(lfp)
+            # filtering for high frequency band
+            eegdata = np.memmap(self._obj.recfiles.eegfile, dtype="int16", mode="r")
+            eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
+            lfp_req = eegdata[:, chan_map_select]
+            b, a = sg.butter(3, [lowfreq / nyq, highfreq / nyq], btype="bandpass")
+            yf = sg.filtfilt(b, a, lfp_req, axis=0)
 
-        delta_ind = np.where(((f > 0.5) & (f < 4)) | ((f > 12) & (f < 15)))[0]
-        # delta_ind = np.where(((f > 0.5) & (f < 16)))[0]
+            # windowing signal
+            frames = np.arange(
+                0, len(eegdata) - self.window * sRate, self.overlap * sRate
+            )
 
-        delta_sxx = np.mean(sxx[delta_ind, :], axis=0)
-        delta_smooth = filtSig.gaussian_filter1d(delta_sxx, 10, axis=0)
-        # delta_smooth = np.reshape(delta_smooth, [len(delta_smooth), 1])
+            emg_lfp = []
+            for i in range(len(frames)):
 
-        return delta_smooth, sxx
+                start_frame = int(i * self.overlap * sRate)
+                end_frame = start_frame + self.window * sRate
+                temp = (yf[start_frame:end_frame, :]).T
+                corr_chan = np.corrcoef(temp)
+                corr_all = corr_chan[np.tril_indices(len(corr_chan), k=-1)]
+                emg_lfp.append(np.mean(corr_all))
 
-    def _theta(self, lfp):
-        # lfp = stats.zscore(lfp)
-        f, _, sxx = self._spect(lfp)
+            np.save(self._obj.files.corr_emg, emg_lfp)
 
-        theta_ind = np.where((f > 5) & (f < 11))[0]  # theta band 0-4 Hz and 12-15 Hz
-
-        theta_sxx = np.mean(sxx[theta_ind, :], axis=0)
-        theta_smooth = filtSig.gaussian_filter1d(theta_sxx, 10, axis=0)
-        # theta_smooth = np.reshape(theta_smooth, [len(theta_smooth), 1])
-
-        return theta_smooth, sxx
-
-    def _emgfromlfp(self, eegdata):
-        highfreq = 600
-        lowfreq = 300
-        sRate = self._obj.recinfo.lfpSrate
-        nyq = 0.5 * sRate
-        nShanks = self._obj.recinfo.nShanks
-        changroup = self._obj.recinfo.channelgroups
-        changroup = changroup[:nShanks]
-        badchans = self._obj.recinfo.badchans
-        chan_top = [
-            np.setdiff1d(channels, badchans, assume_unique=True)[0]
-            for channels in changroup
-        ]
-        chan_bottom = [
-            np.setdiff1d(channels, badchans, assume_unique=True)[-1]
-            for channels in changroup
-        ]
-        chan_map_select = np.union1d(chan_top, chan_bottom)
-
-        # filtering for high frequency band
-        lfp_req = eegdata[:, chan_map_select]
-        b, a = sg.butter(3, [lowfreq / nyq, highfreq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, lfp_req, axis=0)
-
-        # windowing signal
-        frames = np.arange(0, len(eegdata) - self.window * sRate, self.slideby * sRate)
-
-        emg_lfp = []
-        for i in range(len(frames)):
-
-            start_frame = int(i * self.slideby * sRate)
-            end_frame = start_frame + self.window * sRate
-            temp = (yf[start_frame:end_frame, :]).T
-            corr_chan = np.corrcoef(temp)
-            corr_all = corr_chan[np.tril_indices(len(corr_chan), k=-1)]
-            emg_lfp.append(np.mean(corr_all))
-
-        emg_smooth = filtSig.gaussian_filter1d(emg_lfp, 10, axis=0)
+        emg_smooth = filtSig.gaussian_filter1d(emg_lfp, 2, axis=0)
 
         return emg_smooth
-
-    # def thetaDeltaratio(self):
-    #     f, _, sxx = self.spect(self.thetaData)
-
-    #     theta_ind = np.where((f > 5) & (f < 10))[0]
-    #     delta_ind = np.where((f < 4) | ((f > 12) & (f < 16)))[
-    #         0
-    #     ]  # delta band 0-4 Hz and 12-15 Hz
-    #     gamma_ind = np.where((f > 50) & (f < 250))[0]  # delta band 0-4 Hz and 12-15 Hz
-
-    #     theta_sxx = np.mean(sxx[theta_ind, :], axis=0)
-    #     delta_sxx = np.mean(sxx[delta_ind, :], axis=0)
-    #     gamma_sxx = np.mean(sxx[gamma_ind, :], axis=0)
-
-    #     theta_delta_ratio = stats.zscore(delta_sxx / theta_sxx)
-    #     theta_gamma_ratio = stats.zscore(theta_sxx / gamma_sxx)
-    #     theta_delta_ratio = np.reshape(theta_delta_ratio, [len(theta_delta_ratio), 1])
-
-    #     theta_delta_smooth = filtSig.gaussian_filter1d(theta_delta_ratio, 3, axis=0)
-    #     feature_comb = np.hstack(
-    #         (theta_delta_ratio, np.reshape(self.emg_lfp, (len(self.emg_lfp), 1)))
-    #     )
-
-    #     model = GaussianHMM(n_components=4, n_iter=100).fit(feature_comb)
-    #     hidden_states = model.predict(feature_comb)
-
-    #     relabeled_states = hidden_states
-    #     # theta_ratio_dist, bin_edges = np.histogram(theta_delta_ratio,bins=100)
-
-    #     # plt.plot(theta_gamma_ratio,theta_delta_ratio,'.')
-    #     # plt.plot(freq[:N//2], (2/N)*fftSig[:N//2])
-
-    #     relabeled_states = np.array(relabeled_states)
-    #     # sleep states labelling
-
-    #     sleep_stages = []
-    #     for i in range(4):
-
-    #         sleep_state = np.where(relabeled_states == i, 1, 0)
-    #         sleep_state = np.diff(sleep_state)
-    #         state_start = np.where(sleep_state == 1)[0]
-    #         state_end = np.where(sleep_state == -1)[0]
-    #         state_label = i * np.ones(len(state_start))
-    #         firstPass = np.vstack((t[state_start], t[state_end], state_label)).T
-    #         sleep_stages.extend(firstPass)
-
-    #     sleep_stages = np.asarray(sleep_stages)
-    #     sleep_stages = sleep_stages[sleep_stages[:, 0].argsort()]
-
-    #     # np.save(basePath + sessionName + "_behavior.npy", sleep_stages)
-
-    #     arr_start = np.argwhere(f > 25)[0]
-    #     sxx2 = sxx[: arr_start[0]][:]

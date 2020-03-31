@@ -34,6 +34,8 @@ class files:
         self.hwsa_ripple = Path(str(f_prefix) + "_hswa_ripple.npy")
         self.sws_states = Path(str(f_prefix) + "_sws.npy")
         self.slow_wave = Path(str(f_prefix) + "_hswa.npy")
+        self.corr_emg = Path(str(f_prefix) + "_emg.npy")
+        self.spectrogram = Path(str(f_prefix) + "_sxx.npy")
 
 
 class recfiles:
