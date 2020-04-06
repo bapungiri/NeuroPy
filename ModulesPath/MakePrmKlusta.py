@@ -9,11 +9,9 @@ from makeChanMap import recinfo
 # folderPath = '../'
 
 
-class makePrmPrb(path2files):
-    def __init__(self, basePath):
-        super().__init__(basePath)
-        # print(self.sessionName)
-
+class makePrmPrb:
+    def __init__(self, obj):
+        self._obj = obj
         self.prmTemplate = (
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prm"
         )
@@ -21,7 +19,7 @@ class makePrmPrb(path2files):
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prb"
         )
 
-        self._myinfo = recinfo(basePath)
+        # self._myinfo = recinfo(basePath)
 
         # recInfo = np.load(self._files.basics, allow_pickle=True)
         # self.sampFreq = recInfo.item().get("sRate")
@@ -228,8 +226,11 @@ class makePrmPrb(path2files):
                         else:
                             f1.write(line)
 
-    def makePrbCircus(self, probetype):
-        circus_prb = (self._files.filePrefix).with_suffix(".prb")
+    def makePrbCircus(self, probetype, shanksCombine=1):
+        nShanks = self._obj.recinfo.nShanks
+        nChans = self._obj.recinfo.nChans
+        channelgroups = self._obj.recinfo.channelgroups
+        circus_prb = (self._obj.files.filePrefix).with_suffix(".prb")
         if probetype == "buzsaki":
             xpos = [0, 37, 4, 33, 8, 29, 12, 20]
             ypos = np.arange(140, 0, -20)
@@ -237,12 +238,12 @@ class makePrmPrb(path2files):
             xpos = [16 * (_ % 2) for _ in range(16)]
             ypos = [15 * 16 - _ * 15 for _ in range(16)]
         with circus_prb.open("w") as f:
-            f.write(f"total_nb_channels = {self._myinfo.nChans} \n")
+            f.write(f"total_nb_channels = {nChans} \n")
             f.write(f"radius = 100 \n")
             f.write("channel_groups = { \n")
 
-            for shank in range(1, self._myinfo.nShanks + 1):
-                chan_list = self._myinfo.channelgroups[shank - 1]
+            for shank in range(1, nShanks + 1):
+                chan_list = channelgroups[shank - 1]
 
                 f.write(f"{shank}: {{ \n")
                 f.write(f"'channels' : {chan_list} ,\n")

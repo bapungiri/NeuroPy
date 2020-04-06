@@ -12,6 +12,7 @@ from eventCorr import event_event
 from artifactDetect import findartifact
 from behavior import behavior_epochs
 from sleepDetect import SleepScore
+from MakePrmKlusta import makePrmPrb
 
 
 class processData:
@@ -24,6 +25,7 @@ class processData:
         self.sessinfo.recinfo = self.recinfo
 
         self.epochs = behavior_epochs(self.sessinfo)
+        self.makePrmPrb = makePrmPrb(self.sessinfo)
         self._trange = None
 
     @property

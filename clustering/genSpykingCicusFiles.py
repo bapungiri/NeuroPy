@@ -1,0 +1,24 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib as mpl
+from matplotlib.gridspec import GridSpec
+from callfunc import processData
+
+
+# TODO thoughts on using data class for loading data into function
+
+basePath = [
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+]
+
+
+sessions = [processData(_) for _ in basePath]
+
+for sub, sess in enumerate(sessions):
+
+    sess.makePrmPrb.makePrbCircus("diagbio")

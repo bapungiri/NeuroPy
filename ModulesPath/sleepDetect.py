@@ -87,15 +87,18 @@ def hmmfit1d(Data):
 class SleepScore:
 
     window = 1  # seconds
-    overlap = 0.8  # seconds
+    overlap = 0.2  # seconds
 
     def __init__(self, obj):
         self._obj = obj
 
     def detect(self):
 
-        a = np.array([self._obj.epochs.pre[0], self._obj.epochs.maze[1]])
-        self.pre_params, self.sxx = self._getparams(a)
+        # a = np.array([self._obj.epochs.pre[0], self._obj.epochs.post[1]])
+        emg = self._emgfromlfp(fromfile=0)
+        self.params_pre, self.sxx_pre = self._getparams(self._obj.epochs.pre, emg)
+        self.params_maze, self.sxx_maze = self._getparams(self._obj.epochs.maze, emg)
+        self.params_post, self.sxx_post = self._getparams(self._obj.epochs.post, emg)
 
         # self.maze_params, self.maze_spect = self._getparams(self._obj.epochs.maze)
         # self.maze_params, self.sxx = self._getparams(self._obj.epochs.maze)
@@ -107,36 +110,54 @@ class SleepScore:
         state = np.zeros(len(theta_delta))
         for i, (ratio, delta, emg) in enumerate(zip(theta_delta, delta_l, emg_l)):
 
+            # if ratio == 1 and emg == 1:
+            #     state[i] = 4
+            # elif ratio == 0 and emg == 1 and delta == 0:
+            #     state[i] = 3
+            # elif ratio == 1 and emg == 0:
+            #     state[i] = 2
+            # elif ratio == 0 and emg == 1 and delta == 1:
+            #     state[i] = 1
+            # elif ratio == 0 and emg == 0:
+            #     state[i] = 1
             if ratio == 1 and emg == 1:
                 state[i] = 4
-            elif ratio == 0 and emg == 1 and delta == 0:
+            elif ratio == 0 and emg == 1:
                 state[i] = 3
             elif ratio == 1 and emg == 0:
                 state[i] = 2
-            elif ratio == 0 and emg == 1 and delta == 1:
-                state[i] = 1
             elif ratio == 0 and emg == 0:
                 state[i] = 1
+            # elif ratio == 0 and emg == 1 and delta == 1:
+            #     state[i] = 1
+            # elif ratio == 0 and emg == 0:
+            #     state[i] = 1
 
         return state
 
-    def _getparams(self, interval):
+    def _getparams(self, interval, emg):
         sRate = self._obj.recinfo.lfpSrate
 
         lfp = np.load(self._obj.files.thetalfp)
+        # ripplelfp = np.load(self._obj.files.ripplelfp).item()["BestChan"]
+
         lfp = stats.zscore(lfp)
-        bands = spectrogramBands(lfp)
+        bands = spectrogramBands(
+            lfp, window=self.window * sRate, overlap=self.overlap * sRate
+        )
         time = bands.time
 
         ind = np.where((time > interval[0]) & (time < interval[1]))[0]
-        theta = bands.theta[ind]
         delta = bands.delta[ind]
+        theta = bands.theta[ind]
+        spindle = bands.spindle[ind]
+        gamma = bands.gamma[ind]
+        ripple = bands.ripple[ind]
         theta_delta_ratio = stats.zscore(theta / delta)
         theta_delta_label = hmmfit1d(theta_delta_ratio)
         delta_label = hmmfit1d(delta)
-        sxx = bands.sxx[:, ind]
+        sxx = stats.zscore(bands.sxx[:, ind], axis=None)
 
-        emg = self._emgfromlfp(fromfile=1)
         emg_label = hmmfit1d(emg)
         emg = emg[ind]
         emg_label = emg_label[ind]
@@ -144,7 +165,16 @@ class SleepScore:
         states = self._label2states(theta_delta_label, delta_label, emg_label)
 
         data = pd.DataFrame(
-            {"theta": theta, "delta": delta, "emg": emg, "state": states}
+            {
+                "delta": stats.zscore(delta),
+                "theta": stats.zscore(theta),
+                "spindle": stats.zscore(spindle),
+                "gamma": stats.zscore(gamma),
+                "ripple": stats.zscore(ripple),
+                "theta_delta_ratio": theta_delta_ratio,
+                "emg": emg,
+                "state": states,
+            }
         )
         # data_label = pd.DataFrame({"theta_delta": theta_delta_label, "emg": emg_label})
 
@@ -162,7 +192,7 @@ class SleepScore:
             nChans = self._obj.recinfo.nChans
             nyq = 0.5 * sRate
             nShanks = self._obj.recinfo.nShanks
-            channels = self._obj.recinfo.channels
+            # channels = self._obj.recinfo.channels
             changroup = self._obj.recinfo.channelgroups
             changroup = changroup[:nShanks]
             badchans = self._obj.recinfo.badchans
@@ -170,15 +200,15 @@ class SleepScore:
                 np.setdiff1d(channels, badchans, assume_unique=True)[0]
                 for channels in changroup
             ]
-            chan_middle = [
-                np.setdiff1d(channels, badchans, assume_unique=True)[8]
-                for channels in changroup
-            ]
+            # chan_middle = [
+            #     np.setdiff1d(channels, badchans, assume_unique=True)[8]
+            #     for channels in changroup
+            # ]
             chan_bottom = [
-                np.setdiff1d(channels, badchans, assume_unique=True)[1]
+                np.setdiff1d(channels, badchans, assume_unique=True)[-1]
                 for channels in changroup
             ]
-            chan_map_select = chan_top + chan_bottom
+            chan_map_select = [chan_top[0], chan_top[-1]]
             # chan_map_select = np.union1d(chan_top, chan_bottom)
             # chan_map_select = np.setdiff1d(channels, badchans, assume_unique=True)
 
@@ -191,21 +221,25 @@ class SleepScore:
 
             # windowing signal
             frames = np.arange(
-                0, len(eegdata) - self.window * sRate, self.overlap * sRate
+                0,
+                len(eegdata) - self.window * sRate,
+                (self.window - self.overlap) * sRate,
             )
 
             emg_lfp = []
-            for i in range(len(frames)):
+            for start in frames:
 
-                start_frame = int(i * self.overlap * sRate)
+                start_frame = int(start)
                 end_frame = start_frame + self.window * sRate
                 temp = (yf[start_frame:end_frame, :]).T
                 corr_chan = np.corrcoef(temp)
                 corr_all = corr_chan[np.tril_indices(len(corr_chan), k=-1)]
-                emg_lfp.append(np.mean(corr_all))
+                # corr_all = temp[0, :]
+                emg_lfp.append(np.sum(corr_all))
 
             np.save(self._obj.files.corr_emg, emg_lfp)
+            print(corr_all.shape)
 
-        emg_smooth = filtSig.gaussian_filter1d(emg_lfp, 2, axis=0)
+        emg_smooth = filtSig.gaussian_filter1d(emg_lfp, 10, axis=0)
 
         return emg_smooth
