@@ -1,93 +1,59 @@
+
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.signal as sg
-from dataclasses import dataclass
-from collections import namedtuple
+from matplotlib.colors import LogNorm
+Z = np.random.rand(6, 10)
 
+fig, (ax0, ax1) = plt.subplots(2, 1)
 
-def callcheck(str):
+c = ax0.pcolor(Z)
+ax0.set_title('default: no edges')
 
-    Point = namedtuple("Point", ["x", "y"])
+# c = ax1.pcolor(Z, edgecolors='k', linewidths=4)
+# ax1.set_title('thick edges')
 
-    p = Point(1, 2)
-
-    return p
-
-
-b = callcheck("fg")
-
-a = {"sdf": 1}
-a["theta"] = [1, 2, 3]
-# fs = 10e3
-# N = 1e5
-# amp = 2 * np.sqrt(2)
-# noise_power = 0.01 * fs / 2
-# time = np.arange(N) / float(fs)
-# mod = 500 * np.cos(2 * np.pi * 0.25 * time)
-# carrier = amp * np.sin(2 * np.pi * 3e3 * time + mod)
-# noise = np.random.normal(scale=np.sqrt(noise_power), size=time.shape)
-# noise *= np.exp(-time / 5)
-# x = carrier + noise
-# f, t, Sxx = sg.spectrogram(x, fs, nperseg=1250, noverlap=625.0)
-# plt.pcolormesh(t, f, Sxx)
-# plt.ylabel("Frequency [Hz]")
-# plt.xlabel("Time [sec]")
+# fig.tight_layout()
 # plt.show()
 
+dx, dy = 0.15, 0.05
 
-# import matplotlib as mpl
-arr = np.max([1, 2, 3])
-# def
-# @dataclass
+# generate 2 2d grids for the x & y bounds
+y, x = np.mgrid[slice(-3, 3 + dy, dy), slice(-3, 3 + dx, dx)]
+z = (1 - x / 2.0 + x ** 5 + y ** 3) * np.exp(-x ** 2 - y ** 2)
+# x and y are bounds, so z should be the value *inside* those bounds.
+# Therefore, remove the last value from the z array.
+z = z[:-1, :-1]
+z_min, z_max = -np.abs(z).max(), np.abs(z).max()
 
+fig, axs = plt.subplots(2, 2)
 
-# class session:
-#     def __init__(self):
-#         self._trange = [4, 5]
+ax = axs[0, 0]
+c = ax.pcolor(x, y, z, cmap="RdBu", vmin=z_min, vmax=z_max)
+ax.set_title("pcolor")
+fig.colorbar(c, ax=ax)
 
+ax = axs[0, 1]
+c = ax.pcolormesh(x, y, z, cmap="RdBu", vmin=z_min, vmax=z_max)
+ax.set_title("pcolormesh")
+fig.colorbar(c, ax=ax)
 
-# class event(session):
-#     def __init__(self):
-#         self.ripple = child1()
+ax = axs[1, 0]
+c = ax.imshow(
+    z,
+    cmap="RdBu",
+    vmin=z_min,
+    vmax=z_max,
+    extent=[x.min(), x.max(), y.min(), y.max()],
+    interpolation="nearest",
+    origin="lower",
+)
+ax.set_title("image (nearest)")
+fig.colorbar(c, ax=ax)
 
-#     @property
-#     def trange(self):
-#         return self._trange
+ax = axs[1, 1]
+c = ax.pcolorfast(x, y, z, cmap="RdBu", vmin=z_min, vmax=z_max)
+ax.set_title("pcolorfast")
+fig.colorbar(c, ax=ax)
 
-#     @trange.setter
-#     def trange(self, period):
-
-#         self.ripple.trange = period
-
-
-# class child1(session):
-#     def __init__(self):
-#         self.a = [1, 2, 3]
-#         super().__init__()
-
-#     @property
-#     def trange(self):
-#         return self._trange
-
-#     @trange.setter
-#     def trange(self, period):
-
-#         self.a = ["d", "b"]
-
-
-# class child3(event):
-#     def __init__(self):
-#         self.c = [1, 2, 3]
-
-#         print(self.ripple.trange)
-
-
-# class child2(event, child3):
-#     def __init__(self):
-#         self.b = 5
-
-#         super().__init__()
-
-
-# m = child2()
-# m.trange = [5, 6]
+fig.tight_layout()
+plt.show()

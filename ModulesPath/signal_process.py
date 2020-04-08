@@ -82,7 +82,7 @@ class spectrogramBands:
     sampfreq: float = 1250.0
     window: int = 1250
     overlap: int = int(window / 8)
-    smooth: int = 10
+    smooth: int = 20
 
     def __post_init__(self):
 

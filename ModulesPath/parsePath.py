@@ -36,6 +36,8 @@ class files:
         self.slow_wave = Path(str(f_prefix) + "_hswa.npy")
         self.corr_emg = Path(str(f_prefix) + "_emg.npy")
         self.spectrogram = Path(str(f_prefix) + "_sxx.npy")
+        self.stateparams = Path(str(f_prefix) + "_stateparams.pkl")
+        self.states = Path(str(f_prefix) + "_states.pkl")
 
 
 class recfiles:

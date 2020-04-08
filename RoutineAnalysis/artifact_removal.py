@@ -9,8 +9,6 @@ fileName = folderPath + "RatK-Day2-2019-08-08_04-00-00.eeg"
 
 fileOGDat = folderPath + "RatK-Day2-2019-08-08_04-00-00.dat"
 
-# TODO add artifact removal class
-
 
 class ArtifactRemove:
     nChans = 134
