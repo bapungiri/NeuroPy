@@ -56,3 +56,19 @@ class recinfo:
 
         np.save(self._obj.files.basics, basics)
         print(f"_basics.npy created for {self._obj.session.sessionName}")
+
+    def probemap(self, probetype="diagbio"):
+        changroup = self.channelgroups
+        nShanks = self.nShanks
+
+        changroup = changroup[:nShanks]
+        if probetype == "diagbio":
+
+            xcoord, ycoord = [], []
+            for i in range(nShanks):
+                xpos = [10 * (_ % 2) + i * 30 for _ in range(16)]
+                ypos = [15 * 16 - _ * 15 for _ in range(16)]
+                xcoord.extend(xpos)
+                ycoord.extend(ypos)
+
+        return [xcoord, ycoord]

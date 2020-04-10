@@ -10,6 +10,7 @@ import scipy.ndimage as filtSig
 import os
 import pathlib as Path
 from signal_process import spectrogramBands
+from joblib import Parallel, delayed
 
 
 def genepoch(start, end):
@@ -91,8 +92,8 @@ class SleepScore:
 
     def __init__(self, obj):
         self._obj = obj
-        self.params = pd.read_pickle(self._obj.files.stateparams)
-        self.states = pd.read_pickle(self._obj.files.states)
+        # self.params = pd.read_pickle(self._obj.files.stateparams)
+        # self.states = pd.read_pickle(self._obj.files.states)
 
     def detect(self):
 
@@ -186,17 +187,6 @@ class SleepScore:
                 arr = np.delete(arr, [ind, ind + 1], 0)
             else:
                 ind += 1
-        # new_state = []
-        # for i in range(0, len(start) - 2):
-        #     if (end[i] - start[i + 2]) < 5 and (state[i] == state[i + 2]):
-        #         new_state.append(
-        #             [start[i], end[i + 2], end[i + 2] - start[i], state[i]]
-        #         )
-        #         i = i + 3
-        #     else:
-        #         new_state.append([start[i], end[i], duration[i], state[i]])
-
-        # new_state = np.asarray(new_state)
 
         statetime = pd.DataFrame(
             {
@@ -228,7 +218,7 @@ class SleepScore:
         spindle = bands.spindle[ind]
         gamma = bands.gamma[ind]
         ripple = bands.ripple[ind]
-        theta_delta_ratio = stats.zscore(theta / delta)
+        theta_delta_ratio = theta / delta
         theta_delta_label = hmmfit1d(theta_delta_ratio)
         delta_label = hmmfit1d(delta)
         sxx = stats.zscore(bands.sxx[:, ind], axis=None)
@@ -243,11 +233,11 @@ class SleepScore:
         data = pd.DataFrame(
             {
                 "time": t,
-                "delta": stats.zscore(delta),
-                "theta": stats.zscore(theta),
-                "spindle": stats.zscore(spindle),
-                "gamma": stats.zscore(gamma),
-                "ripple": stats.zscore(ripple),
+                "delta": delta,
+                "theta": theta,
+                "spindle": spindle,
+                "gamma": gamma,
+                "ripple": ripple,
                 "theta_delta_ratio": theta_delta_ratio,
                 "emg": emg,
                 "state": states,
@@ -304,7 +294,8 @@ class SleepScore:
                 np.setdiff1d(channels, badchans, assume_unique=True)[-1]
                 for channels in changroup
             ]
-            chan_map_select = [chan_top[0], chan_bottom[-1]]
+            # chan_map_select = [chan_top[0], chan_bottom[-1]]
+            chan_map_select = chan_top + chan_bottom
             # chan_map_select = np.union1d(chan_top, chan_bottom)
             # chan_map_select = np.setdiff1d(channels, badchans, assume_unique=True)
 
@@ -331,11 +322,12 @@ class SleepScore:
                 corr_chan = np.corrcoef(temp)
                 corr_all = corr_chan[np.tril_indices(len(corr_chan), k=-1)]
                 # corr_all = temp[0, :]
-                emg_lfp.append(np.sum(corr_all))
+                emg_lfp.append(np.mean(corr_all))
 
-            np.save(self._obj.files.corr_emg, emg_lfp)
+            # np.save(self._obj.files.corr_emg, emg_lfp)
             print(corr_all.shape)
 
-        emg_smooth = filtSig.gaussian_filter1d(emg_lfp, 20, axis=0)
+        # emg_smooth = filtSig.gaussian_filter1d(emg_lfp, 20, axis=0)
+        emg_smooth = np.asarray(emg_lfp)
 
         return emg_smooth
