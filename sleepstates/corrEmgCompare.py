@@ -214,4 +214,3 @@ ax15.set_title("")
 # ax1.axis("off")
 
 fig.suptitle("Comparing correlation Emg for various electrode combination")
-

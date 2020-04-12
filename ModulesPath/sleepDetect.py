@@ -86,6 +86,7 @@ def hmmfit1d(Data):
 
 
 class SleepScore:
+    # TODO add support for bad time points
 
     window = 1  # seconds
     overlap = 0.2  # seconds
@@ -265,69 +266,41 @@ class SleepScore:
             emg_lfp = np.load(self._obj.files.corr_emg)
 
         else:
+
             highfreq = 600
             lowfreq = 300
             sRate = self._obj.recinfo.lfpSrate
             nChans = self._obj.recinfo.nChans
             nyq = 0.5 * sRate
-            nShanks = self._obj.recinfo.nShanks
-            # channels = self._obj.recinfo.channels
-            changroup = self._obj.recinfo.channelgroups
-            # print(changroup)
+            window = self.window * sRate
+            overlap = self.overlap * sRate
+            channels = self._obj.recinfo.channels
             badchans = self._obj.recinfo.badchans
 
-            if len(badchans) > 30:
-
-                changroup = changroup[:4]
-            else:
-                changroup = changroup[:nShanks]
-
-            chan_top = [
-                np.setdiff1d(channels, badchans, assume_unique=True)[0]
-                for channels in changroup
-            ]
-            # chan_middle = [
-            #     np.setdiff1d(channels, badchans, assume_unique=True)[8]
-            #     for channels in changroup
-            # ]
-            chan_bottom = [
-                np.setdiff1d(channels, badchans, assume_unique=True)[-1]
-                for channels in changroup
-            ]
-            # chan_map_select = [chan_top[0], chan_bottom[-1]]
-            chan_map_select = chan_top + chan_bottom
-            # chan_map_select = np.union1d(chan_top, chan_bottom)
-            # chan_map_select = np.setdiff1d(channels, badchans, assume_unique=True)
+            emgChans = np.setdiff1d(channels, badchans, assume_unique=True)
+            nemgChans = len(emgChans)
 
             # filtering for high frequency band
             eegdata = np.memmap(self._obj.recfiles.eegfile, dtype="int16", mode="r")
             eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
-            lfp_req = eegdata[:, chan_map_select]
             b, a = sg.butter(3, [lowfreq / nyq, highfreq / nyq], btype="bandpass")
-            yf = sg.filtfilt(b, a, lfp_req, axis=0)
+            nframes = len(eegdata)
 
             # windowing signal
-            frames = np.arange(
-                0,
-                len(eegdata) - self.window * sRate,
-                (self.window - self.overlap) * sRate,
-            )
+            frames = np.arange(0, nframes - window, window - overlap)
 
-            emg_lfp = []
-            for start in frames:
-
+            def corrchan(start):
                 start_frame = int(start)
-                end_frame = start_frame + self.window * sRate
-                temp = (yf[start_frame:end_frame, :]).T
-                corr_chan = np.corrcoef(temp)
-                corr_all = corr_chan[np.tril_indices(len(corr_chan), k=-1)]
-                # corr_all = temp[0, :]
-                emg_lfp.append(np.mean(corr_all))
+                end_frame = start_frame + window
+                lfp_req = eegdata[start_frame:end_frame, emgChans]
+                yf = sg.filtfilt(b, a, lfp_req, axis=0).T
+                ltriang = np.tril_indices(nemgChans, k=-1)
+                return np.corrcoef(yf)[ltriang].mean()
 
-            # np.save(self._obj.files.corr_emg, emg_lfp)
-            print(corr_all.shape)
+            corr_per_frame = Parallel(n_jobs=8, require="sharedmem")(
+                delayed(corrchan)(start) for start in frames
+            )
+            emg_lfp = np.asarray(corr_per_frame)
+            np.save(self._obj.files.corr_emg, emg_lfp)
 
-        # emg_smooth = filtSig.gaussian_filter1d(emg_lfp, 20, axis=0)
-        emg_smooth = np.asarray(emg_lfp)
-
-        return emg_smooth
+        return emg_lfp
