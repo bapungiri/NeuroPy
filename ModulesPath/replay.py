@@ -4,47 +4,15 @@ import pandas as pd
 import os
 
 
-class ExtractSpikes:
+class Replay:
 
     nChans = 16
     sRate = 30000
     binSize = 0.250  # in seconds
     timeWindow = 3600  # in seconds
 
-    def __init__(self, basePath):
-        # self.sessionnName = os.path.basename(os.path.normpath(basePath))
-        self.sessionName = basePath.split("/")[-2] + basePath.split("/")[-1]
-        self.basePath = basePath
-        for file in os.listdir(basePath):
-            if file.endswith(".eeg"):
-                print(file)
-                self.subname = file[:-4]
-                print(os.path.join(basePath, file))
-                self.filePrefix = os.path.join(basePath, file[:-4])
-
-    def CollectSpikes(self):
-        self.spkAll = np.load(
-            self.basePath + self.subname + "_spikes.npy", allow_pickle=True
-        )
-
-    def partialCorrelation(self, X, Y, Z):
-        corrXY = [pd.Series.corr(pd.Series(X), pd.Series(Y[i])) for i in range(len(Y))]
-        corrYZ = [pd.Series.corr(pd.Series(Z), pd.Series(Y[i])) for i in range(len(Y))]
-        corrXZ = pd.Series.corr(pd.Series(X), pd.Series(Z))
-
-        parCorr = [
-            (corrXY[m] - corrXZ * corrYZ[m])
-            / (np.sqrt(1 - corrXZ ** 2) * (np.sqrt(1 - corrYZ[m] ** 2)))
-            for m in range(len(corrYZ))
-        ]
-
-        revCorr = [
-            (corrXZ - corrXY[m] * corrYZ[m])
-            / ((np.sqrt(1 - corrXY[m] ** 2)) * (np.sqrt(1 - corrYZ[m] ** 2)))
-            for m in range(len(corrYZ))
-        ]
-
-        return parCorr, revCorr
+    def __init__(self, obj):
+        self._obj = obj
 
     def EV(self):
 

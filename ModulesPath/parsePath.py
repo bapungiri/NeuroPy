@@ -52,7 +52,7 @@ class sessionname:
     def __init__(self, f_prefix):
         basePath = str(f_prefix.parent)
         self.sessionName = basePath.split("/")[-2] + basePath.split("/")[-1]
-        self.name = basePath.split("/")[-3]
-        self.day = basePath.split("/")[-2]
+        self.name = basePath.split("/")[-2]
+        self.day = basePath.split("/")[-1]
         self.basePath = Path(basePath)
         self.subname = f_prefix.stem

@@ -13,6 +13,8 @@ from artifactDetect import findartifact
 from behavior import behavior_epochs
 from sleepDetect import SleepScore
 from MakePrmKlusta import makePrmPrb
+from getSpikes import spikes
+from replay import Replay
 
 
 class processData:
@@ -48,3 +50,9 @@ class processData:
         self.eventpsth = event_event(self.sessinfo)
 
         self.brainstates = SleepScore(self.sessinfo)
+        self.sessinfo.brainstates = self.brainstates
+
+        self.spikes = spikes(self.sessinfo)
+        self.sessinfo.spikes = self.sessinfo
+
+        self.replay = Replay(self.sessinfo)
