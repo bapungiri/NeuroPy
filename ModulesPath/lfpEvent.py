@@ -20,7 +20,7 @@ class hswa:
     def __init__(self, obj):
 
         self._obj = obj
-        evt = np.load(self._obj.files.slow_wave, allow_pickle=True).item()
+        evt = np.load(self._obj.sessinfo.files.slow_wave, allow_pickle=True).item()
         self.amp = np.asarray(evt["delta_amp"])
         self.time = np.asarray(evt["delta_t"])
 
@@ -92,7 +92,7 @@ class hswa:
 class ripple:
     def __init__(self, obj):
         self._obj = obj
-        ripple_evt = np.load(obj.files.ripple_evt, allow_pickle=True).item()
+        ripple_evt = np.load(obj.sessinfo.files.ripple_evt, allow_pickle=True).item()
         self.time = ripple_evt["timestamps"]
         self.peakpower = ripple_evt["peakPower"]
 

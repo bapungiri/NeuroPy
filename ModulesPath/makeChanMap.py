@@ -10,8 +10,8 @@ class recinfo:
 
         self._obj = obj
 
-        myinfo = np.load(self._obj.files.basics, allow_pickle=True).item()
-        badchans = np.load(self._obj.files.badchans)
+        myinfo = np.load(self._obj.sessinfo.files.basics, allow_pickle=True).item()
+        badchans = np.load(self._obj.sessinfo.files.badchans)
         # print(recinfo.keys())
         self.sampfreq = myinfo["sRate"]
         self.channels = myinfo["channels"]
@@ -25,7 +25,7 @@ class recinfo:
 
     def makerecinfo(self):
 
-        myroot = ET.parse(self._obj.recfiles.xmlfile).getroot()
+        myroot = ET.parse(self._obj.sessinfo.recfiles.xmlfile).getroot()
 
         self.chan_session = []
         self.channelgroups = []
@@ -49,13 +49,13 @@ class recinfo:
             "nChans": self.nChans,
             "channelgroups": self.channelgroups,
             "nShanks": self.nShanks,
-            "subname": self._obj.session.subname,
-            "sessionName": self._obj.session.sessionName,
+            "subname": self._obj.sessinfo.session.subname,
+            "sessionName": self._obj.sessinfo.session.sessionName,
             "lfpSrate": 1250,
         }
 
-        np.save(self._obj.files.basics, basics)
-        print(f"_basics.npy created for {self._obj.session.sessionName}")
+        np.save(self._obj.sessinfo.files.basics, basics)
+        print(f"_basics.npy created for {self._obj.sessinfo.session.sessionName}")
 
     def probemap(self, probetype="diagbio"):
         changroup = self.channelgroups

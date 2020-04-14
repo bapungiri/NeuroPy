@@ -15,11 +15,11 @@ class spikes:
 
     def _Circus(self):
         nShanks = self._obj.recinfo.nShanks
-        name = self._obj.session.name
-        day = self._obj.session.day
+        name = self._obj.sessinfo.session.name
+        day = self._obj.sessinfo.session.day
         sRate = self._obj.recinfo.sampfreq
         clubasePath = Path("/home/bapung/Documents/ClusteringHub/spykcirc", name, day)
-        spkall = []
+        spkall, info = [], []
         for shank in range(1, nShanks + 1):
 
             clufolder = Path(
@@ -34,10 +34,13 @@ class spikes:
             cluID = np.load(clufolder / "spike_clusters.npy")
             cluinfo = pd.read_csv(clufolder / "cluster_info.tsv", delimiter="\t")
             goodCellsID = cluinfo.id[cluinfo["group"] == "good"].tolist()
+            info.append(cluinfo.loc[cluinfo["group"] == "good"])
 
             for i in range(len(goodCellsID)):
                 clu_spike_location = spktime[np.where(cluID == goodCellsID[i])[0]]
                 spkall.append(clu_spike_location / sRate)
+
+        self.info = pd.concat(info)
         self.spks = spkall
 
     def _Neurosuite(self):

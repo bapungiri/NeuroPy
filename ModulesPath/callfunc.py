@@ -23,11 +23,11 @@ class processData:
 
     def __init__(self, basePath):
         self.sessinfo = path2files(basePath)
-        self.recinfo = recinfo(self.sessinfo)
-        self.sessinfo.recinfo = self.recinfo
+        self.recinfo = recinfo(self)
+        # self.sessinfo.recinfo = self.recinfo
 
-        self.epochs = behavior_epochs(self.sessinfo)
-        self.makePrmPrb = makePrmPrb(self.sessinfo)
+        self.epochs = behavior_epochs(self)
+        self.makePrmPrb = makePrmPrb(self)
         self._trange = None
 
     @property
@@ -37,22 +37,21 @@ class processData:
     @trange.setter
     def trange(self, period):
         self._trange = period
-        self.sessinfo.trange = period
-        self.sessinfo.epochs = self.epochs
+        # self.sessinfo.trange = period
+        # self.sessinfo.epochs = self.epochs
         # self.spksrt_param = makePrmPrb(sessinfo)
-        self.ripple = ripple(self.sessinfo)
-        self.swa = hswa(self.sessinfo)
+        self.ripple = ripple(self)
+        self.swa = hswa(self)
         # self.artifact = findartifact(sessinfo)
 
         # for peristimuus histogram which needs ripple and swa
-        self.sessinfo.swa = self.swa
-        self.sessinfo.ripple = self.ripple
-        self.eventpsth = event_event(self.sessinfo)
+        # self.sessinfo.swa = self.swa
+        # self.sessinfo.ripple = self.ripple
+        self.eventpsth = event_event(self)
 
-        self.brainstates = SleepScore(self.sessinfo)
-        self.sessinfo.brainstates = self.brainstates
+        self.brainstates = SleepScore(self)
+        # self.sessinfo.brainstates = self.brainstates
 
-        self.spikes = spikes(self.sessinfo)
-        self.sessinfo.spikes = self.sessinfo
+        self.spikes = spikes(self)
 
-        self.replay = Replay(self.sessinfo)
+        self.replay = Replay(self)

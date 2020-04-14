@@ -12,6 +12,7 @@ from makeChanMap import recinfo
 class makePrmPrb:
     def __init__(self, obj):
         self._obj = obj
+        # print(self._obj.makePrmPrb.prmTemplate)
         self.prmTemplate = (
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prm"
         )

@@ -22,7 +22,7 @@ sessions = [processData(_) for _ in basePath]
 
 for sub, sess in enumerate(sessions):
 
-    # sess.recinfo.makerecinfo()
     sess.trange = np.array([])
     sess.spikes.extract()
+    ev = sess.replay.expvar()
     # sess.brainstates.detect()
