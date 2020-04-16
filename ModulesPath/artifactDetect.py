@@ -1,39 +1,30 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from parsePath import path2files
 import scipy.signal as sg
 import scipy.stats as stat
 import pandas as pd
 from numpy.fft import fft
 import scipy.ndimage as filtSig
 from pathlib import Path
-from makeChanMap import recinfo
 
 
-class findartifact(path2files):
+class findartifact:
 
     lfpsRate = 1250
-    art_thresh = 1.5
+    art_thresh = 2
 
-    def __init__(self, basePath):
-        super().__init__(basePath)
-        self._myinfo = recinfo(basePath)
+    def __init__(self, obj):
+        self._obj = obj
+        # self._myinfo = recinfo(basePath)
 
     def usingZscore(self):
         """
         calculating periods to exclude for analysis using simple z-score measure 
         """
-
-        # TODO select channel using theta chan
-        # thetachan = np.load(
-        #     str(self.filePrefix) + "_BestThetaChan.npy", allow_pickle=True
-        # ).item()
-        # Data = np.memmap(self._recfiles.eegfile, dtype="int16", mode="r")
-        # Data1 = np.memmap.reshape(
-        #     Data, (int(len(Data) / self._myinfo.nChans), self._myinfo.nChans)
-        # )
-        # chanData = Data1[:, 17]
-        self.chanData = chanData = np.load(self._files.thetalfp)
+        nChans = self._obj.recinfo.nChans
+        Data = np.memmap(self._obj.sessinfo.recfiles.eegfile, dtype="int16", mode="r")
+        Data1 = np.memmap.reshape(Data, (int(len(Data) / nChans), nChans))
+        chanData = Data1[:, 17]
 
         zsc = np.abs(stat.zscore(chanData))
 
@@ -64,9 +55,9 @@ class findartifact(path2files):
         artifact_s = np.asarray(secondPass) / self.lfpsRate  # seconds
 
         # writing to file for visualizing in neuroscope and spyking circus
-        start_neuroscope = self._files.filePrefix.with_suffix(".evt.sta")
-        end_neuroscope = self._files.filePrefix.with_suffix(".evt.end")
-        circus_file = self._files.filePrefix.with_suffix(".dead")
+        start_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.sta")
+        end_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.end")
+        circus_file = self._obj.sessinfo.files.filePrefix.with_suffix(".dead")
         with start_neuroscope.open("w") as a, end_neuroscope.open(
             "w"
         ) as b, circus_file.open("w") as c:

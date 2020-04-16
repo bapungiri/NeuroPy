@@ -60,10 +60,13 @@ class Replay:
         ]
 
         # self.check2 = post_corr
-        parcorr_maze_vs_post = parcorr_mult([maze_corr], post_corr, [pre_corr])
+        parcorr_maze_vs_post, rev_corr = parcorr_mult(
+            [maze_corr], post_corr, [pre_corr]
+        )
 
-        return parcorr_maze_vs_post
-        # self.ev_maze_vs_post = [x ** 2 for x in parcorr_maze_vs_post]
+        ev_maze_vs_post = parcorr_maze_vs_post ** 2
+        rev_corr = rev_corr ** 2
+        return ev_maze_vs_post, rev_corr
         # self.rev = [x ** 2 for x in revcorr]
         # np.save(self.basePath + self.subname + "_EV.npy", self.ev_maze_vs_post)
         # np.save(self.basePath + self.subname + "_REV.npy", self.rev)

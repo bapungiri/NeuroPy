@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from pathlib import Path
-from parsePath import path2files
-from makeChanMap import recinfo
 
 # folderPath = '../'
 
@@ -231,10 +229,10 @@ class makePrmPrb:
         nShanks = self._obj.recinfo.nShanks
         nChans = self._obj.recinfo.nChans
         channelgroups = self._obj.recinfo.channelgroups
-        circus_prb = (self._obj.files.filePrefix).with_suffix(".prb")
+        circus_prb = (self._obj.sessinfo.files.filePrefix).with_suffix(".prb")
         if probetype == "buzsaki":
             xpos = [0, 37, 4, 33, 8, 29, 12, 20]
-            ypos = np.arange(140, 0, -20)
+            ypos = np.arange(160, 0, -20)
         elif probetype == "diagbio":
             xpos = [16 * (_ % 2) for _ in range(16)]
             ypos = [15 * 16 - _ * 15 for _ in range(16)]
