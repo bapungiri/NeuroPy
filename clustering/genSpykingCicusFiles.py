@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib as mpl
 from matplotlib.gridspec import GridSpec
 from callfunc import processData
 
@@ -14,7 +13,7 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day4/"
+    # "/data/Clustering/SleepDeprivation/RatJ/Day4/"
 ]
 
 
