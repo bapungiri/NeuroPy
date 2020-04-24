@@ -16,6 +16,9 @@ class behavior_epochs:
             self.pre = epochs["PRE"]
             self.maze = epochs["MAZE"]
             self.post = epochs["POST"]
+            self.totalduration = (
+                np.diff(self.pre) + np.diff(self.maze) + np.diff(self.post)
+            )[0]
 
         else:
             print("Epochs file does not exist...did not load epochs")
