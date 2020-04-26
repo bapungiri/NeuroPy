@@ -2,8 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-from matplotlib.gridspec import GridSpec
-from scipy.ndimage import gaussian_filter
 
 from callfunc import processData
 
@@ -13,20 +11,20 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/"
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 
 
 sessions = [processData(_) for _ in basePath]
 
+badChans = [101, 105, 114, 126, 127] + list(range(128, 134))
+
 for sub, sess in enumerate(sessions):
 
-    sess.trange = np.array([])
-    # sess.epochs.maze = sess.epochs.maze + 20 * 60
-    sess.spikes.extract()
-    sess.spikes.stability.firingRate()
+    sess.recinfo.makerecinfo(badchans=badChans)
+    # sess.trange = np.array([])
 
+    zsc_signal = sess.artifact.usingZscore()
 
-stability = sess.spikes.stability.isStable
-unstable = sess.spikes.stability.unstable
-stable = sess.spikes.stability.stable
+plt.plot(zsc_signal)

@@ -137,6 +137,8 @@ col = [colors[int(state) - 1] for state in states.state]
 make_boxes(ax6, x, y, width, height, facecolor=col)
 # ax6.set_xlim(0, 50000)
 ax6.set_ylim(1, 5)
+ax6.annotate("wake", (-0.8, 4.5), transform=ax6.transAxes)
+
 # states = df["state"]
 # x = np.arange(0, len(states))
 
@@ -166,3 +168,9 @@ ax6.axis("off")
 # ax9.plot(df["time"], df["gamma"])
 # ax9.set_ylabel("gamma")
 # ax9.set_xlabel("Time (s)")
+# ax6.legend(['df','sdf','df','sdf'])
+ax6.annotate("quiet", (-0.1, 3.5))
+ax6.annotate("rem", (0.1, 2.5))
+ax6.annotate("nrem", (-10, 1.5))
+
+# fig.text(5, 6, "fsfffffg")

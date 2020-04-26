@@ -29,12 +29,12 @@ spktemplates = np.load(spktemplate_file)
 
 
 # movcorr = []
-for time in np.arange(0, binspk.shape[1] - 100, 8):
-    # bins = np.arange(time, time + 1, 0.1)    # binspk = np.asarray([np.histogram(arr, bins=bins)[0] for arr in spkframes])
-    temp = binspk[:, range(time, time + 100)]
-    spkcorr = np.corrcoef(temp)
-    corr_all = spkcorr[np.tril_indices(len(spkcorr), k=-1)]
-    movcorr.append(np.nanmean(corr_all))
+# for time in np.arange(0, binspk.shape[1] - 100, 8):
+#     # bins = np.arange(time, time + 1, 0.1)    # binspk = np.asarray([np.histogram(arr, bins=bins)[0] for arr in spkframes])
+#     temp = binspk[:, range(time, time + 100)]
+#     spkcorr = np.corrcoef(temp)
+#     corr_all = spkcorr[np.tril_indices(len(spkcorr), k=-1)]
+#     movcorr.append(np.nanmean(corr_all))
 
 
 # plt.plot(movcorr)

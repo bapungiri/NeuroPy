@@ -22,11 +22,11 @@ sessions = [processData(_) for _ in basePath]
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    # sess.epochs.maze = sess.epochs.maze + 20 * 60
+    sess.epochs.maze = sess.epochs.maze
     sess.spikes.extract()
-    sess.spikes.stability.firingRate()
+    ev, rev = sess.replay.expvar()
+    # sess.brainstates.detect()
 
-
-stability = sess.spikes.stability.isStable
-unstable = sess.spikes.stability.unstable
-stable = sess.spikes.stability.stable
+plt.clf()
+plt.plot(ev.squeeze(), "r")
+plt.plot(rev.squeeze())
