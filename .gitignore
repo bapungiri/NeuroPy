@@ -43,5 +43,6 @@ ptvsd*.log
 pydevd*.log
 nodeLanguageServer/**
 nodeLanguageServer.*/**
-ModulesPath/__pycache__/*.pyc
+ModulesPath/__pycache__
+
 
