@@ -46,3 +46,4 @@ nodeLanguageServer.*/**
 ModulesPath/__pycache__
 
 
+*.evt
