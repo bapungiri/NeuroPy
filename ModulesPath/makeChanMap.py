@@ -10,17 +10,24 @@ class recinfo:
     def __init__(self, obj):
 
         self._obj = obj
-        if Path(self._obj.sessinfo.files.epochs).is_file():
 
-            myinfo = np.load(self._obj.sessinfo.files.basics, allow_pickle=True).item()
-            self.sampfreq = myinfo["sRate"]
-            self.channels = myinfo["channels"]
-            self.nChans = myinfo["nChans"]
-            self.lfpSrate = 1250
-            self.channelgroups = myinfo["channelgroups"]
-            self.badchans = myinfo["badchans"]
+        if Path(self._obj.sessinfo.files.basics).is_file():
+            self._load()
+
+    def _load(self):
+
+        myinfo = np.load(self._obj.sessinfo.files.basics, allow_pickle=True).item()
+        self.sampfreq = myinfo["sRate"]
+        self.channels = myinfo["channels"]
+        self.nChans = myinfo["nChans"]
+        self.lfpSrate = 1250
+        self.channelgroups = myinfo["channelgroups"]
+        self.badchans = myinfo["badchans"]
 
     def makerecinfo(self, badchans=None):
+
+        if badchans is None and (self._obj.sessinfo.files.badchans).is_file():
+            badchans = np.load(self._obj.sessinfo.files.badchans)
 
         myroot = ET.parse(self._obj.sessinfo.recfiles.xmlfile).getroot()
 
@@ -54,6 +61,9 @@ class recinfo:
 
         np.save(self._obj.sessinfo.files.basics, basics)
         print(f"_basics.npy created for {self._obj.sessinfo.session.sessionName}")
+
+        # laods attributes in runtime so doesn't lead reloading of entire class instance
+        self._load()
 
     def probemap(self, probetype="diagbio"):
         changroup = self.channelgroups
