@@ -37,9 +37,9 @@ class processData:
     @trange.setter
     def trange(self, period):
         self._trange = period
+        self.spikes = spikes(self)
+        self.brainstates = SleepScore(self)
         self.ripple = ripple(self)
         self.swa = hswa(self)
         self.eventpsth = event_event(self)
-        self.brainstates = SleepScore(self)
-        self.spikes = spikes(self)
         self.replay = Replay(self)
