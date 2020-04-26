@@ -6,11 +6,11 @@ import numpy as np
 
 class path2files:
     def __init__(self, basePath):
-        basePath = Path(basePath)
+        self.basePath = Path(basePath)
 
         for file in os.listdir(basePath):
             if file.endswith(".xml"):
-                xmlfile = basePath / file
+                xmlfile = self.basePath / file
                 filePrefix = xmlfile.with_suffix("")
 
         self.session = sessionname(filePrefix)
@@ -54,5 +54,5 @@ class sessionname:
         self.sessionName = basePath.split("/")[-2] + basePath.split("/")[-1]
         self.name = basePath.split("/")[-2]
         self.day = basePath.split("/")[-1]
-        self.basePath = Path(basePath)
+        # self.basePath = Path(basePath)
         self.subname = f_prefix.stem

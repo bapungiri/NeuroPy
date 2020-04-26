@@ -114,8 +114,8 @@ class spectrogramBands:
         ripple_sxx = np.mean(sxx[ripple_ind, :], axis=0)
         ripple_smooth = filtSig.gaussian_filter1d(ripple_sxx, smooth, axis=0)
 
-        self.delta = delta_sxx
-        self.theta = theta_sxx
+        self.delta = delta_smooth
+        self.theta = theta_smooth
         self.spindle = spindle_sxx
         self.gamma = gamma_sxx
         self.ripple = ripple_sxx

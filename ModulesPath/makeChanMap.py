@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 
 class recinfo:
@@ -9,21 +10,17 @@ class recinfo:
     def __init__(self, obj):
 
         self._obj = obj
+        if Path(self._obj.sessinfo.files.epochs).is_file():
 
-        myinfo = np.load(self._obj.sessinfo.files.basics, allow_pickle=True).item()
-        badchans = np.load(self._obj.sessinfo.files.badchans)
-        # print(recinfo.keys())
-        self.sampfreq = myinfo["sRate"]
-        self.channels = myinfo["channels"]
-        self.nChans = myinfo["nChans"]
-        self.lfpSrate = 1250
-        self.channelgroups = myinfo["channelgroups"]
-        self.badchans = badchans
+            myinfo = np.load(self._obj.sessinfo.files.basics, allow_pickle=True).item()
+            self.sampfreq = myinfo["sRate"]
+            self.channels = myinfo["channels"]
+            self.nChans = myinfo["nChans"]
+            self.lfpSrate = 1250
+            self.channelgroups = myinfo["channelgroups"]
+            self.badchans = myinfo["badchans"]
 
-    # def loadbasics(self):
-    # pass
-
-    def makerecinfo(self):
+    def makerecinfo(self, badchans=None):
 
         myroot = ET.parse(self._obj.sessinfo.recfiles.xmlfile).getroot()
 
@@ -52,6 +49,7 @@ class recinfo:
             "subname": self._obj.sessinfo.session.subname,
             "sessionName": self._obj.sessinfo.session.sessionName,
             "lfpSrate": 1250,
+            "badchans": badchans,
         }
 
         np.save(self._obj.sessinfo.files.basics, basics)

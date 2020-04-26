@@ -93,13 +93,13 @@ class SleepScore:
 
     def __init__(self, obj):
         self._obj = obj
-        # self.params = pd.read_pickle(self._obj.files.stateparams)
-        # self.states = pd.read_pickle(self._obj.files.states)
+        self.params = pd.read_pickle(self._obj.files.stateparams)
+        self.states = pd.read_pickle(self._obj.files.states)
 
     def detect(self):
 
         # a = np.array([self._obj.epochs.pre[0], self._obj.epochs.post[1]])
-        emg = self._emgfromlfp(fromfile=0)
+        emg = self._emgfromlfp(fromfile=1)
         params_pre, sxx_pre, states_pre = self._getparams(self._obj.epochs.pre, emg)
         params_maze, sxx_maze, states_maze = self._getparams(self._obj.epochs.maze, emg)
         params_post, sxx_post, states_post = self._getparams(self._obj.epochs.post, emg)
@@ -111,8 +111,8 @@ class SleepScore:
         self.sxx = np.concatenate((sxx_pre, sxx_maze, sxx_post), axis=1)
         self.states = pd.concat(states, ignore_index=True)
 
-        self.params.to_pickle(self._obj.files.stateparams)
-        self.states.to_pickle(self._obj.files.states)
+        self.params.to_pickle(self._obj.sessinfo.files.stateparams)
+        self.states.to_pickle(self._obj.sessinfo.files.states)
 
     @staticmethod
     def _label2states(theta_delta, delta_l, emg_l):
@@ -203,7 +203,7 @@ class SleepScore:
     def _getparams(self, interval, emg):
         sRate = self._obj.recinfo.lfpSrate
 
-        lfp = np.load(self._obj.files.thetalfp)
+        lfp = np.load(self._obj.sessinfo.files.thetalfp)
         # ripplelfp = np.load(self._obj.files.ripplelfp).item()["BestChan"]
 
         lfp = stats.zscore(lfp)
@@ -263,7 +263,7 @@ class SleepScore:
     def _emgfromlfp(self, fromfile=0):
 
         if fromfile:
-            emg_lfp = np.load(self._obj.files.corr_emg)
+            emg_lfp = np.load(self._obj.sessinfo.files.corr_emg)
 
         else:
 
@@ -303,4 +303,5 @@ class SleepScore:
             emg_lfp = np.asarray(corr_per_frame)
             np.save(self._obj.files.corr_emg, emg_lfp)
 
+        emg_lfp = filtSig.gaussian_filter1d(emg_lfp, 10)
         return emg_lfp

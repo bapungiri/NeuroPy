@@ -38,6 +38,6 @@ def parcorr_mult(x, y, z):
     for i, x_ in enumerate(x):
         for j, y_ in enumerate(y):
             for k, z_ in enumerate(z):
-                parcorr[k, j, i] = partialcorr(x_, z_, y_)
+                revcorr[k, j, i] = partialcorr(x_, z_, y_)
 
     return parcorr, revcorr
