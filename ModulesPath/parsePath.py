@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-
+import pandas as pd
 import numpy as np
 
 
@@ -16,6 +16,7 @@ class path2files:
         self.session = sessionname(filePrefix)
         self.files = files(filePrefix)
         self.recfiles = recfiles(filePrefix)
+        # self.loadfile = loadfile(filePrefix)
 
 
 class files:
@@ -38,6 +39,17 @@ class files:
         self.spectrogram = Path(str(f_prefix) + "_sxx.npy")
         self.stateparams = Path(str(f_prefix) + "_stateparams.pkl")
         self.states = Path(str(f_prefix) + "_states.pkl")
+
+
+# TODO auto file loading functionality
+class loadfile:
+    def __init__(self, filename):
+        self.name = filename
+
+    def load(self):
+
+        if self.name.suffix == ".pkl":
+            pd.read_pickle(self.name)
 
 
 class recfiles:

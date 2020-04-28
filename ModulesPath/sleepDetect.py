@@ -8,9 +8,35 @@ import scipy.stats as stats
 from hmmlearn.hmm import GaussianHMM
 import scipy.ndimage as filtSig
 import os
-import pathlib as Path
+from pathlib import Path
 from signal_process import spectrogramBands
 from joblib import Parallel, delayed
+from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
+
+
+def make_boxes(
+    ax, xdata, ydata, xerror, yerror, facecolor="r", edgecolor="None", alpha=0.5
+):
+
+    # Loop over data points; create box from errors at each point
+    errorboxes = [
+        Rectangle((x, y), xe, ye) for x, y, xe, ye in zip(xdata, ydata, xerror, yerror)
+    ]
+
+    # Create patch collection with specified colour/alpha
+    pc = PatchCollection(
+        errorboxes, facecolor=facecolor, alpha=alpha, edgecolor=edgecolor
+    )
+
+    # Add collection to axes
+    ax.add_collection(pc)
+
+    # Plot errorbars
+    # artists = ax.errorbar(
+    #     xdata, ydata, xerr=xerror, yerr=yerror, fmt="None", ecolor="k"
+    # )
+    return 1
 
 
 def genepoch(start, end):
@@ -93,8 +119,12 @@ class SleepScore:
 
     def __init__(self, obj):
         self._obj = obj
-        self.params = pd.read_pickle(self._obj.files.stateparams)
-        self.states = pd.read_pickle(self._obj.files.states)
+
+        if Path(self._obj.sessinfo.files.stateparams).is_file():
+            self.params = pd.read_pickle(self._obj.sessinfo.files.stateparams)
+
+        if Path(self._obj.sessinfo.files.states).is_file():
+            self.states = pd.read_pickle(self._obj.sessinfo.files.states)
 
     def detect(self):
 
@@ -305,3 +335,24 @@ class SleepScore:
 
         emg_lfp = filtSig.gaussian_filter1d(emg_lfp, 10)
         return emg_lfp
+
+    def addBackgroundtoPlots(self, ax):
+        states = self.states
+        x = (np.asarray(states.start) - self._obj.epochs.post[0]) / 3600
+
+        y = -1 * np.ones(len(x))  # + np.asarray(states.state)
+        width = np.asarray(states.duration) / 3600
+        height = np.ones(len(x)) * 1.3
+        qual = states.state
+
+        colors = ["#6b90d1", "#eb9494", "#b6afaf", "#474343"]
+        col = [colors[int(state) - 1] for state in states.state]
+
+        make_boxes(ax, x, y, width, height, facecolor=col)
+        # ax6.set_xlim(0, 50000)
+        # ax.set_ylim(1, 5)
+        # ax.annotate("wake", (-0.8, 4.5))
+        # ax.axis("off")
+        # ax.annotate("quiet", (-0.1, 3.5))
+        # ax.annotate("rem", (0.1, 2.5))
+        # ax.annotate("nrem", (-10, 1.5))

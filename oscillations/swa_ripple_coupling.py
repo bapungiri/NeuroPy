@@ -23,7 +23,9 @@ sessions = [processData(_) for _ in basePath]
 for sub, sess in enumerate(sessions):
 
     # sess.recinfo.makerecinfo(badchans=badChans)
-    # sess.trange = np.array([])
+    sess.trange = np.array([])
+    # sess.swa.detect_hswa()
+    sess.eventpsth.hswa_ripple.compute()
 
     # zsc_signal = sess.artifact.usingZscore()
 

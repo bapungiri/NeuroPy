@@ -26,6 +26,7 @@ def make_boxes(
     )
 
     # Add collection to axes
+
     ax.add_collection(pc)
 
     # Plot errorbars

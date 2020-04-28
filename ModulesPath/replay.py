@@ -27,7 +27,7 @@ class Replay:
         recording_dur = post[1]
         spks = self._obj.spikes.spks
         unstable_units = self._obj.spikes.stability.unstable
-        stable_units = self._obj.spikes.stability.stable
+        # stable_units = self._obj.spikes.stability.stable
         stable_units = list(range(len(spks)))
 
         spks = [spks[x] for x in stable_units]

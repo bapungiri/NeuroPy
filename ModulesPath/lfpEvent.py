@@ -22,16 +22,19 @@ class hswa:
 
         self._obj = obj
         if Path(self._obj.sessinfo.files.slow_wave).is_file():
+            self._load()
 
-            evt = np.load(self._obj.sessinfo.files.slow_wave, allow_pickle=True).item()
-            self.amp = np.asarray(evt["delta_amp"])
-            self.time = np.asarray(evt["delta_t"])
+    def _load(self):
 
-            if obj.trange.any():
-                start, end = obj.trange
-                indwhere = np.where((self.time > start) & (self.time < end))[0]
-                self.time = self.time[indwhere]
-                self.amp = self.amp[indwhere]
+        evt = np.load(self._obj.sessinfo.files.slow_wave, allow_pickle=True).item()
+        self.amp = np.asarray(evt["delta_amp"])
+        self.time = np.asarray(evt["delta_t"])
+
+        if self._obj.trange.any():
+            start, end = self._obj.trange
+            indwhere = np.where((self.time > start) & (self.time < end))[0]
+            self.time = self.time[indwhere]
+            self.amp = self.amp[indwhere]
 
     ##======= hippocampal slow wave detection =============
     def detect_hswa(self):
@@ -44,29 +47,30 @@ class hswa:
         """
 
         # files
+        myinfo = self._obj
         files = self._obj.sessinfo.files
 
         # parameters
-        lfpsRate = self._obj.recinfo.lfpSrate
+        lfpsRate = myinfo.recinfo.lfpSrate
         min_swa_duration = 0.1  # 100 milliseconds
 
         # filtering best ripple channel in delta band
-        deltachan = self._obj.ripple.best_chan_lfp
+        deltachan, t = myinfo.ripple.best_chan_lfp
         delta_sig = filt.filter_delta(deltachan)
         delta = stat.zscore(delta_sig)  # normalization w.r.t session
 
         # epochs which have high slow wave amplitude
         # allstates = np.load(files.states, allow_pickle=True).item()
-        allstates = pd.read_pickle(self._obj.files.states)
-        states = allstates[""]
+        allstates = myinfo.brainstates.states
+        states = allstates[allstates["state"] == 1]
 
-        t = np.linspace(0, len(deltachan) / lfpsRate, len(deltachan))
+        # t = np.linspace(0, len(deltachan) / lfpsRate, len(deltachan))
 
         # finding peaks and trough for delta oscillations
 
         delta_amp, delta_amp_t = [], []
-        for epoch in states:
-            idx = np.where((t > epoch[0]) & (t < epoch[1]))
+        for epoch in states.itertuples():
+            idx = np.where((t > epoch.start) & (t < epoch.end))[0]
             delta_st = delta[idx]
             t_st = t[idx]
 
@@ -96,6 +100,8 @@ class hswa:
 
         np.save(self._obj.sessinfo.files.slow_wave, hipp_slow_wave)
 
+        self._load()
+
 
 class ripple:
     def __init__(self, obj):
@@ -119,7 +125,7 @@ class ripple:
     def best_chan_lfp(self):
         lfpsrate = self._obj.recinfo.lfpSrate
 
-        lfp = np.load(self._obj.files.ripplelfp, allow_pickle=True).item()
+        lfp = np.load(self._obj.sessinfo.files.ripplelfp, allow_pickle=True).item()
         lfp = lfp["BestChan"]
         lfp_t = np.linspace(0, len(lfp) / lfpsrate, len(lfp))
 
