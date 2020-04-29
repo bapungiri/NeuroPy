@@ -28,13 +28,13 @@ def parcorr_mult(x, y, z):
 
     """
 
-    parcorr = np.zeros((len(z), len(y), len(z)))
+    parcorr = np.zeros((len(z), len(y), len(x)))
     for i, x_ in enumerate(x):
         for j, y_ in enumerate(y):
             for k, z_ in enumerate(z):
                 parcorr[k, j, i] = partialcorr(x_, y_, z_)
 
-    revcorr = np.zeros((len(z), len(y), len(z)))
+    revcorr = np.zeros((len(z), len(y), len(x)))
     for i, x_ in enumerate(x):
         for j, y_ in enumerate(y):
             for k, z_ in enumerate(z):
