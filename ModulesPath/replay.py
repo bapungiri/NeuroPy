@@ -47,6 +47,10 @@ class Replay:
         post_bin = np.arange(post[0], post[1], 0.250)
 
         pre_spikecount = np.array([np.histogram(x, bins=pre_bin)[0] for x in spks])
+        pre_spikecount = [
+            pre_spikecount[:, i : i + windowSize]
+            for i in range(0, 3 * windowSize, windowSize)
+        ]
         maze_spikecount = np.array([np.histogram(x, bins=maze_bin)[0] for x in spks])
         post_spikecount = np.array([np.histogram(x, bins=post_bin)[0] for x in spks])
         post_spikecount = [
@@ -54,7 +58,8 @@ class Replay:
             for i in range(0, 40 * windowSize, windowSize)
         ]
 
-        pre_corr = np.corrcoef(pre_spikecount)
+        # pre_corr = np.corrcoef(pre_spikecount)
+        pre_corr = [np.corrcoef(pre_spikecount[x]) for x in range(len(pre_spikecount))]
         maze_corr = np.corrcoef(maze_spikecount)
         post_corr = [
             np.corrcoef(post_spikecount[x]) for x in range(len(post_spikecount))
@@ -64,14 +69,13 @@ class Replay:
         shnkId = self._obj.spikes.shankID
         shnkId = shnkId[stable_units]
         cross_shnks = np.nonzero(np.tril(shnkId.reshape(-1, 1) - shnkId.reshape(1, -1)))
-        pre_corr = pre_corr[cross_shnks]
+        # pre_corr = pre_corr[cross_shnks]
+        pre_corr = [pre_corr[x][cross_shnks] for x in range(len(pre_spikecount))]
         maze_corr = maze_corr[cross_shnks]
         post_corr = [post_corr[x][cross_shnks] for x in range(len(post_spikecount))]
 
         # self.check2 = post_corr
-        parcorr_maze_vs_post, rev_corr = parcorr_mult(
-            [maze_corr], post_corr, [pre_corr]
-        )
+        parcorr_maze_vs_post, rev_corr = parcorr_mult([maze_corr], post_corr, pre_corr)
 
         ev_maze_vs_post = parcorr_maze_vs_post ** 2
         rev_corr = rev_corr ** 2
