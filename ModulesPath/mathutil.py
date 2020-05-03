@@ -1,6 +1,8 @@
 import numpy as np
 import math
 import pandas as pd
+from sklearn.decomposition import FastICA, PCA
+from scipy import stats
 
 
 def partialcorr(x, y, z):
@@ -41,3 +43,30 @@ def parcorr_mult(x, y, z):
                 revcorr[k, j, i] = partialcorr(x_, z_, y_)
 
     return parcorr, revcorr
+
+
+def getICA_Assembly(x):
+    """function for extracting statisticaly independent components from significant eigenvectors as detected using Marcenko-Pasteur distributionvinput = Matrix  (m x n) where 'm' are the number of cells and 'n' time bins ICA weights thus extracted have highiest weight positive (as done in Gido M. van de Ven et al. 2016) V = ICA weights for each neuron in the coactivation (weight having the highiest value is kept positive) M1 =  originally extracted neuron weights
+
+    Arguments:
+        x {[ndarray]} -- [an array of size n * m]
+
+    Returns:
+        [type] -- [Independent assemblies]
+    """
+
+    zsc_x = stats.zscore(x, axis=1)
+
+    corrmat = (zsc_x @ zsc_x.T) / x.shape[1]
+
+    lambda_max = (1 + np.sqrt(1 / (x.shape[1] / x.shape[0]))) ** 2
+    eig_val, eig_mat = np.linalg.eigh(corrmat)
+    get_sigeigval = np.where(eig_val > lambda_max)[0]
+    n_sigComp = len(get_sigeigval)
+    pca_fit = PCA(n_components=n_sigComp, whiten=False).fit_transform(x)
+
+    ica_decomp = FastICA(n_components=None, whiten=False).fit(pca_fit)
+    W = ica_decomp.components_
+    V = eig_mat[:, get_sigeigval] @ W.T
+
+    return V

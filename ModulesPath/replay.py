@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
-from mathutil import parcorr_mult
+from mathutil import parcorr_mult, getICA_Assembly
+import scipy.stats as stats
 
 
 class Replay:
@@ -87,13 +88,53 @@ class Replay:
     def smoothEV(self):
         pass
 
+    def assemblyICA(self):
+
+        """This method implements lopes-dos-santos et al. 2013 paper on detecting assemblies and their reactivation strength
+        """
+
+        pre = self._obj.epochs.pre  # in seconds
+        maze = self._obj.epochs.maze  # in seconds
+        post = self._obj.epochs.post  # in seconds
+        # print(self._obj.spikes.epochs.pre)
+        recording_dur = post[1]
+        spks = self._obj.spikes.spks
+        # unstable_units = self._obj.spikes.stability.unstable
+        stable_units = self._obj.spikes.stability.stable
+        # stable_units = list(range(len(spks)))
+
+        spks = [spks[x] for x in stable_units]
+
+        nUnits = len(spks)
+        windowSize = self.timeWindow
+
+        # zscore spikes
+
+        pre_bin = np.arange(pre[0], pre[1], 0.250)
+        maze_bin = np.arange(maze[0], maze[1], 0.250)
+        post_bin = np.arange(post[0], post[1], 0.250)
+
+        pre_spikecount = np.array([np.histogram(x, bins=pre_bin)[0] for x in spks])
+        maze_spikecount = np.array([np.histogram(x, bins=maze_bin)[0] for x in spks])
+        post_spikecount = np.array([np.histogram(x, bins=post_bin)[0] for x in spks])
+
+        zpre = stats.zscore(pre_spikecount, axis=1)
+        zmaze = stats.zscore(maze_spikecount, axis=1)
+        zpost = stats.zscore(post_spikecount, axis=1)
+
+        plt.imshow(zmaze)
+
+        nCells = len(spks)
+
+        self.maze_assembly = getICA_Assembly(zmaze)
+
+        # eig_pre = np.linalg.eigvals(zpre)
+        # eig_post = np.linalg.eigvals(zpost)
+
     def bayesian1d(self):
         pass
 
     def bayesian2d(self):
-        pass
-
-    def assemblyICA(self):
         pass
 
     def assemblyRusso(self):
