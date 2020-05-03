@@ -250,7 +250,7 @@ class makePrmPrb:
                 f.write("'geometry' : { \n")
 
                 for chan, x, y in zip(chan_list, xpos, ypos):
-                    f.write(f"{chan}: [{x+(shank-1)*300},{y}],\n")
+                    f.write(f"{chan}: [{x+(shank-1)*300},{y+(shank-1)*300}],\n")
 
                 f.write("}\n")
                 f.write("},\n")
