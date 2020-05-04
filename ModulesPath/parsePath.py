@@ -25,6 +25,7 @@ class files:
 
         self.basics = Path(str(f_prefix) + "_basics.npy")
         self.badchans = Path(str(f_prefix) + "_badChans.npy")
+        self.position = Path(str(f_prefix) + "_position.npy")
         self.epochs = Path(str(f_prefix) + "_epochs.npy")
         self.ripplelfp = Path(str(f_prefix) + "_BestRippleChans.npy")
         self.ripple_evt = Path(str(f_prefix) + "_ripples.npy")

@@ -10,6 +10,7 @@ from makeChanMap import recinfo
 from MakePrmKlusta import makePrmPrb
 from eventCorr import event_event
 from artifactDetect import findartifact
+from getPosition import ExtractPosition
 from behavior import behavior_epochs
 from sleepDetect import SleepScore
 from MakePrmKlusta import makePrmPrb
@@ -25,6 +26,7 @@ class processData:
         self.sessinfo = path2files(basePath)
         self.recinfo = recinfo(self)
 
+        self.position = ExtractPosition(self)
         self.epochs = behavior_epochs(self)
         self.artifact = findartifact(self)
         self.makePrmPrb = makePrmPrb(self)
