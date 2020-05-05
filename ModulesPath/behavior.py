@@ -36,7 +36,7 @@ class behavior_epochs:
         return "This creates behavioral epochs by loading positons and letting the user select a period which most likely represents maze"
 
     def getfromPosition(self):
-        """user defines epoch boundaries from the positons
+        """user defines epoch boundaries from the positons by selecting a rectangular region in the plot
         """
 
         def tellme(s):

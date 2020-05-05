@@ -10,10 +10,11 @@ from callfunc import processData
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/"
+    "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 
 
@@ -23,10 +24,10 @@ for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
     # sess.epochs.maze = sess.epochs.maze + 20 * 60
-    sess.spikes.extract()
-    sess.spikes.stability.firingRate()
+    sess.spikes.extract(fileformat="same_folder")
+#     sess.spikes.stability.firingRate()
 
 
-stability = sess.spikes.stability.isStable
-unstable = sess.spikes.stability.unstable
-stable = sess.spikes.stability.stable
+# stability = sess.spikes.stability.isStable
+# unstable = sess.spikes.stability.unstable
+# stable = sess.spikes.stability.stable

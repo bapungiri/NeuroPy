@@ -9,9 +9,10 @@ class spikes:
     def __init__(self, obj):
         self._obj = obj
         self.stability = stability(obj)
+        self.firing = firingDynamics(obj)
 
-    def extract(self):
-        self._Circus()
+    def extract(self, fileformat="diff_folder"):
+        self._Circus(fileformat="same_folder")
 
     def removeDoubleSpikes(self):
         nShanks = self._obj.recinfo.nShanks
@@ -36,38 +37,71 @@ class spikes:
         self.info = pd.concat(info)
         self.spks = spkall
 
-    def _Circus(self):
-        nShanks = self._obj.recinfo.nShanks
-        sRate = self._obj.recinfo.sampfreq
-        name = self._obj.sessinfo.session.name
-        day = self._obj.sessinfo.session.day
-        basePath = self._obj.sessinfo.basePath
-        clubasePath = Path(basePath, "spykcirc")
-        spkall, info, shankID = [], [], []
-        for shank in range(1, nShanks + 1):
+    def _Circus(self, fileformat="diff_folder"):
 
-            clufolder = Path(
-                clubasePath,
-                name + day + "Shank" + str(shank),
-                name + day + "Shank" + str(shank) + ".GUI",
-            )
+        if fileformat == "diffshank":
+            nShanks = self._obj.recinfo.nShanks
+            sRate = self._obj.recinfo.sampfreq
+            name = self._obj.sessinfo.session.name
+            day = self._obj.sessinfo.session.day
+            basePath = self._obj.sessinfo.basePath
+            clubasePath = Path(basePath, "spykcirc")
+            spkall, info, shankID = [], [], []
+            for shank in range(1, nShanks + 1):
 
-            # datFile = np.memmap(file + "Shank" + str(i) + ".dat", dtype="int16")
-            # datFiledur = len(datFile) / (16 * sRate)
+                clufolder = Path(
+                    clubasePath,
+                    name + day + "Shank" + str(shank),
+                    name + day + "Shank" + str(shank) + ".GUI",
+                )
+
+                # datFile = np.memmap(file + "Shank" + str(i) + ".dat", dtype="int16")
+                # datFiledur = len(datFile) / (16 * sRate)
+                spktime = np.load(clufolder / "spike_times.npy")
+                cluID = np.load(clufolder / "spike_clusters.npy")
+                cluinfo = pd.read_csv(clufolder / "cluster_info.tsv", delimiter="\t")
+                goodCellsID = cluinfo.id[cluinfo["q"] < 4].tolist()
+                info.append(cluinfo.loc[cluinfo["q"] < 4])
+                shankID.extend(shank * np.ones(len(goodCellsID)))
+
+                for i in range(len(goodCellsID)):
+                    clu_spike_location = spktime[np.where(cluID == goodCellsID[i])[0]]
+                    spkall.append(clu_spike_location / sRate)
+
+            self.info = pd.concat(info)
+            self.spks = spkall
+            self.shankID = np.asarray(shankID)
+
+        if fileformat == "same_folder":
+            nShanks = self._obj.recinfo.nShanks
+            sRate = self._obj.recinfo.sampfreq
+            subname = self._obj.sessinfo.session.subname
+            basePath = self._obj.sessinfo.basePath
+            changroup = self._obj.recinfo.channelgroups
+            clubasePath = Path(basePath, "spykcirc")
+
+            clufolder = Path(clubasePath, subname, subname + ".GUI",)
             spktime = np.load(clufolder / "spike_times.npy")
             cluID = np.load(clufolder / "spike_clusters.npy")
             cluinfo = pd.read_csv(clufolder / "cluster_info.tsv", delimiter="\t")
-            goodCellsID = cluinfo.id[cluinfo["q"] < 4].tolist()
-            info.append(cluinfo.loc[cluinfo["q"] < 4])
-            shankID.extend(shank * np.ones(len(goodCellsID)))
+            goodCellsID = cluinfo.id[cluinfo["q"] < 5].tolist()
+            info = cluinfo.loc[cluinfo["q"] < 5]
+            peakchan = info["ch"]
+            shankID = [
+                sh
+                for chan in peakchan
+                for sh, grp in enumerate(changroup)
+                if chan in grp
+            ]
 
+            spkall = []
             for i in range(len(goodCellsID)):
                 clu_spike_location = spktime[np.where(cluID == goodCellsID[i])[0]]
                 spkall.append(clu_spike_location / sRate)
 
-        self.info = pd.concat(info)
-        self.spks = spkall
-        self.shankID = np.asarray(shankID)
+            self.info = info
+            self.spks = spkall
+            self.shankID = np.asarray(shankID)
 
     def _Neurosuite(self):
         pass
@@ -137,4 +171,18 @@ class stability:
         self.violations = np.asarray(zerolag_spks)
 
     def isolationDistance(self):
+        pass
+
+
+class firingDynamics:
+    def __init__(self, obj):
+        self._obj = obj
+
+    def fRate(self):
+        pass
+
+    def plotfrate(self):
+        pass
+
+    def plotRaster(self):
         pass
