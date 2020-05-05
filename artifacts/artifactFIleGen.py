@@ -10,21 +10,22 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day4/"
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 
 
-sessions = [processData(_) for _ in basePath]
+sess = processData(basePath[0])
 
-badChans = [101, 105, 114, 126, 127] + list(range(128, 134))
+# badChans = [101, 105, 114, 126, 127] + list(range(128, 134))
 
-for sub, sess in enumerate(sessions):
+# for sub, sess in enumerate(sessions):
 
-    sess.recinfo.makerecinfo(badchans=badChans)
-    # sess.trange = np.array([])
-
-    zsc_signal = sess.artifact.usingZscore()
+#     # sess.recinfo.makerecinfo(badchans=badChans)
+# sess.trange = np.array([])
+# sess.makePrmPrb.makePrbCircus(probetype="diagbio")
+# sess.recinfo.makerecinfo()
+zsc_signal = sess.artifact.usingZscore()
 
 plt.plot(zsc_signal)
