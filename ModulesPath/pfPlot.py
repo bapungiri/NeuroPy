@@ -1,20 +1,26 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from parsePath import name2path
 
 
-class pf(name2path):
+class pf:
 
     nChans = 16
     sRate = 30000
     binSize = 0.250  # in seconds
     timeWindow = 3600  # in seconds
 
-    def pf1d(self):
+    def __init__(self, obj, **kwargs):
+        self._obj = obj
+        # self.pf1d = pf1d(obj)
+        self.pf2d = pf2d(obj)
+
+
+class pf1d:
+    def compute(self):
         spkAll = np.load(str(self.filePrefix) + "_spikes.npy", allow_pickle=True)
         position = np.load(str(self.filePrefix) + "_position.npy", allow_pickle=True)
 
-        xcoord = position.item().get("X")
+        xcoord = self._obj.position.x
         ycoord = position.item().get("Y")
         time = position.item().get("time")
 
@@ -97,3 +103,72 @@ class pf(name2path):
         #     #    plt.plot(posx_mz,posy_mz,'.')
         #     plt.subplot(nRows, nCols, cell + 1)
         #     plt.imshow(pfRate_smooth)
+
+
+class pf2d:
+    def __init__(self, obj, **kwargs):
+        self._obj = obj
+
+    def compute(self):
+        spkAll = self._obj.spikes.times
+        xcoord = self._obj.position.x
+        ycoord = self._obj.position.y
+        time = self._obj.position.t
+        maze = self._obj.epochs.maze  # in seconds
+
+        ind_maze = np.where((time > maze[0]) & (time < maze[1]))
+        x = xcoord[ind_maze]
+        y = ycoord[ind_maze]
+        t = time[ind_maze]
+
+        x_grid = np.arange(min(x), max(x), 20)
+        y_grid = np.arange(min(y), max(y), 20)
+        x_, y_ = np.meshgrid(x_grid, y_grid)
+
+        diff_posx = np.diff(x)
+        diff_posy = np.diff(y)
+
+        speed = np.sqrt(diff_posx ** 2 + diff_posy ** 2)
+        dt = t[1] - t[0]
+        speed_thresh = np.where(speed / dt > 0.5)[0]
+
+        x_thresh = x[speed_thresh]
+        y_thresh = y[speed_thresh]
+        t_thresh = t[speed_thresh]
+
+        occupancy = np.histogram2d(x_thresh, y_thresh, bins=(x_grid, y_grid))[0]
+        occupancy = occupancy + np.spacing(1)
+
+        # spk_pfx, spk_pfy, spk_pft = [], [], []
+        pf = []
+        for cell in spkAll:
+
+            spk_maze = cell[np.where((cell > maze[0]) & (cell < maze[1]))]
+            spk_speed = np.interp(spk_maze, t[:-1], speed)
+            spk_y = np.interp(spk_maze, t, y)
+            spk_x = np.interp(spk_maze, t, x)
+
+            # speed threshold
+            spd_ind = np.where(spk_speed > 2)
+            spk_spd = spk_speed[spd_ind]
+            spk_x = spk_x[spd_ind]
+            spk_y = spk_y[spd_ind]
+            spk_t = spk_maze[spd_ind]
+
+            spk_map = np.histogram2d(spk_x, spk_y, bins=(x_grid, y_grid))[0]
+            pf.append(spk_map / occupancy)
+
+            # spk_pfx.append(spk_x)
+            # spk_pfy.append(spk_y)
+            # spk_pft.append(spk_t)
+
+        self.maps = pf
+        self.speed = speed
+        # self.spkx = spk_pfx
+        # self.spky = spk_pfy
+        # self.spkt = spk_pft
+
+    def plot(self):
+
+        for pfmap in self.maps:
+            plt.matshow(pfmap)
