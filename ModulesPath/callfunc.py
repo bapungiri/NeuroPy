@@ -16,6 +16,7 @@ from sleepDetect import SleepScore
 from MakePrmKlusta import makePrmPrb
 from getSpikes import spikes
 from replay import Replay
+from pfPlot import pf
 
 
 class processData:
@@ -44,4 +45,5 @@ class processData:
         self.ripple = ripple(self)
         self.swa = hswa(self)
         self.eventpsth = event_event(self)
+        self.placefield = pf(self)
         self.replay = Replay(self)

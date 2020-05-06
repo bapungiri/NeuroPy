@@ -237,17 +237,17 @@ class makePrmPrb:
             xpos = [16 * (_ % 2) for _ in range(16)]
             ypos = [15 * 16 - _ * 15 for _ in range(16)]
         with circus_prb.open("w") as f:
-            f.write(f"total_nb_channels = {nChans} \n")
-            f.write(f"radius = 100 \n")
-            f.write("channel_groups = { \n")
+            f.write(f"total_nb_channels = {nChans}\n")
+            f.write(f"radius = 100\n")
+            f.write("channel_groups = {\n")
 
             for shank in range(1, nShanks + 1):
                 chan_list = channelgroups[shank - 1]
 
-                f.write(f"{shank}: {{ \n")
-                f.write(f"'channels' : {chan_list} ,\n")
+                f.write(f"{shank}: {{\n")
+                f.write(f"'channels' : {chan_list},\n")
                 f.write("'graph' : [],\n")
-                f.write("'geometry' : { \n")
+                f.write("'geometry' : {\n")
 
                 for chan, x, y in zip(chan_list, xpos, ypos):
                     f.write(f"{chan}: [{x+(shank-1)*300},{y+(shank-1)*400}],\n")
@@ -258,4 +258,3 @@ class makePrmPrb:
             f.write("}\n")
 
         print(".prb file created")
-

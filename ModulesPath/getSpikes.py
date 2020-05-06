@@ -9,10 +9,7 @@ class spikes:
     def __init__(self, obj):
         self._obj = obj
         self.stability = stability(obj)
-        self.firing = firingDynamics(obj)
-
-    def extract(self, fileformat="diff_folder"):
-        self._Circus(fileformat="same_folder")
+        self.dynamics = firingDynamics(obj)
 
     def removeDoubleSpikes(self):
         nShanks = self._obj.recinfo.nShanks
@@ -37,7 +34,7 @@ class spikes:
         self.info = pd.concat(info)
         self.spks = spkall
 
-    def _Circus(self, fileformat="diff_folder"):
+    def fromCircus(self, fileformat="diff_folder"):
 
         if fileformat == "diffshank":
             nShanks = self._obj.recinfo.nShanks
@@ -69,8 +66,8 @@ class spikes:
                     spkall.append(clu_spike_location / sRate)
 
             self.info = pd.concat(info)
-            self.spks = spkall
-            self.shankID = np.asarray(shankID)
+            self.times = spkall
+            self.info["shank"] = shankID
 
         if fileformat == "same_folder":
             nShanks = self._obj.recinfo.nShanks
@@ -88,7 +85,7 @@ class spikes:
             info = cluinfo.loc[cluinfo["q"] < 5]
             peakchan = info["ch"]
             shankID = [
-                sh
+                sh + 1
                 for chan in peakchan
                 for sh, grp in enumerate(changroup)
                 if chan in grp
@@ -99,14 +96,15 @@ class spikes:
                 clu_spike_location = spktime[np.where(cluID == goodCellsID[i])[0]]
                 spkall.append(clu_spike_location / sRate)
 
+            info["shank"] = shankID
             self.info = info
-            self.spks = spkall
-            self.shankID = np.asarray(shankID)
+            self.times = spkall
+            # self.shankID = np.asarray(shankID)
 
-    def _Neurosuite(self):
+    def fromNeurosuite(self):
         pass
 
-    def _Kilosort2(self):
+    def fromKilosort2(self):
         pass
 
 
@@ -124,7 +122,7 @@ class stability:
         maze_bin = maze
         post_bin = np.linspace(post[0], post[1], 11)
 
-        spks = self._obj.spikes.spks
+        spks = self._obj.spikes.times
 
         bin_all = np.concatenate((pre, maze, post))
         total_spks = np.array(
@@ -151,7 +149,7 @@ class stability:
 
     def refPeriodViolation(self):
 
-        spks = self._obj.spikes.spks
+        spks = self._obj.spikes.times
 
         fp = 0.05  # accepted contamination level
         T = self._obj.epochs.totalduration

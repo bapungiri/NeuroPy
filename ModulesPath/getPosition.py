@@ -237,7 +237,7 @@ class ExtractPosition:
         """
         self._obj = obj
         posfile = self._obj.sessinfo.files.position
-        print(posfile)
+        # print(posfile)
         if os.path.exists(posfile):
             self._load(posfile)
         else:
@@ -251,6 +251,7 @@ class ExtractPosition:
         self.t = posInfo.item().get("time")  # in seconds
         # self.tbegin = posInfo.item().get("begin")
         # print(self.time)
+        # self.speed =
 
     def getPosition(self):
         basePath = Path(self._obj.sessinfo.basePath)

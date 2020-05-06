@@ -23,8 +23,11 @@ sessions = [processData(_) for _ in basePath]
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    # sess.epochs.maze = sess.epochs.maze + 20 * 60
-    sess.spikes.extract(fileformat="same_folder")
+
+    sess.spikes.fromCircus(fileformat="same_folder")
+    sess.placefield.pf2d.compute()
+    sess.placefield.pf2d.plot()
+
 #     sess.spikes.stability.firingRate()
 
 
