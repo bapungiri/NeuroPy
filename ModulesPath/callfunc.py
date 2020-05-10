@@ -17,6 +17,7 @@ from MakePrmKlusta import makePrmPrb
 from getSpikes import spikes
 from replay import Replay
 from pfPlot import pf
+from decoders import DecodeBehav
 
 
 class processData:
@@ -47,3 +48,4 @@ class processData:
         self.eventpsth = event_event(self)
         self.placefield = pf(self)
         self.replay = Replay(self)
+        self.decode = DecodeBehav(self)
