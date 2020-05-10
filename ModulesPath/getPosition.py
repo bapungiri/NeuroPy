@@ -72,16 +72,7 @@ def posPreprocess(basePath, posX, posY, video_starttime):
     posY_keep = posY[ind_good]
     time = np.arange(0, len(t_video_keep)) / 120
 
-    # posVar = {}
-    # posVar["X"] = posX_keep
-    # posVar["Y"] = posY_keep
-    # posVar["time_orig"] = t_video_keep
-    # posVar["time"] = np.arange(0, len(t_video_keep)) / 120
-
     return posX_keep, posY_keep, t_video_keep, time
-    # posVar["begin"] = self.tbegin
-    # posVar["pos_sRate"] = self.optitrack_sRate
-    # np.save(Path(basePath, subname + "_position.npy"), posVar)
 
 
 def posfromFBX(fileName):
@@ -226,7 +217,7 @@ def syncPos(posfile, ephysfile):
 
 class ExtractPosition:
 
-    optitrack_sRate = 120  # position sample rate
+    tracking_sRate = 120  # position sample rate
 
     def __init__(self, obj):
         """initiates position class
@@ -237,21 +228,17 @@ class ExtractPosition:
         """
         self._obj = obj
         posfile = self._obj.sessinfo.files.position
-        # print(posfile)
         if os.path.exists(posfile):
-            self._load(posfile)
+            posInfo = self._load(posfile)
+            self.x = posInfo.item().get("X")  # in seconds
+            self.y = posInfo.item().get("Y")  # in seconds
+            self.t = posInfo.item().get("time")  # in seconds
+
         else:
             "Position file does not exist....did not load _position.npy"
 
     def _load(self, posfile):
-
-        posInfo = np.load(posfile, allow_pickle=True)
-        self.x = posInfo.item().get("X")  # in seconds
-        self.y = posInfo.item().get("Y")  # in seconds
-        self.t = posInfo.item().get("time")  # in seconds
-        # self.tbegin = posInfo.item().get("begin")
-        # print(self.time)
-        # self.speed =
+        return np.load(posfile, allow_pickle=True)
 
     def getPosition(self):
         basePath = Path(self._obj.sessinfo.basePath)
@@ -271,7 +258,7 @@ class ExtractPosition:
                         if row1[i] == "Capture Start Time"
                     ]
                 # print(StartTime)
-                self.tbegin = datetime.strptime(StartTime[0], "%Y-%m-%d %H.%M.%S.%f %p")
+                tbegin = datetime.strptime(StartTime[0], "%Y-%m-%d %H.%M.%S.%f %p")
 
             elif file.endswith(".fbx"):
                 print(file)
@@ -281,29 +268,93 @@ class ExtractPosition:
                 # self.posY = zpos
                 # # self.posZ = zpos
                 # self.frames = np.arange(1, len(xpos) + 1)
-        self.posX, self.posY, self.time_orig, self.time = posPreprocess(
-            basePath, xpos, zpos, self.tbegin
-        )
-        posVar = {}
-        posVar["X"] = self.posX
-        posVar["Y"] = self.posY
-        # posVar["frames"] = np.arange(1, len(self.posX) + 1)
+        posX, posY, time_orig, time = posPreprocess(basePath, xpos, zpos, tbegin)
 
-        # posVar["begin"] = self.tbegin
-        posVar["time_orig"] = self.time_orig
-        posVar["time"] = self.time
-        posVar["pos_sRate"] = self.optitrack_sRate
+        posVar = {
+            "X": posX,
+            "Y": posY,
+            "time_orig": time_orig,
+            "time": time,
+            "pos_sRate": self.tracking_sRate,
+        }
 
         np.save(self._obj.sessinfo.files.position, posVar)
 
     def plot(self):
 
         plt.clf()
-        plt.plot(self.posX, self.posY)
+        plt.plot(self.x, self.y)
 
     def Speed(self):
-        location = np.sqrt((self.posZ) ** 2 + (self.posX) ** 2)
-        spd = np.abs(np.diff(location)) / self.dt
+        pass
 
-        self.speed = spd.tolist()
-        return self.speed
+    def export2Neuroscope(self):
+
+        # neuroscope only displays positive values so translating the coordinates
+        x = self.x + abs(min(self.x))
+        y = self.y + abs(min(self.y))
+        print(max(x))
+        print(max(y))
+
+        filename = self._obj.sessinfo.files.filePrefix.with_suffix(".pos")
+        with filename.open("w") as f:
+            for xpos, ypos in zip(x, y):
+                f.write(f"{xpos} {ypos}\n")
+
+    def _posPreprocess(self, posX, posY, tbegin):
+
+        eegFileOG = self._obj.sessinfo.recfiles.eegfile
+        nChans = self._obj.recinfo.nChans
+        posX = np.asarray(posX)
+        posY = np.asarray(posY)
+
+        endFrames = len(np.memmap(eegFileOG, dtype="int16", mode="r")) / nChans
+
+        if os.path.exists(Path(basePath, subname, "/og_files")):
+            noisyFrames = np.load(basePath / "og_files" / "noisy_timestamps_fromOG.npy")
+            nframes = np.load(basePath / "og_files" / "numframes_OG.npy")
+
+        else:
+            noisyFrames = []
+            nframes = endFrames
+
+        video_duration = len(posX) / (120 * 3600)
+        video_endtime = video_starttime + timedelta(hours=video_duration)
+
+        ephys_starttime = datetime.strptime(subname[-19:], "%Y-%m-%d_%H-%M-%S")
+
+        time_diff = ephys_starttime - video_starttime
+
+        ephys_duration = nframes / (3600 * 1250)
+        ephys_endtime = ephys_starttime + timedelta(hours=ephys_duration)
+        # time_record = np.arange(ephys_starttime, ephys_endtime, dtype="datetime64[h]")
+        time_diff_end = video_endtime - ephys_endtime
+
+        # t_ephys = np.arange(0, nframes) / 1250
+        t_video = np.linspace(
+            -time_diff.total_seconds(),
+            nframes / 1250 + time_diff_end.total_seconds(),
+            len(posX),
+        )
+
+        t_video_outside = np.argwhere((nframes / 1250 < t_video) | (t_video < 0))
+
+        if not noisyFrames:
+            ind_good = np.setdiff1d(np.arange(1, len(posX)), t_video_outside)
+            print(len(ind_good))
+
+        else:
+            noisy_time = noisyFrames / 1250
+            t_video_noisy = np.concatenate(
+                [np.where(np.digitize(t_video, x) == 1)[0] for x in noisy_time], axis=0
+            )
+
+            t_video_noisy = np.union1d(t_video_outside, t_video_noisy)
+            ind_good = np.setdiff1d(np.arange(1, len(posX)), t_video_noisy)
+
+        t_video_keep = t_video[ind_good]
+        posX_keep = posX[ind_good]
+        posY_keep = posY[ind_good]
+        time = np.arange(0, len(t_video_keep)) / 120
+
+        return posX_keep, posY_keep, t_video_keep, time

@@ -12,15 +12,15 @@ class recinfo:
         self._obj = obj
 
         if Path(self._obj.sessinfo.files.basics).is_file():
-            self._load()
+            self._intialize()
 
-    def _load(self):
+    def _intialize(self):
 
         myinfo = np.load(self._obj.sessinfo.files.basics, allow_pickle=True).item()
         self.sampfreq = myinfo["sRate"]
         self.channels = myinfo["channels"]
         self.nChans = myinfo["nChans"]
-        self.lfpSrate = 1250
+        self.lfpSrate = myinfo["lfpSrate"]
         self.channelgroups = myinfo["channelgroups"]
         self.badchans = myinfo["badchans"]
 
@@ -31,27 +31,27 @@ class recinfo:
 
         myroot = ET.parse(self._obj.sessinfo.recfiles.xmlfile).getroot()
 
-        self.chan_session = []
-        self.channelgroups = []
+        chan_session = []
+        channelgroups = []
         for x in myroot.findall("anatomicalDescription"):
             for y in x.findall("channelGroups"):
                 for z in y.findall("group"):
                     chan_group = []
                     for chan in z.findall("channel"):
-                        self.chan_session.append(int(chan.text))
+                        chan_session.append(int(chan.text))
                         chan_group.append(int(chan.text))
-                    self.channelgroups.append(chan_group)
+                    channelgroups.append(chan_group)
 
         for sf in myroot.findall("acquisitionSystem"):
-            self.sampfreq = int(sf.find("samplingRate").text)
+            sampfreq = int(sf.find("samplingRate").text)
 
-        self.nChans = len(self.chan_session)
+        nChans = len(chan_session)
 
         basics = {
-            "sRate": self.sampfreq,
-            "channels": self.chan_session,
-            "nChans": self.nChans,
-            "channelgroups": self.channelgroups,
+            "sRate": sampfreq,
+            "channels": chan_session,
+            "nChans": nChans,
+            "channelgroups": channelgroups,
             "nShanks": self.nShanks,
             "subname": self._obj.sessinfo.session.subname,
             "sessionName": self._obj.sessinfo.session.sessionName,
@@ -63,7 +63,7 @@ class recinfo:
         print(f"_basics.npy created for {self._obj.sessinfo.session.sessionName}")
 
         # laods attributes in runtime so doesn't lead reloading of entire class instance
-        self._load()
+        self._intialize()
 
     def probemap(self, probetype="diagbio"):
         changroup = self.channelgroups
