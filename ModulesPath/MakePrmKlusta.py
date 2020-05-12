@@ -238,7 +238,7 @@ class makePrmPrb:
             ypos = [15 * 16 - _ * 15 for _ in range(16)]
         with circus_prb.open("w") as f:
             f.write(f"total_nb_channels = {nChans}\n")
-            f.write(f"radius = 100\n")
+            f.write(f"radius = 120\n")
             f.write("channel_groups = {\n")
 
             for shank in range(1, nShanks + 1):
@@ -257,4 +257,4 @@ class makePrmPrb:
 
             f.write("}\n")
 
-        print(".prb file created")
+        print(".prb file created for Spyking Circus")

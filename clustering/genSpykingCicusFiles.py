@@ -10,8 +10,8 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/"
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/"
@@ -23,7 +23,7 @@ sessions = [processData(_) for _ in basePath]
 for sub, sess in enumerate(sessions):
 
     # sess.recinfo.makerecinfo()
-    sess.makePrmPrb.makePrbCircus("diagbio")
+    sess.makePrmPrb.makePrbCircus("buzsaki")
     # sig_zsc = sess.artifact.usingZscore()
 
 
