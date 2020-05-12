@@ -55,15 +55,14 @@ class findartifact:
         artifact_s = np.asarray(secondPass) / self.lfpsRate  # seconds
 
         # writing to file for visualizing in neuroscope and spyking circus
-        start_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.sta")
-        end_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.end")
+        # start_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.sta")
+        # end_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.end")
+        file_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.art")
         circus_file = self._obj.sessinfo.files.filePrefix.with_suffix(".dead")
-        with start_neuroscope.open("w") as a, end_neuroscope.open(
-            "w"
-        ) as b, circus_file.open("w") as c:
+        with file_neuroscope.open("w") as a, circus_file.open("w") as c:
             for beg, stop in artifact_ms:
-                a.write(f"{beg} start\n")
-                b.write(f"{stop} end\n")
+                a.write(f"{beg} start\n{stop} end\n")
+                # b.write(f"{stop} end\n")
                 c.write(f"{beg} {stop}\n")
 
         return zsc
