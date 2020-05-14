@@ -1,0 +1,33 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import scipy.stats as stats
+from matplotlib.gridspec import GridSpec
+from scipy.ndimage import gaussian_filter
+
+from callfunc import processData
+
+basePath = [
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/"
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
+]
+
+
+sessions = [processData(_) for _ in basePath]
+
+plt.close("all")
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    # sess.spikes.fromCircus(fileformat="diff_folder")
+    sess.decode.bayes1d.fit()
+
+
+# file = "/data/Clustering/SleepDeprivation/RatJ/Day1/RatJ_Day1_2019-05-31_03-55-36_spikes.npy"
+
+# pos = np.load(file, allow_pickle=True)

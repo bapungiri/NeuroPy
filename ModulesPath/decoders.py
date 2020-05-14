@@ -24,10 +24,90 @@ class bayes1d:
         self._obj = obj
 
     def fit(self):
-        pass
+        spkAll = self._obj.spikes.times
+        x = self._obj.position.x
+        y = self._obj.position.y
+        t = self._obj.position.t
+        maze = self._obj.epochs.maze  # in seconds
+        maze[0] = maze[0] + 60
+        maze[1] = maze[1] - 90
 
-    def predict(self):
-        pass
+        # we require only maze portion
+        ind_maze = np.where((t > maze[0]) & (t < maze[1]))
+        x = y[ind_maze]
+        y = y[ind_maze]
+        t = t[ind_maze]
+
+        x = x + abs(min(x))
+        x_grid = np.arange(min(x), max(x), 10)
+
+        diff_posx = np.diff(x)
+        diff_posy = np.diff(y)
+
+        speed = np.sqrt(diff_posx ** 2 + diff_posy ** 2)
+        dt = t[1] - t[0]
+        speed_thresh = np.where(speed / dt > 0)[0]
+
+        x_thresh = x[speed_thresh]
+        y_thresh = y[speed_thresh]
+        t_thresh = t[speed_thresh]
+
+        occupancy = np.histogram(x, bins=x_grid)[0]
+        shape_occ = occupancy.shape
+        occupancy = occupancy + np.spacing(1)
+        occupancy = occupancy / 120  # converting to seconds
+
+        bin_t = np.arange(t[0], t[-1], 0.1)
+        x_bin = np.interp(bin_t, t, x)
+        y_bin = np.interp(bin_t, t, y)
+
+        bin_number_t = np.digitize(x_bin, bins=x_grid)
+
+        spkcount = np.asarray([np.histogram(x, bins=bin_t)[0] for x in spkAll])
+        ratemap, spk_pos = [], []
+        for cell in spkAll:
+
+            spk_maze = cell[np.where((cell > maze[0]) & (cell < maze[1]))]
+            spk_speed = np.interp(spk_maze, t[1:], speed)
+            spk_y = np.interp(spk_maze, t, y)
+            spk_x = np.interp(spk_maze, t, x)
+
+            spk_map = np.histogram(spk_y, bins=x_grid)[0]
+            spk_map = spk_map / occupancy
+            ratemap.append(spk_map)
+            spk_pos.append([spk_x, spk_y])
+
+        ratemap = np.asarray(ratemap)
+        print(ratemap.shape)
+
+        ntbin = len(bin_t)
+        nposbin = len(x_grid) - 1
+        prob = (
+            lambda nspike, rate: (1 / math.factorial(nspike))
+            * ((0.1 * rate) ** nspike)
+            * (np.exp(-0.1 * rate))
+        )
+
+        pos_decode = []
+        for timebin in range(len(bin_t) - 1):
+            spk_bin = spkcount[:, timebin]
+
+            prob_allbin = []
+            for posbin in range(nposbin):
+                rate_bin = ratemap[:, posbin]
+                spk_prob_bin = [prob(spk, rate) for spk, rate in zip(spk_bin, rate_bin)]
+                prob_thisbin = np.prod(spk_prob_bin)
+                prob_allbin.append(prob_thisbin)
+
+            prob_allbin = np.asarray(prob_allbin)
+
+            posterior = prob_allbin / np.sum(prob_allbin)
+            predict_bin = np.argmax(posterior)
+
+            pos_decode.append(predict_bin)
+
+        plt.plot(bin_number_t, "k")
+        plt.plot(pos_decode, "r")
 
 
 class bayes2d:
