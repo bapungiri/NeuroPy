@@ -105,6 +105,7 @@ class hswa:
 
 class ripple:
     def __init__(self, obj):
+
         self._obj = obj
 
         if Path(self._obj.sessinfo.files.ripple_evt).is_file():

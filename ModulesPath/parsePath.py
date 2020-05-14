@@ -23,6 +23,8 @@ class files:
     def __init__(self, f_prefix):
         self.filePrefix = f_prefix
 
+        self.spikes = Path(str(f_prefix) + "_spikes.npy")
+
         self.basics = Path(str(f_prefix) + "_basics.npy")
         self.badchans = Path(str(f_prefix) + "_badChans.npy")
         self.position = Path(str(f_prefix) + "_position.npy")

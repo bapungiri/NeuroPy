@@ -8,6 +8,12 @@ from pathlib import Path
 class spikes:
     def __init__(self, obj):
         self._obj = obj
+
+        filename = self._obj.sessinfo.files.spikes
+        if filename.is_file():
+            spikes = np.load(filename, allow_pickle=True)
+            self.times = spikes
+
         self.stability = stability(obj)
         self.dynamics = firingDynamics(obj)
 
@@ -36,7 +42,7 @@ class spikes:
 
     def fromCircus(self, fileformat="diff_folder"):
 
-        if fileformat == "diffshank":
+        if fileformat == "diff_folder":
             nShanks = self._obj.recinfo.nShanks
             sRate = self._obj.recinfo.sampfreq
             name = self._obj.sessinfo.session.name
