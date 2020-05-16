@@ -125,6 +125,14 @@ class SleepScore:
 
         if Path(self._obj.sessinfo.files.states).is_file():
             self.states = pd.read_pickle(self._obj.sessinfo.files.states)
+            # Adding name convention to the states
+            state_number_dict = {
+                1: "nrem",
+                2: "rem",
+                3: "quiet",
+                4: "active",
+            }
+            self.states["name"] = self.states["state"].map(state_number_dict)
 
     def detect(self):
 

@@ -8,12 +8,12 @@ from scipy.ndimage import gaussian_filter
 from callfunc import processData
 
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/"
+    "/data/Clustering/SleepDeprivation/RatN/Day2/"
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 
@@ -24,7 +24,7 @@ plt.close("all")
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    # sess.spikes.fromCircus(fileformat="diff_folder")
+    sess.spikes.fromCircus(fileformat="diff_folder")
     sess.decode.bayes1d.fit()
 
 

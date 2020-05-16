@@ -8,8 +8,9 @@ import pandas as pd
 import scipy.fftpack as ft
 import scipy.ndimage as smth
 import scipy.signal as sg
-import scipy.stats as stat
+import scipy.stats as stats
 import pandas as pd
+import pywt
 
 from lfpDetect import swr as spwrs
 
@@ -59,8 +60,7 @@ class hswa:
         delta_sig = filt.filter_delta(deltachan)
         delta = stat.zscore(delta_sig)  # normalization w.r.t session
 
-        # epochs which have high slow wave amplitude
-        # allstates = np.load(files.states, allow_pickle=True).item()
+        # collecting only nrem states
         allstates = myinfo.brainstates.states
         states = allstates[allstates["state"] == 1]
 
@@ -144,3 +144,39 @@ class ripple:
 
         np.save(self._obj.files.ripple_evt, ripples)
         print(f"{self._obj.ripple_evt.name} created")
+
+
+class spindle:
+    def __init__(self, obj):
+        self._obj = obj
+
+        filename = self._obj.sessinfo.files.spindles
+        if filename.is_file():
+            spindles = np.load(filename, allow_pickle=True)
+            self.time = spindles["timestamps"]
+            self.peakpower = spindles["peakPower"]
+
+        else:
+            self.time = None
+            self.peakpower = None
+
+    def detect(self):
+        signal, _ = self._obj.ripple.best_chan_lfp
+        SampFreq = self._obj.recinfo.lfpSrate
+        nyq = 0.5 * SampFreq
+        lowFreq = 8
+        highFreq = 16
+        lowthresholdFactor = 1.5
+        minRippleDuration = 20  # in milliseconds
+        maxRippleDuration = 800  # in milliseconds
+        maxRipplePower = 60  # in normalized power units
+
+        signal = filt.filter_spindle(signal)
+        zsc_sig = stats.zscore(signal)
+        analytic_signal = sg.hilbert(zsc_sig)
+        amplitude_envelope = np.abs(analytic_signal)
+
+        plt.plot(amplitude_envelope)
+
+    def plot(self):
+        pass

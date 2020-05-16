@@ -7,11 +7,11 @@ from callfunc import processData
 
 basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 
@@ -29,8 +29,10 @@ for sub, sess in enumerate(sessions):
 
     # zsc_signal = sess.artifact.usingZscore()
 
+
+sess.spindle.detect()
 # plt.plot(zsc_signal)
-for sub, sess in enumerate(sessions):
-    plt.subplot(6, 1, sub + 1)
-    plt.hist(sess.swa.amp, 1000)
+# for sub, sess in enumerate(sessions):
+#     plt.subplot(6, 1, sub + 1)
+#     plt.hist(sess.swa.amp, 1000)
 #

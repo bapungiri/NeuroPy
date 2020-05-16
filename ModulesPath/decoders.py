@@ -33,7 +33,7 @@ class bayes1d:
         maze[1] = maze[1] - 90
 
         # we require only maze portion
-        ind_maze = np.where((t > maze[0]) & (t < maze[1]))
+        ind_maze = np.where((t > maze[0]) & (t < maze[1]))[0]
         x = y[ind_maze]
         y = y[ind_maze]
         t = t[ind_maze]

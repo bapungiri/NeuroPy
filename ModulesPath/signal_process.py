@@ -60,6 +60,17 @@ class filter_sig:
 
         return yf
 
+    @staticmethod
+    def filter_spindle(signal, sampleRate=1250):
+        lowpass_freq = 8
+        highpass_freq = 16
+        nyq = 0.5 * sampleRate
+
+        b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
+        yf = sg.filtfilt(b, a, signal, axis=-1)
+
+        return yf
+
 
 def whiten(strain, interp_psd, dt):
     Nt = len(strain)
@@ -122,3 +133,26 @@ class spectrogramBands:
         self.freq = f
         self.time = t
         self.sxx = sxx
+
+
+def wavelet_decomp():
+    t_wavelet = np.arange(-2, 2, 1 / 1250)
+
+    B = 0.1
+    A = 1 / np.sqrt(np.pi ** 0.5 * B)
+
+    frequency = np.logspace(1, 5, 30, base=2)
+
+    wave_spec = []
+    for freq in frequency:
+        my_wavelet = (
+            A
+            * np.exp(-((t_wavelet) ** 2) / (2 * B ** 2))
+            * np.exp(2j * np.pi * freq * t_wavelet)
+        )
+        # conv_val = np.convolve(y, my_wavelet, mode="same")
+        conv_val = sg.fftconvolve(y, my_wavelet, mode="same")
+
+        wave_spec.append(conv_val)
+
+    wave_spec = np.asarray(wave_spec)
