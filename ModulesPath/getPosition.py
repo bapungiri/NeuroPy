@@ -91,8 +91,6 @@ def posfromFBX(fileName):
                 total_frames = int(line_frame[1]) - 1
                 break
 
-    f.close()
-
     with open(fileName) as f:
         for _ in range(track_begin):
             next(f)
@@ -107,7 +105,7 @@ def posfromFBX(fileName):
                 line = line.strip()
                 m = line.split(",")
                 pos1 = m[1::5]
-                print(pos1)
+                # print(pos1)
 
             else:
                 line = line.strip()
@@ -116,9 +114,14 @@ def posfromFBX(fileName):
 
             xpos.extend(pos1)
 
-        for _ in range(5):
-            next(f)
+        for line in f:
 
+            if "KeyCount" in line:
+                break
+            else:
+                next(f)
+
+        pos1 = []
         for i, line in enumerate(f):
             # print(line)
             if len(ypos) > total_frames:
@@ -129,7 +132,7 @@ def posfromFBX(fileName):
                 line = line.strip()
                 m = line.split(",")
                 pos1 = m[1::5]
-                print(pos1)
+                # print(pos1)
 
             else:
                 line = line.strip()
@@ -138,11 +141,18 @@ def posfromFBX(fileName):
 
             ypos.extend(pos1)
 
-        for _ in range(5):
-            next(f)
+        for line in f:
+
+            if "KeyCount" in line:
+                break
+            else:
+                next(f)
+
+        pos1 = []
 
         for i, line in enumerate(f):
             # print(line)
+
             if len(zpos) > total_frames:
                 break
 
@@ -151,7 +161,7 @@ def posfromFBX(fileName):
                 line = line.strip()
                 m = line.split(",")
                 pos1 = m[1::5]
-                print(pos1)
+                # print(pos1)
 
             else:
                 line = line.strip()
@@ -161,10 +171,9 @@ def posfromFBX(fileName):
             # line = next(f)
             zpos.extend(pos1)
 
-    f.close()
-    xpos = [float(x) for x in xpos]
-    ypos = [float(x) for x in ypos]
-    zpos = [float(x) for x in zpos]
+    xpos = [float(_) for _ in xpos]
+    ypos = [float(_) for _ in ypos]
+    zpos = [float(_) for _ in zpos]
 
     return np.asarray(xpos), np.asarray(ypos), np.asarray(zpos)
 
@@ -229,10 +238,11 @@ class ExtractPosition:
         self._obj = obj
         posfile = self._obj.sessinfo.files.position
         if os.path.exists(posfile):
-            posInfo = self._load(posfile)
-            self.x = posInfo.item().get("X")  # in seconds
-            self.y = posInfo.item().get("Y")  # in seconds
-            self.t = posInfo.item().get("time")  # in seconds
+            posInfo = self._load(posfile).item()
+            self.x = posInfo["x"]  # in seconds
+            self.y = posInfo["y"]  # in seconds
+            self.t = posInfo["time"]  # in seconds
+            self.datetime = posInfo["datetime"]  # in seconds
 
         else:
             "Position file does not exist....did not load _position.npy"
@@ -241,41 +251,86 @@ class ExtractPosition:
         return np.load(posfile, allow_pickle=True)
 
     def getPosition(self):
+        sRate = self._obj.recinfo.sampfreq  # .dat file sampling frequency
         basePath = Path(self._obj.sessinfo.basePath)
+        metadata = self._obj.sessinfo.metadata
+
+        nfiles = len(metadata["StartTime"])
+
+        # collecting timepoints related to .dat file
+        data_time = []
+        for i, file_time in enumerate(metadata["StartTime"]):
+            tbegin = datetime.strptime(file_time, "%Y-%m-%d_%H-%M-%S")
+            nframes = metadata["nFrames"][i]
+            duration = pd.Timedelta(nframes / sRate, unit="sec")
+            tend = tbegin + duration
+            trange = pd.date_range(
+                start=tbegin,
+                end=tend,
+                periods=int(duration.seconds * self.tracking_sRate),
+            )
+            data_time.extend(trange)
+
+        data_time = pd.to_datetime(data_time)
+
+        # deleting intervals that were deleted from .dat file after concatenating
+        ndeletedintervals = metadata.count()["deletedStart (minutes)"]
+        for i in range(ndeletedintervals):
+            tnoisy_begin = data_time[0] + pd.Timedelta(
+                metadata["deletedStart (minutes)"][i], unit="m"
+            )
+            tnoisy_end = data_time[0] + pd.Timedelta(
+                metadata["deletedEnd (minutes)"][i], unit="m"
+            )
+
+            del_index = np.where((data_time > tnoisy_begin) & (data_time < tnoisy_end))[
+                0
+            ]
+
+            data_time = np.delete(data_time, del_index)
+            # data_time = data_time.indexer_between_time(
+            #     pd.Timestamp(tnoisy_end), pd.Timestamp(tnoisy_begin)
+            # )
+
+        # ===== collecting timepoints related to position tracking =====
         posFolder = basePath / "position"
-        for file in os.listdir(posFolder):
+        posfiles = sorted(posFolder.glob("*.csv"))
+        postime, posx, posy, posz = [], [], [], []
+        for file in posfiles:
+            print(file)
 
-            if file.endswith(".csv"):
-                print(file)
-                fileName = Path(posFolder, file)
+            fileinfo = pd.read_csv(file, header=None, nrows=1)
+            # required values are in column 11 and 13 of .csv file
+            tbegin = datetime.strptime(fileinfo.iloc[0][11], "%Y-%m-%d %H.%M.%S.%f %p")
+            nframes = fileinfo.iloc[0][13]
+            duration = pd.Timedelta(nframes / self.tracking_sRate, unit="sec")
+            tend = tbegin + duration
+            trange = pd.date_range(start=tbegin, end=tend, periods=nframes)
 
-                with open(fileName, newline="") as f:
-                    reader = csv.reader(f)
-                    row1 = next(reader)
-                    StartTime = [
-                        row1[i + 1]
-                        for i in range(len(row1))
-                        if row1[i] == "Capture Start Time"
-                    ]
-                # print(StartTime)
-                tbegin = datetime.strptime(StartTime[0], "%Y-%m-%d %H.%M.%S.%f %p")
+            x, y, z = posfromFBX(file.with_suffix(".fbx"))
 
-            elif file.endswith(".fbx"):
-                print(file)
-                xpos, ypos, zpos = posfromFBX(Path(posFolder, file))
+            postime.extend(trange)
+            posx.extend(x)
+            posy.extend(y)
+            posz.extend(z)
 
-                # self.posX = xpos
-                # self.posY = zpos
-                # # self.posZ = zpos
-                # self.frames = np.arange(1, len(xpos) + 1)
-        posX, posY, time_orig, time = posPreprocess(basePath, xpos, zpos, tbegin)
+        postime = pd.to_datetime(postime)[:-1]
+        posx = np.asarray(posx)
+        posy = np.asarray(posy)
+        posz = np.asarray(posz)
+
+        # ======= interpolating positions for recorded data======
+        xdata = np.interp(data_time, postime, posx)
+        ydata = np.interp(data_time, postime, posy)
+        zdata = np.interp(data_time, postime, posz)
+        time = np.linspace(0, len(xdata) / 120, len(xdata))
 
         posVar = {
-            "X": posX,
-            "Y": posY,
-            "time_orig": time_orig,
+            "x": xdata,
+            "y": zdata,  # as in optitrack the z coordinates gives the y information
             "time": time,
-            "pos_sRate": self.tracking_sRate,
+            "datetime": data_time,
+            "trackingsRate": self.tracking_sRate,
         }
 
         np.save(self._obj.sessinfo.files.position, posVar)
