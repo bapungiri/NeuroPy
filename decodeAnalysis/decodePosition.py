@@ -20,14 +20,13 @@ basePath = [
 
 sessions = [processData(_) for _ in basePath]
 
+
+pathch = sessions[0].sessinfo.basePath
+
+
 plt.close("all")
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    sess.spikes.fromCircus(fileformat="diff_folder")
-    sess.decode.bayes1d.fit()
-
-
-# file = "/data/Clustering/SleepDeprivation/RatJ/Day1/RatJ_Day1_2019-05-31_03-55-36_spikes.npy"
-
-# pos = np.load(file, allow_pickle=True)
+    # sess.spikes.fromCircus(fileformat="diff_folder")
+    # sess.decode.bayes1d.fit()
