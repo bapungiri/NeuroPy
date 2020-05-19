@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import time
+import pandas as pd
 
 # from parsePath import path2files
 
@@ -92,4 +93,14 @@ class behavior_epochs:
         post_time = np.array([self.maze_end + 1, t[-1]])
         epoch_times = {"PRE": pre_time, "MAZE": maze_time, "POST": post_time}
 
+        np.save(self._obj.sessinfo.files.epochs, epoch_times)
+
+    def getfromCSV(self):
+        file = Path(str(self._obj.sessinfo.files.filePrefix) + "_epochs.csv")
+        epochs = pd.read_csv(file, index_col=0)
+        epoch_times = {
+            "PRE": np.asarray(epochs.loc["pre"]),
+            "MAZE": np.asarray(epochs.loc["maze"]),
+            "POST": np.asarray(epochs.loc["post"]),
+        }
         np.save(self._obj.sessinfo.files.epochs, epoch_times)
