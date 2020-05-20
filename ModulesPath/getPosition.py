@@ -9,72 +9,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 
-def posPreprocess(basePath, posX, posY, video_starttime):
-
-    for file in os.listdir(basePath):
-        if file.endswith(".eeg"):
-            subname = file[:-4]
-            filePrefix = os.path.join(basePath, file[:-4])
-
-    eegFileOG = Path(basePath, filePrefix + ".eeg")
-    basics = np.load(filePrefix + "_basics.npy", allow_pickle=True)
-    nChans = basics.item().get("nChans")
-    sRate = basics.item().get("sRate")
-    posX = np.asarray(posX)
-    posY = np.asarray(posY)
-
-    endFrames = len(np.memmap(eegFileOG, dtype="int16", mode="r")) / nChans
-
-    if os.path.exists(Path(basePath, subname, "/og_files")):
-        noisyFrames = np.load(basePath / "og_files" / "noisy_timestamps_fromOG.npy")
-        nframes = np.load(basePath / "og_files" / "numframes_OG.npy")
-
-    else:
-        noisyFrames = []
-        nframes = endFrames
-
-    video_duration = len(posX) / (120 * 3600)
-    video_endtime = video_starttime + timedelta(hours=video_duration)
-
-    ephys_starttime = datetime.strptime(subname[-19:], "%Y-%m-%d_%H-%M-%S")
-
-    time_diff = ephys_starttime - video_starttime
-
-    ephys_duration = nframes / (3600 * 1250)
-    ephys_endtime = ephys_starttime + timedelta(hours=ephys_duration)
-    # time_record = np.arange(ephys_starttime, ephys_endtime, dtype="datetime64[h]")
-    time_diff_end = video_endtime - ephys_endtime
-
-    # t_ephys = np.arange(0, nframes) / 1250
-    t_video = np.linspace(
-        -time_diff.total_seconds(),
-        nframes / 1250 + time_diff_end.total_seconds(),
-        len(posX),
-    )
-
-    t_video_outside = np.argwhere((nframes / 1250 < t_video) | (t_video < 0))
-
-    if not noisyFrames:
-        ind_good = np.setdiff1d(np.arange(1, len(posX)), t_video_outside)
-        print(len(ind_good))
-
-    else:
-        noisy_time = noisyFrames / 1250
-        t_video_noisy = np.concatenate(
-            [np.where(np.digitize(t_video, x) == 1)[0] for x in noisy_time], axis=0
-        )
-
-        t_video_noisy = np.union1d(t_video_outside, t_video_noisy)
-        ind_good = np.setdiff1d(np.arange(1, len(posX)), t_video_noisy)
-
-    t_video_keep = t_video[ind_good]
-    posX_keep = posX[ind_good]
-    posY_keep = posY[ind_good]
-    time = np.arange(0, len(t_video_keep)) / 120
-
-    return posX_keep, posY_keep, t_video_keep, time
-
-
 def posfromFBX(fileName):
     fileName = str(fileName)
 
@@ -101,7 +35,7 @@ def posfromFBX(fileName):
                 break
 
             elif i < 1:
-                print(i)
+                # print(i)
                 line = line.strip()
                 m = line.split(",")
                 pos1 = m[1::5]
@@ -128,7 +62,7 @@ def posfromFBX(fileName):
                 break
 
             elif i < 1:
-                print(i)
+                # print(i)
                 line = line.strip()
                 m = line.split(",")
                 pos1 = m[1::5]
@@ -157,7 +91,7 @@ def posfromFBX(fileName):
                 break
 
             elif i < 1:
-                print(i)
+                # print(i)
                 line = line.strip()
                 m = line.split(",")
                 pos1 = m[1::5]
@@ -192,38 +126,6 @@ def getStartTime(fileName):
     return tbegin
 
 
-def syncPos(posfile, ephysfile):
-    posfile = str(posfile)
-    ephysfile = str(ephysfile)
-
-    ephysframes = np.load(ephysfile, mmap_mode="r")
-    nframes = len(ephysframes)
-
-    X, Y, Z = posfromFBX(posfile)
-    vid_start = getStartTime(ephysfile[:-4] + ".csv")
-    vid_dur = len(X) / (120 * 3600)
-    vid_end = vid_start + timedelta(hours=vid_dur)
-
-    ephys_start = datetime.strptime("2019-08-08_04-00-00 AM", "%Y-%m-%d_%H-%M-%S %p")
-    ephys_dur = nframes / (3600 * 1250)
-    ephys_end = ephys_start + timedelta(hours=ephys_dur)
-
-    time_diff_start = ephys_start - vid_start
-    time_diff_end = vid_end - ephys_end
-
-    t_video = np.linspace(
-        -time_diff_start.total_seconds(),
-        nframes / 1250 + time_diff_end.total_seconds(),
-        len(X),
-    )
-
-    t_video_outside = np.argwhere((nframes / 1250 < t_video) | (t_video < 0))
-
-    ind_keep = np.setdiff1d(np.arange(1, len(X)), t_video_outside)
-
-    return X[ind_keep], Y[ind_keep], Z[ind_keep]
-
-
 class ExtractPosition:
 
     tracking_sRate = 120  # position sample rate
@@ -255,11 +157,11 @@ class ExtractPosition:
         basePath = Path(self._obj.sessinfo.basePath)
         metadata = self._obj.sessinfo.metadata
 
-        nfiles = len(metadata["StartTime"])
+        nfiles = metadata.count()["StartTime"]
 
         # collecting timepoints related to .dat file
         data_time = []
-        for i, file_time in enumerate(metadata["StartTime"]):
+        for i, file_time in enumerate(metadata["StartTime"][:nfiles]):
             tbegin = datetime.strptime(file_time, "%Y-%m-%d_%H-%M-%S")
             nframes = metadata["nFrames"][i]
             duration = pd.Timedelta(nframes / sRate, unit="sec")
@@ -314,7 +216,7 @@ class ExtractPosition:
             posy.extend(y)
             posz.extend(z)
 
-        postime = pd.to_datetime(postime)[:-1]
+        postime = pd.to_datetime(postime[: len(posx)])
         posx = np.asarray(posx)
         posy = np.asarray(posy)
         posz = np.asarray(posz)
