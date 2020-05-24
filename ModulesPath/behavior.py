@@ -23,12 +23,14 @@ class behavior_epochs:
 
         if Path(self._obj.sessinfo.files.epochs).is_file():
             epochs = np.load(self._obj.sessinfo.files.epochs, allow_pickle=True).item()
-            self.pre = epochs["PRE"]
-            self.maze = epochs["MAZE"]
-            self.post = epochs["POST"]
-            self.totalduration = (
-                np.diff(self.pre) + np.diff(self.maze) + np.diff(self.post)
-            )[0]
+
+            totaldur = []
+            for (epoch, times) in epochs.items():  # alternative list(epochs)
+                setattr(self, epoch.lower(), times)  # .lower() will be removed
+
+                totaldur.append(np.diff(times))
+
+            self.totalduration = np.sum(np.asarray(totaldur))
 
         else:
             print("Epochs file does not exist...did not load epochs")
@@ -98,9 +100,10 @@ class behavior_epochs:
     def getfromCSV(self):
         file = Path(str(self._obj.sessinfo.files.filePrefix) + "_epochs.csv")
         epochs = pd.read_csv(file, index_col=0)
-        epoch_times = {
-            "PRE": np.asarray(epochs.loc["pre"]),
-            "MAZE": np.asarray(epochs.loc["maze"]),
-            "POST": np.asarray(epochs.loc["post"]),
-        }
-        np.save(self._obj.sessinfo.files.epochs, epoch_times)
+        epochs_name = epochs.index.values.tolist()
+
+        epochs_times = {}
+        for name in epochs_name:
+            epochs_times[name] = np.asarray(epochs.loc[name])
+
+        np.save(self._obj.sessinfo.files.epochs, epochs_times)
