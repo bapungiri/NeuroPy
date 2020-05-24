@@ -12,7 +12,7 @@ import scipy.ndimage as smth
 import scipy.signal as sg
 import scipy.stats as stats
 from matplotlib.gridspec import GridSpec
-
+from scipy import fftpack
 from lfpDetect import swr as spwrs
 from signal_process import filter_sig as filt
 
@@ -222,34 +222,61 @@ class ripple:
         filename = self._obj.sessinfo.files.ripplelfp
         np.save(filename, bestripplechans)
 
+    def _zscbestchannel(self, fromfile=1):
+        filename = str(self._obj.sessinfo.files.filePrefix) + "_zscbestRippleChan.npy"
+
+        if fromfile == 1:
+            signal = np.load(filename)
+        else:
+            ripplelfps, _, _ = self.best_chan_lfp()
+            signal = np.asarray(ripplelfps, dtype=np.float)  # convert data to float
+
+            # optimizing memory and performance writing on the same array of signal
+            hilbertfast = lambda x: sg.hilbert(x, fftpack.next_fast_len(len(x)))[
+                : len(x)
+            ]
+
+            for i in range(signal.shape[0]):
+                print(i)
+                yf = filt.filter_ripple(signal[i, :], ax=-1)
+                # amplitude_envelope = np.abs(sg.hilbert(yf, axis=-1))
+                amplitude_envelope = np.abs(hilbertfast(yf))
+                signal[i, :] = stats.zscore(amplitude_envelope, axis=-1)
+
+            np.save(filename, signal)
+
+        return signal
+
     def detect(self):
         """ripples lfp nchans x time
 
         Returns:
             [type] -- [description]
         """
-        ripplelfps, ripplechans, coords = self.best_chan_lfp
         SampFreq = self._obj.recinfo.lfpSrate
         lowFreq = 150
         highFreq = 240
         # TODO chnage raw amplitude threshold to something statistical
         highRawSigThresholdFactor = 15000
 
-        signal = ripplelfps[0, :]
-        signal = np.array(signal, dtype=np.float)  # convert data to float
-        yf = filt.filter_ripple(signal, ax=-1)
+        ripplelfps, _, _ = self.best_chan_lfp()
+        signal = np.asarray(ripplelfps, dtype=np.float)[0, :]
 
-        # hilbert transform --> binarize
-        analytic_signal = sg.hilbert(yf, axis=-1)
-        amplitude_envelope = np.abs(analytic_signal)
-        zscoreSignal = stats.zscore(amplitude_envelope)
-        ThreshSignal = np.diff(np.where(zscoreSignal > self.lowthresholdFactor, 1, 0))
-        start_ripple = np.argwhere(ThreshSignal == 1)
-        stop_ripple = np.argwhere(ThreshSignal == -1)
+        zscsignal = self._zscbestchannel(fromfile=1)
 
-        firstPass = np.concatenate((start_ripple, stop_ripple), axis=1)
+        # hilbert transform --> binarize by > than lowthreshold
+        maxPower = np.max(zscsignal, axis=0)
+        ThreshSignal = np.where(zscsignal > self.lowthresholdFactor, 1, 0).sum(axis=0)
+        ThreshSignal = np.diff(np.where(ThreshSignal > 0, 1, 0))
+        start_ripple = np.where(ThreshSignal == 1)[0]
+        stop_ripple = np.where(ThreshSignal == -1)[0]
 
-        # TODO delete half ripples in begining or end
+        if start_ripple[0] > stop_ripple[0]:
+            stop_ripple = stop_ripple[1:]
+        if start_ripple[-1] > stop_ripple[-1]:
+            start_ripple = start_ripple[:-1]
+
+        firstPass = np.vstack((start_ripple, stop_ripple)).T
 
         # ===== merging close ripples
         minInterRippleSamples = self.mergeDistance / 1000 * SampFreq
@@ -271,7 +298,7 @@ class ripple:
         peakNormalizedPower = []
 
         for i in range(0, len(secondPass)):
-            maxValue = max(zscoreSignal[secondPass[i, 0] : secondPass[i, 1]])
+            maxValue = max(maxPower[secondPass[i, 0] : secondPass[i, 1]])
             if maxValue > self.highthresholdFactor:
                 thirdPass.append(secondPass[i])
                 peakNormalizedPower.append(maxValue)
@@ -342,7 +369,7 @@ class ripple:
         probemap = self._obj.recinfo.probemap()
         nChans = self._obj.recinfo.nChans
         changrp = self._obj.recinfo.channelgroups
-        chosenShank = changrp[0]
+        chosenShank = changrp[1] + changrp[2]
         times = self.time
         peakpower = self.peakpower
         eegfile = self._obj.sessinfo.recfiles.eegfile
@@ -358,8 +385,8 @@ class ripple:
         nripples = len(peakpower)
 
         fig = plt.figure(1, figsize=(6, 10))
-        gs = GridSpec(4, 10, figure=fig)
-        fig.subplots_adjust(hspace=0.6)
+        gs = GridSpec(3, 10, figure=fig)
+        fig.subplots_adjust(hspace=0.5)
 
         ripple_to_plot = list(range(5)) + list(range(nripples - 5, nripples))
         for ind, ripple in enumerate(ripple_to_plot):
@@ -402,8 +429,9 @@ class ripple:
         ax.axis("off")
 
         ax = fig.add_subplot(gs[0, 1:4])
+        coords = np.asarray(coords)
         ax.plot(probemap[0], probemap[1], ".", color="#cdc6c6")
-        ax.plot(coords[0][0], coords[1][1], "r.")
+        ax.plot(coords[:, 0], coords[:, 1], "r.")
         ax.axis("off")
         ax.set_title("selected channel")
 
@@ -423,6 +451,13 @@ class ripple:
 
         subname = self._obj.sessinfo.session.subname
         fig.suptitle(f"Ripple detection of {subname}")
+
+    def export2Neuroscope(self):
+        times = self.time * 1000  # convert to ms
+        file_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.rpl")
+        with file_neuroscope.open("w") as a:
+            for beg, stop in times:
+                a.write(f"{beg} start\n{stop} end\n")
 
 
 class spindle:
