@@ -242,7 +242,7 @@ class ExtractPosition:
         plt.clf()
         plt.plot(self.x, self.y)
 
-    def Speed(self):
+    def speed(self):
         pass
 
     def export2Neuroscope(self):
