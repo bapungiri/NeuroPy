@@ -135,24 +135,28 @@ class spectrogramBands:
         self.sxx = sxx
 
 
-def wavelet_decomp(lowfreq=1, highfreq=250, nbins=100):
-    t_wavelet = np.arange(-2, 2, 1 / 1250)
+def wavelet_decomp(signal, lowfreq=1, highfreq=250, nbins=100):
+    t_wavelet = np.arange(-4, 4, 1 / 1250)
 
-    B = 0.1
-    A = 1 / np.sqrt(np.pi ** 0.5 * B)
+    # B = 0.1
+    # A = 1 / np.sqrt(np.pi ** 0.5 * B)
 
-    frequency = np.logspace(np.log10(lowfreq), np.log10(highfreq), 30, base=2)
+    # frequency = np.logspace(np.log10(lowfreq), np.log10(highfreq), nbins)
+    frequency = np.linspace(lowfreq, highfreq, nbins)
 
     wave_spec = []
     for freq in frequency:
+        A = np.sqrt(freq)
+        sigma = 7 / (2 * np.pi * freq)
         my_wavelet = (
             A
-            * np.exp(-((t_wavelet) ** 2) / (2 * B ** 2))
+            * np.exp(-((t_wavelet) ** 2) / sigma ** 2)
             * np.exp(2j * np.pi * freq * t_wavelet)
         )
-        # conv_val = np.convolve(y, my_wavelet, mode="same")
-        conv_val = sg.fftconvolve(y, my_wavelet, mode="same")
+        # conv_val = np.convolve(signal, my_wavelet, mode="same")
+        conv_val = sg.fftconvolve(signal, my_wavelet, mode="same")
 
         wave_spec.append(conv_val)
 
-    wave_spec = np.asarray(wave_spec)
+    wave_spec = np.abs(np.asarray(wave_spec))
+    return wave_spec
