@@ -74,7 +74,7 @@ class recinfo:
 
             xcoord, ycoord = [], []
             for i in range(nShanks):
-                xpos = [10 * (_ % 2) + i * 30 for _ in range(16)]
+                xpos = [10 * (_ % 2) + i * 150 for _ in range(16)]
                 ypos = [15 * 16 - _ * 15 for _ in range(16)]
                 xcoord.extend(xpos)
                 ycoord.extend(ypos)
