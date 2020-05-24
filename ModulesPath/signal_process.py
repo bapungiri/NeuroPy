@@ -23,18 +23,18 @@ class filter_sig:
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=-1)
+        yf = sg.filtfilt(b, a, signal, axis=0)
 
         return yf
 
     @staticmethod
-    def filter_ripple(signal, sampleRate=1250):
+    def filter_ripple(signal, sampleRate=1250, ax=0):
         lowpass_freq = 150
         highpass_freq = 250
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=-1)
+        yf = sg.filtfilt(b, a, signal, axis=ax)
 
         return yf
 
@@ -45,7 +45,7 @@ class filter_sig:
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=-1)
+        yf = sg.filtfilt(b, a, signal, axis=0)
 
         return yf
 
@@ -56,7 +56,7 @@ class filter_sig:
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=-1)
+        yf = sg.filtfilt(b, a, signal, axis=0)
 
         return yf
 
@@ -67,7 +67,7 @@ class filter_sig:
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=-1)
+        yf = sg.filtfilt(b, a, signal, axis=0)
 
         return yf
 
@@ -135,13 +135,13 @@ class spectrogramBands:
         self.sxx = sxx
 
 
-def wavelet_decomp():
+def wavelet_decomp(lowfreq=1, highfreq=250, nbins=100):
     t_wavelet = np.arange(-2, 2, 1 / 1250)
 
     B = 0.1
     A = 1 / np.sqrt(np.pi ** 0.5 * B)
 
-    frequency = np.logspace(1, 5, 30, base=2)
+    frequency = np.logspace(np.log10(lowfreq), np.log10(highfreq), 30, base=2)
 
     wave_spec = []
     for freq in frequency:
