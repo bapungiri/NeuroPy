@@ -31,7 +31,8 @@ for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
     # sess.ripple.channels()
+    # sess.ripple._zscbestchannel(fromfile=0)
     # sess.ripple.detect()
 
-    # sess.ripple.plot()
-    # a, _, _ = sess.ripple.best_chan_lf
+    sess.ripple.plot()
+    # _, b, c = sess.ripple.best_chan_lfp()

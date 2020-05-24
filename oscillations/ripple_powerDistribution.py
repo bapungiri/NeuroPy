@@ -45,7 +45,7 @@ for sub, sess in enumerate(sessions):
         ripple_ind = np.where((ripples[:, 0] > binstart) & (ripples[:, 0] < binend))[0]
         peakpowerbin = peakpower[ripple_ind]
         # powerbinning = np.logspace(np.log10(1.2), np.log10(60), 50)
-        powerbinning = np.linspace(1, 60, 30)
+        powerbinning = np.linspace(5, 40, 31)
         peakhist, _ = np.histogram(peakpowerbin, bins=powerbinning)
-        plt.plot(peakhist, color=colors[i])
-        plt.yscale("log")
+        plt.plot(powerbinning[:-1], peakhist, color=colors[i])
+        # plt.yscale("log")
