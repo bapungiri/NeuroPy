@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 
 class pf:
@@ -122,8 +123,12 @@ class pf2d:
         y = ycoord[ind_maze]
         t = time[ind_maze]
 
-        x_grid = np.arange(min(x), max(x), 70)
-        y_grid = np.arange(min(y), max(y), 70)
+        # x = gaussian_filter1d(x, sigma=4)
+        # y = gaussian_filter1d(y, sigma=4)
+        # t = gaussian_filter1d(t, sigma=4)
+
+        x_grid = np.arange(min(x), max(x), 3)
+        y_grid = np.arange(min(y), max(y), 3)
         x_, y_ = np.meshgrid(x_grid, y_grid)
 
         diff_posx = np.diff(x)
@@ -138,8 +143,9 @@ class pf2d:
         t_thresh = t[speed_thresh]
 
         occupancy = np.histogram2d(x, y, bins=(x_grid, y_grid))[0]
-        occupancy = occupancy + np.spacing(1)
+        occupancy = occupancy
         occupancy = occupancy / 120  # converting to seconds
+        occupancy = gaussian_filter(occupancy, sigma=7)
 
         # spk_pfx, spk_pfy, spk_pft = [], [], []
         pf, spk_pos = [], []
@@ -150,15 +156,16 @@ class pf2d:
             spk_y = np.interp(spk_maze, t, y)
             spk_x = np.interp(spk_maze, t, x)
 
-            # speed threshold
-            # spd_ind = np.where(spk_speed > 2)
-            # spk_spd = spk_speed[spd_ind]
-            # spk_x = spk_x[spd_ind]
-            # spk_y = spk_y[spd_ind]
-            # spk_t = spk_maze[spd_ind]
-
             spk_map = np.histogram2d(spk_x, spk_y, bins=(x_grid, y_grid))[0]
-            pf.append(spk_map / occupancy)
+            spk_map = gaussian_filter(spk_map / occupancy, sigma=5)
+            pf.append(spk_map)
+
+            # speed threshold
+            spd_ind = np.where(spk_speed > 2)
+            spk_spd = spk_speed[spd_ind]
+            spk_x = spk_x[spd_ind]
+            spk_y = spk_y[spd_ind]
+            spk_t = spk_maze[spd_ind]
             spk_pos.append([spk_x, spk_y])
 
             # spk_pfx.append(spk_x)
@@ -175,17 +182,30 @@ class pf2d:
         # self.spkt = spk_pft
 
     def plotMap(self):
+        plt.clf()
         fig = plt.figure(1, figsize=(6, 10))
-        gs = GridSpec(7, 6, figure=fig)
+        gs = GridSpec(10, 8, figure=fig)
         fig.subplots_adjust(hspace=0.4)
 
         for cell, pfmap in enumerate(self.maps):
             ax1 = fig.add_subplot(gs[cell])
-            ax1.imshow(pfmap, cmap="jet", interpolation="gaussian")
+            im = ax1.imshow(pfmap, cmap="hot", vmax=12, vmin=0)
+            # max_frate =
+            ax1.axis("off")
+            ax1.set_title(f"{round(np.nanmax(pfmap),2)} Hz")
+
+        cbar_ax = fig.add_axes([0.9, 0.3, 0.01, 0.3])
+        cbar = fig.colorbar(im, cax=cbar_ax)
+        cbar.set_label("firing rate (Hz)")
+
+        fig.suptitle(
+            "Place maps for cells with their peak firing rate (no speed threshold)"
+        )
 
     def plotRaw(self):
+        plt.clf()
         fig = plt.figure(2, figsize=(6, 10))
-        gs = GridSpec(7, 6, figure=fig)
+        gs = GridSpec(10, 8, figure=fig)
         # fig.subplots_adjust(hspace=0.4)
 
         for cell, (spk_x, spk_y) in enumerate(self.spk_pos):
