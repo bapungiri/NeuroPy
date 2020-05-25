@@ -2,6 +2,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+import seaborn as sns
+import matplotlib
+from collections import namedtuple
+
+cmap = matplotlib.cm.get_cmap("hot_r")
+
 
 from callfunc import processData
 
@@ -18,10 +24,8 @@ basePath = [
 
 sessions = [processData(_) for _ in basePath]
 
-# badChans = [101, 105, 114, 126, 127] + list(range(128, 134))
-
+plt.clf()
 for sub, sess in enumerate(sessions):
 
-    # sess.recinfo.makerecinfo(badchans=badChans)
     sess.trange = np.array([])
-    sess.swa.detect()
+    sess.swa.plot()
