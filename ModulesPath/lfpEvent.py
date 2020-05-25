@@ -374,7 +374,7 @@ class ripple:
     def plot(self):
         """Gives a comprehensive view of the detection process with some statistics and examples
         """
-        _, ripplechans, coords = self.best_chan_lfp()
+        _, _, coords = self.best_chan_lfp()
         probemap = self._obj.recinfo.probemap()
         nChans = self._obj.recinfo.nChans
         changrp = self._obj.recinfo.channelgroups
