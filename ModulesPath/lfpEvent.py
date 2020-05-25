@@ -27,14 +27,17 @@ class Hswa:
     def _load(self):
 
         evt = np.load(self._obj.sessinfo.files.slow_wave, allow_pickle=True).item()
-        self.amplitude = np.asarray(evt["amplitude"])
+        self.peakamp = np.asarray(evt["peakamp"])
         self.time = np.asarray(evt["time"])
+        self.tbeg = np.asarray(evt["tbeg"])
+        self.tend = np.asarray(evt["tend"])
+        self.endamp = np.asarray(evt["endamp"])
 
-        if self._obj.trange.any():
-            start, end = self._obj.trange
-            indwhere = np.where((self.time > start) & (self.time < end))[0]
-            self.time = self.time[indwhere]
-            self.amp = self.amp[indwhere]
+        # if self._obj.trange.any():
+        #     start, end = self._obj.trange
+        #     indwhere = np.where((self.time > start) & (self.time < end))[0]
+        #     self.time = self.time[indwhere]
+        #     self.amp = self.amp[indwhere]
 
     ##======= hippocampal slow wave detection =============
     def detect(self):
@@ -66,39 +69,118 @@ class Hswa:
         states = allstates[allstates["name"] == "nrem"]
 
         # finding peaks and trough for delta oscillations
-        delta_amp, delta_amp_t = [], []
+        sigdelta = []
         for epoch in states.itertuples():
             idx = np.where((t > epoch.start) & (t < epoch.end))[0]
             delta_st = delta[idx]
             t_st = t[idx]
 
-            peaks, _ = sg.find_peaks(delta_st)
-            troughs, _ = sg.find_peaks(-delta_st)
+            grad = np.gradient(delta_st)
+            zero_crossings = np.where(np.diff(np.sign(grad)))[0]
+            cross_sign = np.zeros(len(zero_crossings))
 
-            # making sure they come in pairs and chopping half waves
-            if peaks[0] > troughs[0]:
-                troughs = troughs[1:]
+            for i, ind in enumerate(zero_crossings):
+                if grad[ind - 1] < grad[ind + 1]:
+                    cross_sign[i] = 1
 
-            if peaks[-1] > troughs[-1]:
-                peaks = peaks[:-1]
+            up = zero_crossings[np.where(cross_sign == 1)[0]]
+            down = zero_crossings[np.where(cross_sign == 0)[0]]
 
-            for i in range(len(peaks) - 1):
-                swa_peak = delta_st[peaks[i + 1]]
-                swa_trough = delta_st[troughs[i]]
-                swa_duration = abs(t_st[peaks[i + 1]] - t_st[troughs[i]])
+            if down[0] < up[0]:
+                down = down[1:]
+            if down[-1] > up[-1]:
+                down = down[:-1]
 
-                if swa_duration > min_swa_duration:
-                    delta_amp.extend([abs(swa_peak - swa_trough)])
-                    delta_amp_t.append(t_st[troughs[i]])
+            sigdelta = []
+            for i in range(len(up) - 1):
+                tbeg = t_st[up[i]]
+                tpeak = t_st[down[i]]
+                tend = t_st[up[i + 1]]
+                peakamp = delta_st[down[i]]
+                endamp = delta_st[up[i + 1]]
+                if (peakamp > 2 and endamp < 0) or (peakamp > 1 and endamp < -1.5):
+                    sigdelta.append([peakamp, endamp, tpeak, tbeg, tend])
+
+        sigdelta = np.asarray(sigdelta)
 
         hipp_slow_wave = {
-            "time": np.asarray(delta_amp_t),
-            "amplitude": np.asarray(delta_amp),
+            "time": sigdelta[:, 2],
+            "tbeg": sigdelta[:, 3],
+            "tend": sigdelta[:, 4],
+            "peakamp": sigdelta[:, 0],
+            "endamp": sigdelta[:, 1],
         }
 
         np.save(self._obj.sessinfo.files.slow_wave, hipp_slow_wave)
 
         self._load()
+
+    def plot(self):
+        """Gives a comprehensive view of the detection process with some statistics and examples
+        """
+        _, spindlechan, coord = self._obj.spindle.best_chan_lfp()
+        eegSrate = self._obj.recinfo.lfpSrate
+        probemap = self._obj.recinfo.probemap()
+        nChans = self._obj.recinfo.nChans
+        changrp = self._obj.recinfo.channelgroups
+        badchans = self._obj.recinfo.badchans
+        chosenShank = changrp[0]
+        chosenShank = np.setdiff1d(np.array(chosenShank), badchans)
+        times = self.time
+        tbeg = self.tbeg
+        tend = self.tend
+        eegfile = self._obj.sessinfo.recfiles.eegfile
+        eegdata = np.memmap(eegfile, dtype="int16", mode="r")
+        eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
+        eegdata = eegdata[:, chosenShank]
+
+        # sort_ind = np.argsort(peakpower)
+        # peakpower = peakpower[sort_ind]
+        # times = times[sort_ind, :]
+        # rpl_duration = np.diff(times, axis=1) * 1000  # in ms
+        frames = times * eegSrate
+        framesbeg = tbeg * eegSrate
+        framesend = tend * eegSrate
+        ndelta = len(times)
+
+        fig = plt.figure(1, figsize=(6, 10))
+        gs = GridSpec(2, 10, figure=fig)
+        fig.subplots_adjust(hspace=0.2)
+
+        delta_to_plot = list(range(50, 60))
+
+        beg_eeg = int(framesbeg[delta_to_plot[0]]) - eegSrate
+        end_eeg = int(framesend[delta_to_plot[-1]]) + eegSrate
+        lfp = stats.zscore(eegdata[beg_eeg:end_eeg, :])
+        lfp = lfp + np.linspace(40, 0, lfp.shape[1])
+        eegt = np.linspace(beg_eeg, end_eeg, len(lfp))
+        ax1 = fig.add_subplot(gs[0, :])
+        ax1.plot(eegt, lfp, "#444040", linewidth=0.8)
+        ax1.set_title("Raw lfp", loc="left")
+
+        for ind, delta in enumerate(delta_to_plot):
+            start = int(framesbeg[delta])
+            peak = int(frames[delta])
+            end = int(framesend[delta])
+            ax1.plot([peak, peak], [-8, 47], "--")
+            ax1.fill_between([start, end], [-6, -6], [45, 45], alpha=0.3)
+            ax1.axis("off")
+
+        deltabandlfp = filt.filter_delta(lfp, ax=0)
+        deltabandlfp = deltabandlfp + np.linspace(40, 0, lfp.shape[1])
+        ax2 = fig.add_subplot(gs[1, :])
+        ax2.plot(eegt, deltabandlfp, "#444040", linewidth=0.8)
+        ax2.set_title("Filtered lfp", loc="left")
+        for ind, delta in enumerate(delta_to_plot):
+            start = int(framesbeg[delta])
+            peak = int(frames[delta])
+            end = int(framesend[delta])
+            ax2.plot([peak, peak], [-8, 47], "--")
+            ax2.fill_between([start, end], [-6, -6], [45, 45], alpha=0.3)
+            ax2.axis("off")
+
+        subname = self._obj.sessinfo.session.subname
+        fig.suptitle(f"Delta wave detection of {subname}")
 
 
 class Ripple:
