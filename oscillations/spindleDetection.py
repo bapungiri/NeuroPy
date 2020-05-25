@@ -25,14 +25,9 @@ basePath = [
 sessions = [processData(_) for _ in basePath]
 
 
-plt.clf()
-group = []
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    # sess.ripple.channels()
-    # sess.ripple._zscbestchannel(fromfile=0)
-    # sess.ripple.detect()
-
-    # sess.ripple.plot()
-    # _, b, c = sess.ripple.best_chan_lfp()
+    # sess.spindle.channels()
+    # sess.spindle.detect()
+    sess.spindle.plot()
