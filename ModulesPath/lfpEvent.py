@@ -57,7 +57,7 @@ class hswa:
         # filtering best ripple channel in delta band
         deltachan, t = myinfo.ripple.best_chan_lfp
         delta_sig = filt.filter_delta(deltachan)
-        delta = stat.zscore(delta_sig)  # normalization w.r.t session
+        delta = stats.zscore(delta_sig)  # normalization w.r.t session
 
         # collecting only nrem states
         allstates = myinfo.brainstates.states
@@ -120,8 +120,9 @@ class ripple:
             ripple_evt = np.load(
                 obj.sessinfo.files.ripple_evt, allow_pickle=True
             ).item()
-            self.time = ripple_evt["timestamps"]
+            self.time = ripple_evt["times"]
             self.peakpower = ripple_evt["peakPower"]
+            self.peaktime = ripple_evt["peaktime"]
 
             if obj.trange.any():
                 start, end = obj.trange
@@ -135,7 +136,6 @@ class ripple:
         Returns:
             [type] -- [description]
         """
-        lfpsrate = self._obj.recinfo.lfpSrate
 
         lfpinfo = np.load(self._obj.sessinfo.files.ripplelfp, allow_pickle=True).item()
         chans = np.asarray(lfpinfo["channels"])
@@ -167,7 +167,6 @@ class ripple:
         """
         sampleRate = self._obj.recinfo.lfpSrate
         duration = 1 * 60 * 60  # chunk of lfp in seconds
-        nyq = 0.5 * sampleRate  # Nyquist frequency
         nChans = self._obj.recinfo.nChans
         badchans = self._obj.recinfo.badchans
         allchans = self._obj.recinfo.channels
@@ -277,6 +276,7 @@ class ripple:
             start_ripple = start_ripple[:-1]
 
         firstPass = np.vstack((start_ripple, stop_ripple)).T
+        print(f"{len(firstPass)} ripples detected initially")
 
         # ===== merging close ripples
         minInterRippleSamples = self.mergeDistance / 1000 * SampFreq
@@ -292,38 +292,48 @@ class ripple:
 
         secondPass.append(ripple)
         secondPass = np.asarray(secondPass)
+        print(f"{len(secondPass)} ripples reamining after merging")
 
         # =======delete ripples with less than threshold power
         thirdPass = []
-        peakNormalizedPower = []
+        peakNormalizedPower, peaktime = [], []
 
         for i in range(0, len(secondPass)):
             maxValue = max(maxPower[secondPass[i, 0] : secondPass[i, 1]])
             if maxValue > self.highthresholdFactor:
                 thirdPass.append(secondPass[i])
                 peakNormalizedPower.append(maxValue)
-
+                peaktime.append(
+                    [
+                        secondPass[i, 0]
+                        + np.argmax(maxPower[secondPass[i, 0] : secondPass[i, 1]])
+                    ]
+                )
         thirdPass = np.asarray(thirdPass)
+        print(f"{len(thirdPass)} ripples reamining after deleting weak ripples")
 
         ripple_duration = np.diff(thirdPass, axis=1) / SampFreq * 1000
 
         # delete very short ripples
         shortRipples = np.where(ripple_duration < self.minRippleDuration)[0]
-        thirdPass = np.delete(thirdPass, shortRipples, 0)
+        fourthPass = np.delete(thirdPass, shortRipples, 0)
         peakNormalizedPower = np.delete(peakNormalizedPower, shortRipples)
+        peaktime = np.delete(peaktime, shortRipples)
         ripple_duration = np.delete(ripple_duration, shortRipples)
+        print(f"{len(fourthPass)} ripples reamining after deleting short ripples")
 
         # delete ripples with unrealistic high power
         # artifactRipples = np.where(peakNormalizedPower > maxRipplePower)[0]
         # fourthPass = np.delete(thirdPass, artifactRipples, 0)
         # peakNormalizedPower = np.delete(peakNormalizedPower, artifactRipples)
-        fourthPass = thirdPass
 
         # delete very long ripples
         veryLongRipples = np.where(ripple_duration > self.maxRippleDuration)[0]
         fifthPass = np.delete(fourthPass, veryLongRipples, 0)
         peakNormalizedPower = np.delete(peakNormalizedPower, veryLongRipples)
+        peaktime = np.delete(peaktime, veryLongRipples)
         ripple_duration = np.delete(ripple_duration, veryLongRipples)
+        print(f"{len(fifthPass)} ripples reamining after deleting very long ripples")
 
         # delete ripples which have unusually high amp in raw signal (takes care of disconnection)
         highRawInd = []
@@ -334,30 +344,29 @@ class ripple:
 
         sixthPass = np.delete(fifthPass, highRawInd, 0)
         peakNormalizedPower = np.delete(peakNormalizedPower, highRawInd)
+        peaktime = np.delete(peaktime, highRawInd)
+        # print(f"{len(sixthPass)} ripples reamining after deleting unrealistic ripples")
 
-        print(f"{len(sixthPass)} ripples detected")
-        # TODO delete sharp ripple like artifacts
-        # Maybe unrelistic high power has taken care of this but check to confirm
+        print(f"{len(sixthPass)} ripples kept after deleting unrealistic ripples")
 
         now = datetime.now()
         dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
-        ripples = dict()
-        ripples["timestamps"] = sixthPass / SampFreq
-        ripples["peakPower"] = peakNormalizedPower
-        ripples["DetectionParams"] = {
-            "lowThres": self.lowthresholdFactor,
-            "highThresh": self.highthresholdFactor,
-            "ArtifactThresh": self.maxRipplePower,
-            "lowFreq": lowFreq,
-            "highFreq": highFreq,
-            "samplingRate": SampFreq,
-            "minDuration": self.minRippleDuration,
-            "maxDuration": self.maxRippleDuration,
+        ripples = {
+            "times": sixthPass / SampFreq,
+            "peaktime": peaktime / SampFreq,
+            "peakPower": peakNormalizedPower,
+            "Info": {"Date": dt_string},
+            "DetectionParams": {
+                "lowThres": self.lowthresholdFactor,
+                "highThresh": self.highthresholdFactor,
+                "ArtifactThresh": self.maxRipplePower,
+                "lowFreq": lowFreq,
+                "highFreq": highFreq,
+                "minDuration": self.minRippleDuration,
+                "maxDuration": self.maxRippleDuration,
+            },
         }
-        ripples["Info"] = {"Date": dt_string}
-
-        # return ripples
 
         np.save(self._obj.sessinfo.files.ripple_evt, ripples)
         print(f"{self._obj.sessinfo.files.ripple_evt.name} created")
@@ -460,37 +469,311 @@ class ripple:
                 a.write(f"{beg} start\n{stop} end\n")
 
 
-class spindle:
+class Spindle:
+    # parameters in standard deviation
+    lowthresholdFactor = 1.5
+    highthresholdFactor = 4
+    # parameters in ms
+    minSpindleDuration = 350
+    # maxSpindleDuration = 450
+    mergeDistance = 125
+
     def __init__(self, obj):
+
         self._obj = obj
 
-        filename = self._obj.sessinfo.files.spindles
-        if filename.is_file():
-            spindles = np.load(filename, allow_pickle=True)
-            self.time = spindles["timestamps"]
-            self.peakpower = spindles["peakPower"]
+        if Path(self._obj.sessinfo.files.spindle_evt).is_file():
 
-        else:
-            self.time = None
-            self.peakpower = None
+            spindle_evt = np.load(
+                obj.sessinfo.files.spindle_evt, allow_pickle=True
+            ).item()
+            self.time = spindle_evt["times"]
+            self.peakpower = spindle_evt["peakPower"]
+            self.peaktime = spindle_evt["peaktime"]
+
+            if obj.trange.any():
+                start, end = obj.trange
+                indwhere = np.where((self.time[:, 0] > start) & (self.time[:, 0] < end))
+                self.time = self.time[indwhere]
+                self.peakpower = self.peakpower[indwhere]
+
+    def best_chan_lfp(self):
+        """Returns just best of best channels of each shank or returns all best channels of shanks
+
+        Returns:
+            [type] -- [description]
+        """
+        lfpsrate = self._obj.recinfo.lfpSrate
+
+        lfpinfo = np.load(self._obj.sessinfo.files.spindlelfp, allow_pickle=True).item()
+        chan = np.asarray(lfpinfo["channel"])
+        lfp = np.asarray(lfpinfo["lfp"])
+        coords = lfpinfo["coords"]
+
+        return lfp, chan, coords
+
+    def channels(self, viewselection=1):
+        """Channel which represent high spindle power during nrem across all channels
+
+        """
+        sampleRate = self._obj.recinfo.lfpSrate
+        duration = 1 * 60 * 60  # chunk of lfp in seconds
+        nyq = 0.5 * sampleRate  # Nyquist frequency
+        nChans = self._obj.recinfo.nChans
+        badchans = self._obj.recinfo.badchans
+        allchans = self._obj.recinfo.channels
+        changrp = self._obj.recinfo.channelgroups
+        nShanks = self._obj.recinfo.nShanks
+        probemap = self._obj.recinfo.probemap(probetype="diagbio")
+        brainChannels = [item for sublist in changrp[:nShanks] for item in sublist]
+        dict_probemap = dict(zip(brainChannels, zip(probemap[0], probemap[1])))
+
+        states = self._obj.brainstates.states
+        states = states.loc[states["name"] == "nrem", ["start", "end"]]
+        nremframes = (np.asarray(states.values.tolist()) * sampleRate).astype(int)
+        reqframes = []
+        for (start, end) in nremframes:
+            reqframes.extend(np.arange(start, end))
+
+        reqframes = np.asarray(reqframes)
+
+        fileName = self._obj.sessinfo.recfiles.eegfile
+        lfpAll = np.memmap(fileName, dtype="int16", mode="r")
+        lfpAll = np.memmap.reshape(lfpAll, (int(len(lfpAll) / nChans), nChans))
+        lfpCA1 = lfpAll[reqframes, :]
+
+        # exclude badchannels
+        lfpCA1 = np.delete(lfpCA1, badchans, 1)
+        goodChans = np.setdiff1d(allchans, badchans, assume_unique=True)  # keeps order
+
+        # filter and hilbet amplitude for each channel
+        hilbertfast = lambda x: sg.hilbert(x, fftpack.next_fast_len(len(x)))[: len(x)]
+        avgSpindle = np.zeros(lfpCA1.shape[1])
+        for i in range(lfpCA1.shape[1]):
+            spindleband = filt.filter_spindle(lfpCA1[:, i])
+            amplitude_envelope = np.abs(hilbertfast(spindleband))
+            avgSpindle[i] = np.mean(amplitude_envelope)
+
+        spindleamp_chan = dict(zip(goodChans, avgSpindle))
+
+        # plt.plot(probemap[0], probemap[1], ".", color="#bfc0c0")
+        bestchan = goodChans[np.argmax(avgSpindle)]
+        lfp = lfpAll[:, np.argmax(avgSpindle)]
+        coords = dict_probemap[bestchan]
+
+        # the reason metricAmp name was used to allow using other metrics such median
+        bestspindlechan = dict(
+            zip(["channel", "lfp", "coords"], [bestchan, lfp, coords],)
+        )
+
+        filename = self._obj.sessinfo.files.spindlelfp
+        np.save(filename, bestspindlechan)
 
     def detect(self):
-        signal, _ = self._obj.ripple.best_chan_lfp
-        SampFreq = self._obj.recinfo.lfpSrate
-        nyq = 0.5 * SampFreq
-        lowFreq = 8
-        highFreq = 16
-        lowthresholdFactor = 1.5
-        minRippleDuration = 20  # in milliseconds
-        maxRippleDuration = 800  # in milliseconds
-        maxRipplePower = 60  # in normalized power units
+        """ripples lfp nchans x time
 
-        signal = filt.filter_spindle(signal)
-        zsc_sig = stats.zscore(signal)
-        analytic_signal = sg.hilbert(zsc_sig)
-        amplitude_envelope = np.abs(analytic_signal)
+        Returns:
+            [type] -- [description]
+        """
+        sampleRate = self._obj.recinfo.lfpSrate
+        lowFreq = 9
+        highFreq = 18
+        # TODO chnage raw amplitude threshold to something statistical
 
-        plt.plot(amplitude_envelope)
+        ripplelfps, _, _ = self.best_chan_lfp()
+        signal = np.asarray(ripplelfps, dtype=np.float)
+
+        yf = filt.filter_spindle(signal, ax=-1)
+        hilbertfast = lambda x: sg.hilbert(x, fftpack.next_fast_len(len(x)))[: len(x)]
+        amplitude_envelope = np.abs(hilbertfast(yf))
+        zscsignal = stats.zscore(amplitude_envelope, axis=-1)
+
+        # hilbert transform --> binarize by > than lowthreshold
+        ThreshSignal = np.diff(np.where(zscsignal > self.lowthresholdFactor, 1, 0))
+        start_spindle = np.where(ThreshSignal == 1)[0]
+        stop_spindle = np.where(ThreshSignal == -1)[0]
+
+        if start_spindle[0] > stop_spindle[0]:
+            stop_spindle = stop_spindle[1:]
+        if start_spindle[-1] > stop_spindle[-1]:
+            start_spindle = start_spindle[:-1]
+
+        firstPass = np.vstack((start_spindle, stop_spindle)).T
+        print(f"{len(firstPass)} spindles detected initially")
+
+        # ===== merging close spindles =========
+        minInterspindleSamples = self.mergeDistance / 1000 * sampleRate
+        secondPass = []
+        spindle = firstPass[0]
+        for i in range(1, len(firstPass)):
+            if firstPass[i, 0] - spindle[1] < minInterspindleSamples:
+                # Merging spindles
+                spindle = [spindle[0], firstPass[i, 1]]
+            else:
+                secondPass.append(spindle)
+                spindle = firstPass[i]
+        secondPass.append(spindle)
+        secondPass = np.asarray(secondPass)
+        print(f"{len(secondPass)} spindles remaining after merging")
+
+        # =======delete spindles with less than threshold power
+        thirdPass = []
+        peakNormalizedPower, peaktime = [], []
+        for i in range(0, len(secondPass)):
+            maxValue = max(zscsignal[secondPass[i, 0] : secondPass[i, 1]])
+            if maxValue >= self.highthresholdFactor:
+                thirdPass.append(secondPass[i])
+                peakNormalizedPower.append(maxValue)
+                peaktime.append(
+                    [
+                        secondPass[i, 0]
+                        + np.argmax(zscsignal[secondPass[i, 0] : secondPass[i, 1]])
+                    ]
+                )
+
+        thirdPass = np.asarray(thirdPass)
+        spindle_duration = np.diff(thirdPass, axis=1) / sampleRate * 1000
+        print(f"{len(thirdPass)} spindles remaining after deleting weak spindles")
+
+        # delete very short spindles
+        shortspindles = np.where(spindle_duration < self.minSpindleDuration)[0]
+        fourthPass = np.delete(thirdPass, shortspindles, 0)
+        peakNormalizedPower = np.delete(peakNormalizedPower, shortspindles)
+        spindle_duration = np.delete(spindle_duration, shortspindles)
+        peaktime = np.delete(peaktime, shortspindles)
+        print(f"{len(fourthPass)} spindles remaining after deleting short spindles")
+
+        # delete spindles in non-nrem periods
+        states = self._obj.brainstates.states
+        states = states.loc[states["name"] == "nrem", ["start", "end"]]
+        nremframes = (np.asarray(states.values.tolist()) * sampleRate).astype(int)
+        reqframes = []
+        for (start, end) in nremframes:
+            reqframes.extend(np.arange(start, end))
+        reqframes = np.asarray(reqframes)
+
+        outside_spindles = []
+        for ind, (start, _) in enumerate(fourthPass):
+            if start not in reqframes:
+                outside_spindles.extend([ind])
+        outside_spindles = np.asarray(outside_spindles)
+
+        fifthPass = np.delete(fourthPass, outside_spindles, 0)
+        peakNormalizedPower = np.delete(peakNormalizedPower, outside_spindles)
+        spindle_duration = np.delete(spindle_duration, outside_spindles)
+        peaktime = np.delete(peaktime, outside_spindles)
+
+        print(f"{len(fifthPass)} spindles finally kept after excluding outside nrem")
+
+        now = datetime.now()
+        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+
+        spindles = dict()
+        spindles["times"] = fifthPass / sampleRate
+        spindles["peakPower"] = peakNormalizedPower
+        spindles["peaktime"] = peaktime / sampleRate
+        spindles["DetectionParams"] = {
+            "lowThres": self.lowthresholdFactor,
+            "highThresh": self.highthresholdFactor,
+            "lowFreq": lowFreq,
+            "highFreq": highFreq,
+            "minDuration": self.minSpindleDuration,
+        }
+        spindles["Info"] = {"Date": dt_string}
+
+        # return spindles
+
+        np.save(self._obj.sessinfo.files.spindle_evt, spindles)
+        print(f"{self._obj.sessinfo.files.spindle_evt.name} created")
 
     def plot(self):
-        pass
+        """Gives a comprehensive view of the detection process with some statistics and examples
+        """
+        _, spindlechan, coord = self.best_chan_lfp()
+        eegSrate = self._obj.recinfo.lfpSrate
+        probemap = self._obj.recinfo.probemap()
+        nChans = self._obj.recinfo.nChans
+        changrp = self._obj.recinfo.channelgroups
+        chosenShank = changrp[1] + changrp[2]
+        times = self.time
+        peakpower = self.peakpower
+        eegfile = self._obj.sessinfo.recfiles.eegfile
+        eegdata = np.memmap(eegfile, dtype="int16", mode="r")
+        eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
+        eegdata = eegdata[:, chosenShank]
+
+        sort_ind = np.argsort(peakpower)
+        peakpower = peakpower[sort_ind]
+        times = times[sort_ind, :]
+        rpl_duration = np.diff(times, axis=1) * 1000  # in ms
+        frames = times * eegSrate
+        nspindles = len(peakpower)
+
+        fig = plt.figure(1, figsize=(6, 10))
+        gs = GridSpec(3, 10, figure=fig)
+        fig.subplots_adjust(hspace=0.5)
+
+        spindles_to_plot = list(range(5)) + list(range(nspindles - 5, nspindles))
+        for ind, spindle in enumerate(spindles_to_plot):
+            print(spindle)
+            start = int(frames[spindle, 0])
+            end = int(frames[spindle, 1])
+            lfp = stats.zscore(eegdata[start:end, :])
+            ripplebandlfp = filt.filter_spindle(lfp, ax=0)
+            # lfp = (lfp.T - np.median(lfp, axis=1)).T
+            lfp = lfp + np.linspace(40, 0, lfp.shape[1])
+            ripplebandlfp = ripplebandlfp + np.linspace(40, 0, lfp.shape[1])
+            duration = (lfp.shape[0] / eegSrate) * 1000  # in ms
+
+            ax = fig.add_subplot(gs[1, ind])
+            ax.plot(lfp, "#fa761e", linewidth=0.8)
+            ax.set_title(
+                f"zsc = {round(peakpower[spindle],2)}, {round(duration)} ms", loc="left"
+            )
+            # ax.set_xlim([0, self.maxSpindleDuration / 1000 * eegSrate])
+            ax.axis("off")
+
+            ax = fig.add_subplot(gs[2, ind])
+            ax.plot(ripplebandlfp, linewidth=0.8, color="#594f4f")
+            # ax.set_title(f"{round(peakpower[ripple],2)}")
+            # ax.set_xlim([0, self.maxSpindleDuration / 1000 * eegSrate])
+            ax.axis("off")
+
+        ax = fig.add_subplot(gs[0, 0])
+        ax.text(
+            0,
+            0.8,
+            f" highThresh ={self.highthresholdFactor}\n lowThresh ={self.lowthresholdFactor}\n minDuration = {self.minSpindleDuration}\n mergeSpindle = {self.mergeDistance} \n #Spindles = {len(peakpower)}",
+        )
+        ax.axis("off")
+
+        ax = fig.add_subplot(gs[0, 1:4])
+        coord = np.asarray(coord)
+        ax.plot(probemap[0], probemap[1], ".", color="#cdc6c6")
+        ax.plot(coord[0], coord[1], "r.")
+        ax.axis("off")
+        ax.set_title("selected channel")
+
+        ax = fig.add_subplot(gs[0, 5])
+        histpower, edgespower = np.histogram(peakpower, bins=100)
+        ax.plot(edgespower[:-1], histpower, color="#544a4a")
+        ax.set_xlabel("Zscore value")
+        ax.set_ylabel("Counts")
+        # ax.set_yscale("log")
+
+        ax = fig.add_subplot(gs[0, 6])
+        histdur, edgesdur = np.histogram(rpl_duration, bins=100)
+        ax.plot(edgesdur[:-1], histdur, color="#544a4a")
+        ax.set_xlabel("Duration (ms)")
+        # ax.set_ylabel("Counts")
+        # ax.set_yscale("log")
+
+        subname = self._obj.sessinfo.session.subname
+        fig.suptitle(f"Spindle detection of {subname}")
+
+    def export2Neuroscope(self):
+        times = self.time * 1000  # convert to ms
+        file_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.rpl")
+        with file_neuroscope.open("w") as a:
+            for beg, stop in times:
+                a.write(f"{beg} start\n{stop} end\n")
