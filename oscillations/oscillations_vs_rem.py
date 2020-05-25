@@ -1,0 +1,47 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import scipy.stats as stats
+import seaborn as sns
+import matplotlib
+from collections import namedtuple
+
+cmap = matplotlib.cm.get_cmap("hot_r")
+
+
+from callfunc import processData
+
+basePath = [
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
+]
+
+
+sessions = [processData(_) for _ in basePath]
+
+tbin = lambda x: np.arange(x - 80, x + 80)
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    peakrpl = sess.ripple.peaktime
+    peakspndl = sess.spindle.peaktime
+    states = sess.brainstates.states
+    remstart = states[states["name"] == "rem"].start.values
+
+    rpl_rem = [np.histogram(peakrpl, bins=tbin(_))[0] for _ in remstart]
+    spndl_rem = [np.histogram(peakspndl, bins=tbin(_))[0] for _ in remstart]
+
+
+t = tbin(0)[:-1] + 0.5
+rpl_rem = np.asarray(rpl_rem).sum(axis=0)
+spndl_rem = np.asarray(spndl_rem).sum(axis=0)
+plt.plot(t, spndl_rem, "blue")
+plt.plot(t, rpl_rem, "r")
+plt.ylabel("Counts")
+plt.xlabel("Time from REM onset (sec)")
+plt.legend(["spindles", "ripples"])
