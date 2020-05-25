@@ -66,7 +66,8 @@ class files:
         self.epochs = Path(str(f_prefix) + "_epochs.npy")
         self.ripplelfp = Path(str(f_prefix) + "_BestRippleChans.npy")
         self.ripple_evt = Path(str(f_prefix) + "_ripples.npy")
-        self.spindles = Path(str(f_prefix) + "_spindles.npy")
+        self.spindle_evt = Path(str(f_prefix) + "_spindles.npy")
+        self.spindlelfp = Path(str(f_prefix) + "_BestSpindleChan.npy")
 
         self.thetalfp = Path(str(f_prefix) + "_BestThetaChan.npy")
         self.theta_evt = Path(str(f_prefix) + "_thetaevents.npy")
