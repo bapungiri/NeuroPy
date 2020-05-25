@@ -24,15 +24,4 @@ for sub, sess in enumerate(sessions):
 
     # sess.recinfo.makerecinfo(badchans=badChans)
     sess.trange = np.array([])
-    # sess.swa.detect_hswa()
-    # sess.eventpsth.hswa_ripple.compute()
-
-    # zsc_signal = sess.artifact.usingZscore()
-
-
-sess.spindle.detect()
-# plt.plot(zsc_signal)
-# for sub, sess in enumerate(sessions):
-#     plt.subplot(6, 1, sub + 1)
-#     plt.hist(sess.swa.amp, 1000)
-#
+    sess.swa.detect()

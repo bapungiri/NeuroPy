@@ -24,7 +24,8 @@ basePath = [
 
 sessions = [processData(_) for _ in basePath]
 
-tbin = lambda x: np.arange(x - 20, x + 20)
+tbin = lambda x: np.linspace(x - 20, x + 20, 40)
+plt.clf()
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])

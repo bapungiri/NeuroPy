@@ -50,13 +50,13 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def filter_delta(signal, sampleRate=1250):
+    def filter_delta(signal, sampleRate=1250, ax=0):
         lowpass_freq = 0.5
         highpass_freq = 4
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=0)
+        yf = sg.filtfilt(b, a, signal, axis=ax)
 
         return yf
 

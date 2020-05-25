@@ -27,8 +27,8 @@ class Hswa:
     def _load(self):
 
         evt = np.load(self._obj.sessinfo.files.slow_wave, allow_pickle=True).item()
-        self.amp = np.asarray(evt["delta_amp"])
-        self.time = np.asarray(evt["delta_t"])
+        self.amplitude = np.asarray(evt["amplitude"])
+        self.time = np.asarray(evt["time"])
 
         if self._obj.trange.any():
             start, end = self._obj.trange
@@ -37,7 +37,7 @@ class Hswa:
             self.amp = self.amp[indwhere]
 
     ##======= hippocampal slow wave detection =============
-    def detect_hswa(self):
+    def detect(self):
         """
         filters the channel which has highest ripple power.
         Caculate peaks and troughs in the filtered lfp
@@ -51,22 +51,21 @@ class Hswa:
         files = self._obj.sessinfo.files
 
         # parameters
-        lfpsRate = myinfo.recinfo.lfpSrate
+        lfpsRate = self._obj.recinfo.lfpSrate
         min_swa_duration = 0.1  # 100 milliseconds
 
         # filtering best ripple channel in delta band
-        deltachan, t = myinfo.ripple.best_chan_lfp
-        delta_sig = filt.filter_delta(deltachan)
+        deltachan, _, _ = myinfo.spindle.best_chan_lfp()
+        t = np.linspace(0, len(deltachan) / lfpsRate, len(deltachan))
+        delta_sig = filt.filter_delta(deltachan, ax=-1)
         delta = stats.zscore(delta_sig)  # normalization w.r.t session
+        delta = -delta  # flipping as this is in sync with cortical slow wave
 
         # collecting only nrem states
         allstates = myinfo.brainstates.states
-        states = allstates[allstates["state"] == 1]
-
-        # t = np.linspace(0, len(deltachan) / lfpsRate, len(deltachan))
+        states = allstates[allstates["name"] == "nrem"]
 
         # finding peaks and trough for delta oscillations
-
         delta_amp, delta_amp_t = [], []
         for epoch in states.itertuples():
             idx = np.where((t > epoch.start) & (t < epoch.end))[0]
@@ -93,8 +92,8 @@ class Hswa:
                     delta_amp_t.append(t_st[troughs[i]])
 
         hipp_slow_wave = {
-            "delta_t": np.asarray(delta_amp_t),
-            "delta_amp": np.asarray(delta_amp),
+            "time": np.asarray(delta_amp_t),
+            "amplitude": np.asarray(delta_amp),
         }
 
         np.save(self._obj.sessinfo.files.slow_wave, hipp_slow_wave)
@@ -102,7 +101,7 @@ class Hswa:
         self._load()
 
 
-class ripple:
+class Ripple:
     lowthresholdFactor = 1
     highthresholdFactor = 5
     highRawSigThresholdFactor = 15000
@@ -773,7 +772,7 @@ class Spindle:
 
     def export2Neuroscope(self):
         times = self.time * 1000  # convert to ms
-        file_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.rpl")
+        file_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.spn")
         with file_neuroscope.open("w") as a:
             for beg, stop in times:
                 a.write(f"{beg} start\n{stop} end\n")
