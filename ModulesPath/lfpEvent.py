@@ -17,7 +17,7 @@ from lfpDetect import swr as spwrs
 from signal_process import filter_sig as filt
 
 
-class hswa:
+class Hswa:
     def __init__(self, obj):
 
         self._obj = obj
