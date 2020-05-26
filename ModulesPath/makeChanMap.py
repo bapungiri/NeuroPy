@@ -69,6 +69,11 @@ class recinfo:
         changroup = self.channelgroups
         nShanks = self.nShanks
 
+        if len(changroup[0]) == 16:
+            probetype = "diagbio"
+        if len(changroup[0]) == 8:
+            probetype = "buzsaki"
+
         changroup = changroup[:nShanks]
         if probetype == "diagbio":
 
@@ -76,6 +81,17 @@ class recinfo:
             for i in range(nShanks):
                 xpos = [10 * (_ % 2) + i * 150 for _ in range(16)]
                 ypos = [15 * 16 - _ * 15 for _ in range(16)]
+                xcoord.extend(xpos)
+                ycoord.extend(ypos)
+
+        if probetype == "buzsaki":
+
+            xp = [0, 37, 4, 33, 8, 29, 12, 20]
+            yp = np.arange(160, 0, -20)
+            xcoord, ycoord = [], []
+            for i in range(nShanks):
+                xpos = [xp[_] + i * 200 for _ in range(8)]
+                ypos = [yp[_] for _ in range(8)]
                 xcoord.extend(xpos)
                 ycoord.extend(ypos)
 
