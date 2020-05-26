@@ -102,6 +102,7 @@ class Hswa:
                     sigdelta.append([peakamp, endamp, tpeak, tbeg, tend])
 
         sigdelta = np.asarray(sigdelta)
+        print(f"{len(sigdelta)} delta detected")
 
         hipp_slow_wave = {
             "time": sigdelta[:, 2],
@@ -253,7 +254,7 @@ class Ripple:
         allchans = self._obj.recinfo.channels
         changrp = self._obj.recinfo.channelgroups
         nShanks = self._obj.recinfo.nShanks
-        probemap = self._obj.recinfo.probemap(probetype="diagbio")
+        probemap = self._obj.recinfo.probemap()
         brainChannels = [item for sublist in changrp[:nShanks] for item in sublist]
         dict_probemap = dict(zip(brainChannels, zip(probemap[0], probemap[1])))
 
@@ -266,12 +267,13 @@ class Ripple:
         lfpCA1 = np.delete(lfpCA1, badchans, 1)
         goodChans = np.setdiff1d(allchans, badchans, assume_unique=True)  # keeps order
 
+        hilbertfast = lambda x: sg.hilbert(x, fftpack.next_fast_len(len(x)))[: len(x)]
+
         # filter and hilbet amplitude for each channel
         avgRipple = np.zeros(lfpCA1.shape[1])
         for i in range(lfpCA1.shape[1]):
             rippleband = filt.filter_ripple(lfpCA1[:, i])
-            analytic_signal = sg.hilbert(rippleband)
-            amplitude_envelope = np.abs(analytic_signal)
+            amplitude_envelope = np.abs(hilbertfast(rippleband))
             avgRipple[i] = np.mean(amplitude_envelope, axis=0)
 
         rippleamp_chan = dict(zip(goodChans, avgRipple))
@@ -282,14 +284,18 @@ class Ripple:
         for shank in range(nShanks):
             chans = np.asarray(changrp[shank])
             goodChans_shank = np.setdiff1d(chans, badchans, assume_unique=True)
-            avgrpl_shank = np.asarray([rippleamp_chan[key] for key in goodChans_shank])
-            chan_max = goodChans_shank[np.argmax(avgrpl_shank)]
-            xcoord = dict_probemap[chan_max][0]
-            ycoord = dict_probemap[chan_max][1]
-            rplchan_shank.append(chan_max)
-            lfps.append(lfpAll[:, np.where(goodChans == chan_max)[0][0]])
-            coord.append([xcoord, ycoord])
-            metricAmp.append(np.max(avgrpl_shank))
+
+            if goodChans_shank.size != 0:
+                avgrpl_shank = np.asarray(
+                    [rippleamp_chan[key] for key in goodChans_shank]
+                )
+                chan_max = goodChans_shank[np.argmax(avgrpl_shank)]
+                xcoord = dict_probemap[chan_max][0]
+                ycoord = dict_probemap[chan_max][1]
+                rplchan_shank.append(chan_max)
+                lfps.append(lfpAll[:, np.where(goodChans == chan_max)[0][0]])
+                coord.append([xcoord, ycoord])
+                metricAmp.append(np.max(avgrpl_shank))
 
         # the reason metricAmp name was used to allow using other metrics such median
         bestripplechans = dict(
@@ -342,7 +348,25 @@ class Ripple:
         ripplelfps, _, _ = self.best_chan_lfp()
         signal = np.asarray(ripplelfps, dtype=np.float)[0, :]
 
-        zscsignal = self._zscbestchannel(fromfile=1)
+        zscsignal = self._zscbestchannel(fromfile=0)
+
+        # delete ripples in noisy period
+        deadfile = (self._obj.sessinfo.files.filePrefix).with_suffix(".dead")
+        if deadfile.is_file():
+            with deadfile.open("r") as f:
+                noisy = []
+                for line in f:
+                    epc = line.split(" ")
+                    epc = [float(_) for _ in epc]
+                    noisy.append(epc)
+                noisy = np.asarray(noisy)
+                noisy = ((noisy / 1000) * SampFreq).astype(int)
+
+            for noisy_ind in range(noisy.shape[0]):
+                st = noisy[noisy_ind, 0]
+                en = noisy[noisy_ind, 1]
+                numnoisy = en - st
+                zscsignal[:, st:en] = np.zeros((zscsignal.shape[0], numnoisy))
 
         # hilbert transform --> binarize by > than lowthreshold
         maxPower = np.max(zscsignal, axis=0)
@@ -426,8 +450,6 @@ class Ripple:
         sixthPass = np.delete(fifthPass, highRawInd, 0)
         peakNormalizedPower = np.delete(peakNormalizedPower, highRawInd)
         peaktime = np.delete(peaktime, highRawInd)
-        # print(f"{len(sixthPass)} ripples reamining after deleting unrealistic ripples")
-
         print(f"{len(sixthPass)} ripples kept after deleting unrealistic ripples")
 
         now = datetime.now()
@@ -605,7 +627,7 @@ class Spindle:
         allchans = self._obj.recinfo.channels
         changrp = self._obj.recinfo.channelgroups
         nShanks = self._obj.recinfo.nShanks
-        probemap = self._obj.recinfo.probemap(probetype="diagbio")
+        probemap = self._obj.recinfo.probemap()
         brainChannels = [item for sublist in changrp[:nShanks] for item in sublist]
         dict_probemap = dict(zip(brainChannels, zip(probemap[0], probemap[1])))
 
@@ -659,15 +681,32 @@ class Spindle:
         sampleRate = self._obj.recinfo.lfpSrate
         lowFreq = 9
         highFreq = 18
-        # TODO chnage raw amplitude threshold to something statistical
 
-        ripplelfps, _, _ = self.best_chan_lfp()
-        signal = np.asarray(ripplelfps, dtype=np.float)
+        spindlelfp, _, _ = self.best_chan_lfp()
+        signal = np.asarray(spindlelfp, dtype=np.float)
 
         yf = filt.filter_spindle(signal, ax=-1)
         hilbertfast = lambda x: sg.hilbert(x, fftpack.next_fast_len(len(x)))[: len(x)]
         amplitude_envelope = np.abs(hilbertfast(yf))
         zscsignal = stats.zscore(amplitude_envelope, axis=-1)
+
+        # delete ripples in noisy period
+        deadfile = (self._obj.sessinfo.files.filePrefix).with_suffix(".dead")
+        if deadfile.is_file():
+            with deadfile.open("r") as f:
+                noisy = []
+                for line in f:
+                    epc = line.split(" ")
+                    epc = [float(_) for _ in epc]
+                    noisy.append(epc)
+                noisy = np.asarray(noisy)
+                noisy = ((noisy / 1000) * sampleRate).astype(int)
+
+            for noisy_ind in range(noisy.shape[0]):
+                st = noisy[noisy_ind, 0]
+                en = noisy[noisy_ind, 1]
+                numnoisy = en - st
+                zscsignal[st:en] = np.zeros((numnoisy))
 
         # hilbert transform --> binarize by > than lowthreshold
         ThreshSignal = np.diff(np.where(zscsignal > self.lowthresholdFactor, 1, 0))
