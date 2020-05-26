@@ -24,4 +24,5 @@ for sub, sess in enumerate(sessions):
 
     # sess.recinfo.makerecinfo(badchans=badChans)
     sess.trange = np.array([])
-    sess.swa.detect()
+    # sess.swa.detect()
+    peakamp = sess.swa.peakamp
