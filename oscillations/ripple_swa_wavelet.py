@@ -49,28 +49,30 @@ lfp = stats.zscore(a[1, :])
 
 
 nbins = 400
-frequency = np.linspace(1, 400, nbins)
+frequency = np.linspace(1, 300, nbins)
 
 baseline = wavelet_decomp(lfp[0:2500], lowfreq=1, highfreq=400, nbins=nbins)
 
 # frequency = np.asarray([round(_) for _ in frequency])
 # wavedecomp = np.zeros((100, 2500))
-for i, rpl in enumerate(ripples[[1, 30, 45, 3600, 76], :]):
-    start = int(rpl[0] * 1250) - 1250
-    end = int(rpl[0] * 1250) + 1250
+timepoints = ripples[[1, 30, 45, 3600, 76], 0]
+timepoints = sess.swa.time[5:10]
+for i, rpl in enumerate(timepoints):
+    start = int(rpl * 1250) - 1250
+    end = int(rpl * 1250) + 1250
     signal = lfp[start:end]
-    wavedecomp_rpl = wavelet_decomp(signal, lowfreq=1, highfreq=400, nbins=nbins)
+    wavedecomp_rpl = wavelet_decomp(signal, lowfreq=1, highfreq=300, nbins=nbins)
     # wavedecomp = wavedecomp + wavedecomp_rpl
     plt.subplot(3, 5, i + 1)
     # bar.update(i)
-    wavedecomp = (wavedecomp_rpl - np.mean(baseline)) / np.std(baseline)
+    # wavedecomp = (wavedecomp_rpl - np.mean(baseline)) / np.std(baseline)
+    wavedecomp = wavedecomp_rpl
     plt.pcolormesh(np.linspace(-1, 1, 2500), frequency, wavedecomp, cmap="hot")
 
     plt.subplot(3, 5, i + 5 + 1)
-    plt.plot(np.linspace(-1, 1, 2500), signal, "k")
-
+    plt.plot(np.linspace(-1, 1, 2500), filter_sig.filter_delta(signal), "#aa9d9d")
     plt.subplot(3, 5, i + 10 + 1)
-    plt.plot(np.linspace(-1, 1, 2500), filter_sig.filter_ripple(signal), "k")
+    plt.plot(np.linspace(-1, 1, 2500), stats.zscore(signal), "k")
 
 # plt.colorbar()
 # plt.yscale("log")

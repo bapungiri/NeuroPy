@@ -16,7 +16,7 @@ cmap = matplotlib.cm.get_cmap("hot_r")
 from callfunc import processData
 
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
     "/data/Clustering/SleepDeprivation/RatJ/Day2/",
@@ -35,11 +35,11 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     peakrpl = sess.ripple.peaktime
     peakspndl = sess.spindle.peaktime
-    # peakspndl = sess.swa.time
+    peakspndl = sess.swa.time
 
     hist_rpl = [np.histogram(peakrpl, bins=tbin(_))[0] for _ in peakspndl]
 
-    t = tbin(0)[:-1]
+    t = tbin(0)[:-1] + (np.diff(tbin(0)).mean()) / 2
     hist_rpl = np.asarray(hist_rpl).sum(axis=0)
     plt.subplot(2, 3, sub + 1)
 

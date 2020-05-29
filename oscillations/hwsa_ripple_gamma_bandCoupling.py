@@ -2,16 +2,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+from matplotlib.gridspec import GridSpec
 import seaborn as sns
+from signal_process import spectrogramBands
+from statsmodels.tsa.stattools import grangercausalitytests
 
 from callfunc import processData
 
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
@@ -21,44 +24,48 @@ sessions = [processData(_) for _ in basePath]
 
 
 group = []
+plt.clf()
+fig = plt.figure(1, figsize=(1, 15))
+gs = GridSpec(3, 1, figure=fig)
+fig.subplots_adjust(hspace=0.5)
+
 for sub, sess in enumerate(sessions[:3]):
 
     sess.trange = np.array([])
-    t_start = sess.epochs.post[0] + 5 * 3600
-    df = sess.brainstates.states
-    df = df.loc[(df["state"] == 2) | (df["state"] == 1)]
-    df["condition"] = ["sd"] * len(df)
-    group.append(df)
-    # rem = df.loc[(df["start"] > t_start) & (df["state"] == 2),]
-    # nrem = df.loc[(df["start"] > t_start) & (df["state"] == 1),]
-    # state_mean = df.groupby(["state"]).mean()
-    # state_std = df.groupby(["state"]).std()
+    tstart = sess.epochs.post[0]
+    tend = sess.epochs.post[0] + 5 * 3600
+    lfp, _, _ = sess.spindle.best_chan_lfp()
 
-    # sd.append(state_mean["duration"])
-    # rem =
-# sd = np.asarray(sd)
-# nsd = []
-for sub, sess in enumerate(sessions[3:]):
+    t = np.linspace(0, len(lfp) / 1250, len(lfp))
+    # lfp = lfp[(t > tstart) & (t < tend)]
+    bands = spectrogramBands(lfp)
+    time = bands.time
+    gamma = stats.zscore(bands.gamma)
+    theta = stats.zscore(bands.theta)
+    th_del_ratio = stats.zscore(bands.theta_delta_ratio)
 
-    sess.trange = np.array([])
-    t_start = sess.epochs.post[0]
-    df = sess.brainstates.states
-    df = df.loc[(df["state"] == 2) | (df["state"] == 1)]
+    binwind = np.linspace(tstart, tend, 100)
 
-    df["condition"] = ["nsd"] * len(df)
-    group.append(df)
+    binlfp = lambda x, t1, t2: x[(time > t1) & (time < t2)]
 
+    cross_corr = []
+    for i in range(len(binwind) - 1):
+        theta_bin = binlfp(theta, binwind[i], binwind[i + 1])
+        gamma_bin = binlfp(gamma, binwind[i], binwind[i + 1])
 
-group = pd.concat(group, ignore_index=True)
-# sd_mean = np.mean(sd, axis=0)
-# nsd_mean = np.mean(nsd, axis=0)
+        a = np.correlate(theta_bin, gamma_bin, "full")
+        # cross_corr[i, :] = a[:413]
 
-# plt.bar([1, 2], [sd_mean[1], nsd_mean[1]])
-# plt.errorbar([1, 2], [sd_mean[1], nsd_mean[1]])
-# plt.ylim([60, 180])
-ax = sns.boxplot(x="state", y="duration", hue="condition", data=group, palette="Set3")
-ax.set_ylim(-10, 2000)
-ax.set_ylabel("duration (s)")
-ax.set_xlabel("")
-ax.set_xticklabels(["nrem", "rem"])
-#
+        cross_corr.append([np.asarray(a)])
+
+    cross_corr = np.asarray(cross_corr).T
+
+    ax = fig.add_subplot(gs[sub, 0])
+    ax.imshow(cross_corr, aspect="auto")
+    # theta_gamma = pd.DataFrame({"theta": theta, "gamma": gamma})
+    # a = grangercausalitytests(theta_gamma, maxlag=1)
+
+    #
+    # ax.plot(time, gamma, "r")
+    # ax.plot(time, theta, "g")
+    # ax.plot(time, th_del_ratiocr, "k")

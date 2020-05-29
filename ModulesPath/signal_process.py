@@ -6,24 +6,18 @@ import scipy.ndimage as filtSig
 from collections import namedtuple
 import scipy.stats as stats
 from scipy.interpolate import interp1d
+from scipy import fftpack
 
 
 class filter_sig:
     @staticmethod
     def filter_cust(
-        signal,
-        sampleRate,
-        highpass_freq=None,
-        lowpass_freq=None,
-        order=4,
-        filter_function="filtfilt",
-        fs=1.0,
-        axis=-1,
+        signal, sampleRate=1250, hf=None, lf=None, order=3, fs=1.0, axis=-1,
     ):
         nyq = 0.5 * sampleRate
 
-        b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=0)
+        b, a = sg.butter(order, [lf / nyq, hf / nyq], btype="bandpass")
+        yf = sg.filtfilt(b, a, signal, axis=axis)
 
         return yf
 
@@ -39,13 +33,13 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def filter_theta(signal, sampleRate=1250):
+    def filter_theta(signal, sampleRate=1250, ax=0):
         lowpass_freq = 4
         highpass_freq = 10
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=0)
+        yf = sg.filtfilt(b, a, signal, axis=ax)
 
         return yf
 
@@ -64,6 +58,17 @@ class filter_sig:
     def filter_spindle(signal, sampleRate=1250, ax=0):
         lowpass_freq = 9
         highpass_freq = 18
+        nyq = 0.5 * sampleRate
+
+        b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
+        yf = sg.filtfilt(b, a, signal, axis=ax)
+
+        return yf
+
+    @staticmethod
+    def filter_gamma(signal, sampleRate=1250, ax=0):
+        lowpass_freq = 100
+        highpass_freq = 150
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
@@ -93,7 +98,7 @@ class spectrogramBands:
     sampfreq: float = 1250.0
     window: int = 1250
     overlap: int = int(window / 8)
-    smooth: int = 20
+    smooth: int = 10
 
     def __post_init__(self):
 
@@ -117,7 +122,7 @@ class spectrogramBands:
         spindle_sxx = np.mean(sxx[spindle_ind, :], axis=0)
         spindle_smooth = filtSig.gaussian_filter1d(spindle_sxx, smooth, axis=0)
 
-        gamma_ind = np.where((f > 30) & (f < 100))[0]
+        gamma_ind = np.where((f > 30) & (f < 90))[0]
         gamma_sxx = np.mean(sxx[gamma_ind, :], axis=0)
         gamma_smooth = filtSig.gaussian_filter1d(gamma_sxx, smooth, axis=0)
 
@@ -128,11 +133,12 @@ class spectrogramBands:
         self.delta = delta_smooth
         self.theta = theta_smooth
         self.spindle = spindle_sxx
-        self.gamma = gamma_sxx
+        self.gamma = gamma_smooth
         self.ripple = ripple_sxx
         self.freq = f
         self.time = t
         self.sxx = sxx
+        self.theta_delta_ratio = self.theta / self.delta
 
 
 def wavelet_decomp(signal, lowfreq=1, highfreq=250, nbins=100):
@@ -147,7 +153,7 @@ def wavelet_decomp(signal, lowfreq=1, highfreq=250, nbins=100):
     wave_spec = []
     for freq in frequency:
         A = np.sqrt(freq)
-        sigma = 7 / (2 * np.pi * freq)
+        sigma = 3 / (40 * np.pi)
         my_wavelet = (
             A
             * np.exp(-((t_wavelet) ** 2) / sigma ** 2)
@@ -160,3 +166,17 @@ def wavelet_decomp(signal, lowfreq=1, highfreq=250, nbins=100):
 
     wave_spec = np.abs(np.asarray(wave_spec))
     return wave_spec
+
+
+def hilbertfast(signal):
+    """inputs a signal does padding to next power of 2 for faster computation of hilbert transform
+
+    Arguments:
+        signal {array} -- [n, dimensional array]
+
+    Returns:
+        [type] -- [description]
+    """
+    hilbertsig = sg.hilbert(signal, fftpack.next_fast_len(len(signal)))
+
+    return hilbertsig[: len(signal)]
