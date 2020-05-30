@@ -13,9 +13,9 @@ from scipy.ndimage import gaussian_filter1d
 from callfunc import processData
 
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
@@ -33,7 +33,7 @@ fig.subplots_adjust(hspace=0.5)
 
 
 # p = Pac(idpac=(6, 3, 0), f_pha=(4, 10, 1, 1), f_amp=(30, 100, 5, 5))
-sigma = 25
+sigma = 0.025
 t_gauss = np.arange(-1, 1, 0.001)
 A = 1 / np.sqrt(2 * np.pi * sigma ** 2)
 gaussian = A * np.exp(-(t_gauss ** 2) / (2 * sigma ** 2))
@@ -43,14 +43,11 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     tstart = sess.epochs.post[0]
     tend = sess.epochs.post[0] + 5 * 3600
-    sess.spikes.fromCircus("diff_folder")
+    # sess.spikes.fromCircus("diff_folder")
     spikes = sess.spikes.times
 
     lfp, _, _ = sess.spindle.best_chan_lfp()
     t = np.linspace(0, len(lfp) / 1250, len(lfp))
-
-    tstart = sess.epochs.post[0]
-    tend = sess.epochs.post[0] + 5 * 3600
 
     lfpsd = stats.zscore(lfp[(t > tstart) & (t < tend)]) + 80
 
@@ -77,14 +74,14 @@ for sub, sess in enumerate(sessions):
     top10percent = np.where(quantiles == 9)[0]
 
     # offperiods = offperiods[top10percent, :]
-    for (start, end) in offperiods:
-        plt.plot([tbin[start], tbin[start]], [0, 300], "r")
-        plt.plot([tbin[end], tbin[end]], [0, 300], "k")
+    # for (start, end) in offperiods:
+    #     plt.plot([tbin[start], tbin[start]], [0, 300], "r")
+    #     plt.plot([tbin[end], tbin[end]], [0, 300], "k")
 
-    plt.plot(np.linspace(tstart, tend, len(lfpsd)), lfpsd, "k")
-    for cell, spk in enumerate(spikes):
-        spk = spk[(spk > tstart) & (spk < tend)]
-        plt.plot(spk, cell * np.ones(len(spk)), "|")
+    # plt.plot(np.linspace(tstart, tend, len(lfpsd)), lfpsd, "k")
+    # for cell, spk in enumerate(spikes):
+    #     spk = spk[(spk > tstart) & (spk < tend)]
+    #     plt.plot(spk, cell * np.ones(len(spk)), "|")
 
     # per_min_periods = np.arange(tstart, tend, 3600)
     # for beg in per_min_periods:
