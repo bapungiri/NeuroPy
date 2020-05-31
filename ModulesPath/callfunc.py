@@ -18,6 +18,7 @@ from getSpikes import spikes
 from replay import Replay
 from pfPlot import pf
 from decoders import DecodeBehav
+from spkEvent import LocalSleep
 
 
 class processData:
@@ -50,3 +51,4 @@ class processData:
         self.placefield = pf(self)
         self.replay = Replay(self)
         self.decode = DecodeBehav(self)
+        self.localsleep = LocalSleep(self)
