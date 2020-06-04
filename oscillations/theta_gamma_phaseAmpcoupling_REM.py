@@ -31,7 +31,7 @@ fig = plt.figure(1, figsize=(1, 15))
 gs = GridSpec(4, 3, figure=fig)
 fig.subplots_adjust(hspace=0.5)
 
-
+colband = ["#CE93D8", "#1565C0", "#E65100"]
 # p = Pac(idpac=(6, 3, 0), f_pha=(4, 10, 1, 1), f_amp=(30, 100, 5, 5))
 
 for sub, sess in enumerate(sessions):
@@ -45,17 +45,19 @@ for sub, sess in enumerate(sessions):
 
     if sub < 3:
         plt_ind = sub
-        color = "r"
+        # color = "r"
+        # color = colband[sub]
+        lnstyle = "solid"
         rem = states[(states["start"] > tend) & (states["name"] == "rem")]
     else:
         plt_ind = sub - 3
-        color = "k"
+        # color = colband[sub - 3]
+        lnstyle = "dashed"
         rem = states[(states["start"] > tstart) & (states["name"] == "rem")]
 
     binlfp = lambda x, t1, t2: x[(t > t1) & (t < t2)]
     freqIntervals = [[30, 50], [50, 90], [100, 150]]  # in Hz
 
-    lfprem = []
     for epoch in rem.itertuples():
         lfprem.extend(binlfp(lfp, epoch.start, epoch.end))
 
@@ -83,7 +85,11 @@ for sub, sess in enumerate(sessions):
         mean_amp_norm = mean_amp / np.sum(mean_amp)
 
         ax = fig.add_subplot(gs[band + 1, plt_ind])
-        ax.plot(angle_bin[:-1] + 10, mean_amp_norm, color=color)
+        ax.plot(
+            angle_bin[:-1] + 10, mean_amp_norm, linestyle=lnstyle, color=colband[band]
+        )
+        ax.set_xlabel("Degree (from theta trough)")
+        ax.set_ylabel("Amplitude")
         # p.comodulogram(
         #     xpac.mean(-1),
         #     title="Contour plot with 5 regions",
@@ -92,7 +98,8 @@ for sub, sess in enumerate(sessions):
         #     ncontours=7,
         # )
 
-plt.clf()
+
+# plt.clf()
 ts = 2100
 interval = np.arange(ts * 1250, (ts + 2) * 1250)
 ax = fig.add_subplot(gs[0, :])
