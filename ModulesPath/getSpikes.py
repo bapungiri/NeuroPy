@@ -11,8 +11,9 @@ class spikes:
 
         filename = self._obj.sessinfo.files.spikes
         if filename.is_file():
-            spikes = np.load(filename, allow_pickle=True)
-            self.times = spikes
+            spikes = np.load(filename, allow_pickle=True).item()
+            self.times = spikes["times"]
+            self.info = spikes["info"]
 
         self.stability = stability(obj)
         self.dynamics = firingDynamics(obj)
@@ -63,17 +64,17 @@ class spikes:
                 spktime = np.load(clufolder / "spike_times.npy")
                 cluID = np.load(clufolder / "spike_clusters.npy")
                 cluinfo = pd.read_csv(clufolder / "cluster_info.tsv", delimiter="\t")
-                goodCellsID = cluinfo.id[cluinfo["q"] < 4].tolist()
-                info.append(cluinfo.loc[cluinfo["q"] < 4])
+                goodCellsID = cluinfo.id[cluinfo["q"] < 10].tolist()
+                info.append(cluinfo.loc[cluinfo["q"] < 10])
                 shankID.extend(shank * np.ones(len(goodCellsID)))
 
                 for i in range(len(goodCellsID)):
                     clu_spike_location = spktime[np.where(cluID == goodCellsID[i])[0]]
                     spkall.append(clu_spike_location / sRate)
 
-            self.info = pd.concat(info)
-            self.times = spkall
-            self.info["shank"] = shankID
+            spkinfo = pd.concat(info)
+            spkinfo["shank"] = shankID
+            spktimes = spkall
 
         if fileformat == "same_folder":
             nShanks = self._obj.recinfo.nShanks
@@ -87,8 +88,8 @@ class spikes:
             spktime = np.load(clufolder / "spike_times.npy")
             cluID = np.load(clufolder / "spike_clusters.npy")
             cluinfo = pd.read_csv(clufolder / "cluster_info.tsv", delimiter="\t")
-            goodCellsID = cluinfo.id[cluinfo["q"] < 5].tolist()
-            info = cluinfo.loc[cluinfo["q"] < 5]
+            goodCellsID = cluinfo.id[cluinfo["q"] < 10].tolist()
+            info = cluinfo.loc[cluinfo["q"] < 10]
             peakchan = info["ch"]
             shankID = [
                 sh + 1
@@ -103,9 +104,13 @@ class spikes:
                 spkall.append(clu_spike_location / sRate)
 
             info["shank"] = shankID
-            self.info = info
-            self.times = spkall
+            spkinfo = info
+            spktimes = spkall
             # self.shankID = np.asarray(shankID)
+
+        spikes_ = {"times": spktimes, "info": spkinfo}
+        filename = self._obj.sessinfo.files.spikes
+        np.save(filename, spikes_)
 
     def fromNeurosuite(self):
         pass

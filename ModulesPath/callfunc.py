@@ -19,6 +19,7 @@ from replay import Replay
 from pfPlot import pf
 from decoders import DecodeBehav
 from spkEvent import LocalSleep
+from viewerData import SessView
 
 
 class processData:
@@ -52,3 +53,4 @@ class processData:
         self.replay = Replay(self)
         self.decode = DecodeBehav(self)
         self.localsleep = LocalSleep(self)
+        self.viewdata = SessView(self)

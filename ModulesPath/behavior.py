@@ -25,6 +25,7 @@ class behavior_epochs:
             epochs = np.load(self._obj.sessinfo.files.epochs, allow_pickle=True).item()
 
             totaldur = []
+            self.times = pd.DataFrame(epochs)
             for (epoch, times) in epochs.items():  # alternative list(epochs)
                 setattr(self, epoch.lower(), times)  # .lower() will be removed
 
