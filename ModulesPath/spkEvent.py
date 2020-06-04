@@ -85,9 +85,14 @@ class LocalSleep:
         offperiods = np.vstack((start_off, end_off)).T
         duration = np.diff(offperiods, axis=1).squeeze()
 
-        # selecting only top 10 percent of durations, refer Vyazovskiy et al.
-        quantiles = pd.qcut(duration, 10, labels=False)
-        top10percent = np.where(quantiles == 9)[0]
+        # ===== calculate the minimum instantenous firing rate within the intervals
+        minValue = np.zeros(len(offperiods))
+        for i in range(0, len(offperiods)):
+            minValue[i] = min(instfiring[offperiods[i, 0] : offperiods[i, 1]])
+
+        # selecting only top 10 percent of lowest peak instfiring , refer Vyazovskiy et al.
+        quantiles = pd.qcut(minValue, 10, labels=False)
+        top10percent = np.where(quantiles == 0)[0]
         offperiods = offperiods[top10percent, :]
         duration = duration[top10percent]
 
@@ -121,7 +126,6 @@ class LocalSleep:
         t = np.linspace(0, len(lfp) / lfpSrate, len(lfp))
         spikes = self._obj.spikes.times
 
-        # lfpsd = stats.zscore(lfp[(t > tstart) & (t < tend)]) + 80
         selectedEvents = self.events.sample(n=5)
 
         fig = plt.figure(num=None, figsize=(20, 7))
@@ -151,7 +155,9 @@ class LocalSleep:
 
             for cell, spk in enumerate(spikes):
                 spk = spk[(spk > period.start - taround) & (spk < period.end + taround)]
-                ax.plot(spk, cell * np.ones(len(spk)), "|")
+                ax.plot(
+                    spk, cell * np.ones(len(spk)), "|", color="#757575", markersize=1
+                )
 
             ax.set_title(f"{round(period.duration,2)} s")
             ax.axis("off")
@@ -162,10 +168,10 @@ class LocalSleep:
         ax.set_xlabel("Duration (s)")
 
         ax = fig.add_subplot(gs[1, 1])
-        fbefore = self.instfiringbefore.mean(axis=0)
-        fbeforestd = self.instfiringbefore.std(axis=0) / np.sqrt(len(self.events))
-        fafter = self.instfiringafter.mean(axis=0)
-        fafterstd = self.instfiringafter.std(axis=0) / np.sqrt(len(self.events))
+        fbefore = self.instfiringbefore[:-1].mean(axis=0)
+        fbeforestd = self.instfiringbefore[:-1].std(axis=0) / np.sqrt(len(self.events))
+        fafter = self.instfiringafter[:-1].mean(axis=0)
+        fafterstd = self.instfiringafter[:-1].std(axis=0) / np.sqrt(len(self.events))
         tbefore = np.linspace(-1, 0, len(fbefore))
         tafter = np.linspace(0.2, 1.2, len(fafter))
 
@@ -202,4 +208,18 @@ class LocalSleep:
         return fig
 
     def plotAll(self):
-        pass
+        spikes = self._obj.spikes.times
+        tstart = self._obj.epochs.post[0]
+        tend = self._obj.epochs.post[0] + 5 * 3600
+        lfp, _, _ = self._obj.spindle.best_chan_lfp()
+        t = np.linspace(0, len(lfp) / 1250, len(lfp))
+        lfpsd = stats.zscore(lfp[(t > tstart) & (t < tend)]) + 50
+
+        for period in self.events.itertuples():
+            plt.plot([period.start, period.start], [0, 70], "r")
+            plt.plot([period.end, period.end], [0, 70], "k")
+
+        plt.plot(np.linspace(tstart, tend, len(lfpsd)), lfpsd, "k")
+        for cell, spk in enumerate(spikes):
+            spk = spk[(spk > tstart) & (spk < tend)]
+            plt.plot(spk, cell * np.ones(len(spk)), "|")
