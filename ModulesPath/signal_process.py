@@ -7,6 +7,7 @@ from collections import namedtuple
 import scipy.stats as stats
 from scipy.interpolate import interp1d
 from scipy import fftpack
+from scipy.fft import fft
 
 
 class filter_sig:
@@ -141,31 +142,112 @@ class spectrogramBands:
         self.theta_delta_ratio = self.theta / self.delta
 
 
-def wavelet_decomp(signal, lowfreq=1, highfreq=250, nbins=100):
-    t_wavelet = np.arange(-4, 4, 1 / 1250)
+@dataclass
+class wavelet_decomp:
+    lfp: np.array
+    freqs: np.array = np.arange(1, 20)
+    sampfreq: int = 1250
 
-    # B = 0.1
-    # A = 1 / np.sqrt(np.pi ** 0.5 * B)
+    def colgin(self):
+        """colgin
 
-    # frequency = np.logspace(np.log10(lowfreq), np.log10(highfreq), nbins)
-    frequency = np.linspace(lowfreq, highfreq, nbins)
+        Args:
+            lowfreq (int, optional): [description]. Defaults to 1.
+            highfreq (int, optional): [description]. Defaults to 250.
+            nbins (int, optional): [description]. Defaults to 100.
 
-    wave_spec = []
-    for freq in frequency:
-        A = np.sqrt(freq)
-        sigma = 3 / (40 * np.pi)
-        my_wavelet = (
-            A
-            * np.exp(-((t_wavelet) ** 2) / sigma ** 2)
-            * np.exp(2j * np.pi * freq * t_wavelet)
-        )
-        # conv_val = np.convolve(signal, my_wavelet, mode="same")
-        conv_val = sg.fftconvolve(signal, my_wavelet, mode="same")
+        Returns:
+            [type]: [description]
+        """
+        t_wavelet = np.arange(-4, 4, 1 / self.sampfreq)
+        freqs = self.freqs
+        signal = self.lfp
+        signal = np.tile(np.expand_dims(signal, axis=0), (len(freqs), 1))
 
-        wave_spec.append(conv_val)
+        wavelet_at_freqs = np.zeros((len(freqs), len(t_wavelet)))
+        for i, freq in enumerate(freqs):
+            sigma = freq / (2 * np.pi * 7)
+            A = (sigma * np.sqrt(np.pi)) ** -0.5
+            wavelet_at_freqs[i, :] = (
+                A
+                * np.exp(-((t_wavelet) ** 2) / (2 * sigma ** 2))
+                * np.exp(2j * np.pi * freq * t_wavelet)
+            )
 
-    wave_spec = np.abs(np.asarray(wave_spec))
-    return wave_spec
+        conv_val = sg.fftconvolve(signal, wavelet_at_freqs, mode="same", axes=-1)
+
+        return np.abs(conv_val)
+
+    def tallonBaudry(self):
+        """colgin
+
+        Args:
+            lowfreq (int, optional): [description]. Defaults to 1.
+            highfreq (int, optional): [description]. Defaults to 250.
+            nbins (int, optional): [description]. Defaults to 100.
+
+        Returns:
+            [type]: [description]
+
+        Note: square norm is returned instead of norm, which is different from colgin
+        """
+        signal = self.lfp
+        t_wavelet = np.arange(-4, 4, 1 / self.sampfreq)
+        freqs = self.freqs
+
+        wave_spec = []
+        for freq in freqs:
+            sigma = freq / (2 * np.pi * 7)
+            A = (sigma * np.sqrt(np.pi)) ** -0.5
+            my_wavelet = (
+                A
+                * np.exp(-((t_wavelet) ** 2) / (2 * sigma ** 2))
+                * np.exp(2j * np.pi * freq * t_wavelet)
+            )
+            # conv_val = np.convolve(signal, my_wavelet, mode="same")
+            conv_val = sg.fftconvolve(signal, my_wavelet, mode="same")
+
+            wave_spec.append(conv_val)
+
+        wave_spec = np.abs(np.asarray(wave_spec))
+        return wave_spec ** 2
+
+    def bergelCohen(self):
+        """colgin
+
+        Args:
+            lowfreq (int, optional): [description]. Defaults to 1.
+            highfreq (int, optional): [description]. Defaults to 250.
+            nbins (int, optional): [description]. Defaults to 100.
+
+        Returns:
+            [type]: [description]
+
+        References:
+        ---------------
+        1) Bergel ivan cohen,
+        Note: square norm is returned instead of norm 
+        """
+        signal = self.lfp
+        t_wavelet = np.arange(-4, 4, 1 / self.sampfreq)
+        freqs = self.freqs
+
+        wave_spec = []
+        for freq in freqs:
+            sigma = freq / (2 * np.pi * 7)
+            A = (sigma * np.sqrt(np.pi)) ** -0.5
+            my_wavelet = (
+                A
+                * np.exp(-((t_wavelet) ** 2) / (2 * sigma ** 2))
+                * np.exp(2j * np.pi * freq * t_wavelet)
+            )
+            # conv_val = np.convolve(signal, my_wavelet, mode="same")
+            conv_val = sg.fftconvolve(signal, my_wavelet, mode="same")
+
+            wave_spec.append(conv_val)
+
+        wave_spec = np.abs(np.asarray(wave_spec))
+        return wave_spec * np.linspace(1, 150, 100).reshape(-1, 1)
 
 
 def hilbertfast(signal):
@@ -180,3 +262,17 @@ def hilbertfast(signal):
     hilbertsig = sg.hilbert(signal, fftpack.next_fast_len(len(signal)))
 
     return hilbertsig[: len(signal)]
+
+
+def fftnormalized(signal, fs=1250):
+
+    # Number of sample points
+    N = len(signal)
+    # sample spacing
+    T = 1 / fs
+    y = signal
+    yf = fft(y)
+    freq = np.linspace(0.0, 1.0 / (2.0 * T), N // 2)
+    pxx = 2.0 / N * np.abs(yf[0 : N // 2])
+
+    return pxx, freq
