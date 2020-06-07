@@ -40,7 +40,9 @@ class LocalSleep:
             )
             self.instfiringbefore = data["instfiringbefore"]
             self.instfiringafter = data["instfiringafter"]
+            self.instfiring = data["instfiring"]
             self.avglfp = data["avglfp"]
+            self.period = data["period"]
 
     def _gaussian(self):
         """Gaussian function for generating instantenous firing rate
@@ -115,7 +117,9 @@ class LocalSleep:
             "duration": duration / 1000,
             "instfiringbefore": np.asarray(fratebefore),
             "instfiringafter": np.asarray(frateafter),
+            "instfiring": instfiring,
             "avglfp": avglfp,
+            "period": period,
         }
 
         np.save(self._filename, locsleep)
@@ -127,6 +131,8 @@ class LocalSleep:
         spikes = self._obj.spikes.times
 
         selectedEvents = self.events.sample(n=5)
+        instfiring = self.instfiring
+        t_instfiring = np.linspace(self.period[0], self.period[1], len(instfiring))
 
         fig = plt.figure(num=None, figsize=(20, 7))
         gs = GridSpec(3, 5, figure=fig)
@@ -140,11 +146,22 @@ class LocalSleep:
             t_period = np.linspace(
                 period.start - taround, period.end + taround, len(lfp_period)
             )
+            instfiring_period = instfiring[
+                (t_instfiring > period.start - taround)
+                & (t_instfiring < period.end + taround)
+            ]
+            inst_tperiod = t_instfiring[
+                (t_instfiring > period.start - taround)
+                & (t_instfiring < period.end + taround)
+            ]
 
             # ax.plot([period.start, period.start], [0, 100], "r")
             # ax.plot([period.end, period.end], [0, 100], "k")
             ax.fill_between(
                 [period.start, period.end], [0, 0], [90, 90], alpha=0.3, color="#BDBDBD"
+            )
+            ax.fill_between(
+                inst_tperiod, instfiring_period / 50, alpha=0.3, color="#212121",
             )
             ax.plot(
                 t_period,
@@ -156,7 +173,7 @@ class LocalSleep:
             for cell, spk in enumerate(spikes):
                 spk = spk[(spk > period.start - taround) & (spk < period.end + taround)]
                 ax.plot(
-                    spk, cell * np.ones(len(spk)), "|", color="#757575", markersize=1
+                    spk, cell * np.ones(len(spk)), "|", color="#757575", markersize=2
                 )
 
             ax.set_title(f"{round(period.duration,2)} s")

@@ -53,7 +53,7 @@ class SessView:
         sxx = spec.sxx / np.max(spec.sxx)
         sxx = gaussian_filter(sxx, sigma=1)
         print(np.max(sxx), np.min(sxx))
-        vmax = np.max(sxx) / 60
+        vmax = np.max(sxx) / 1000
 
         if ax is None:
             _, ax = plt.subplots(1, 1)
@@ -113,7 +113,7 @@ class SessView:
         qual = states.state
 
         colors = ["#6b90d1", "#eb9494", "#b6afaf", "#474343"]
-        col = [colors[int(state) - 1] for state in ostates.state]
+        col = [colors[int(state) - 1] for state in states.state]
 
         make_boxes(ax1, x, y, width, height, facecolor=col)
         ax1.set_ylim(1, 5)
