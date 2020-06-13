@@ -8,6 +8,7 @@ import scipy.stats as stats
 from scipy.interpolate import interp1d
 from scipy import fftpack
 from scipy.fft import fft
+from lspopt import spectrogram_lspopt
 
 
 class filter_sig:
@@ -106,6 +107,9 @@ class spectrogramBands:
         f, t, sxx = sg.spectrogram(
             self.lfp, fs=self.sampfreq, nperseg=self.window, noverlap=self.overlap
         )
+        # f, t, sxx = spectrogram_lspopt(
+        #     self.lfp, fs=self.sampfreq, nperseg=self.window, c_parameter=30
+        # )
 
         # sxx = stats.zscore(sxx, axis=None)
         smooth = self.smooth
@@ -148,16 +152,17 @@ class wavelet_decomp:
     freqs: np.array = np.arange(1, 20)
     sampfreq: int = 1250
 
-    def colgin(self):
+    def colgin2009(self):
         """colgin
 
-        Args:
-            lowfreq (int, optional): [description]. Defaults to 1.
-            highfreq (int, optional): [description]. Defaults to 250.
-            nbins (int, optional): [description]. Defaults to 100.
 
         Returns:
             [type]: [description]
+        
+        References
+        ------------
+        1) Colgin, L. L., Denninger, T., Fyhn, M., Hafting, T., Bonnevie, T., Jensen, O., ... & Moser, E. I. (2009). Frequency of gamma oscillations routes flow of information in the hippocampus. Nature, 462(7271), 353-357.
+        2) Tallon-Baudry, C., Bertrand, O., Delpuech, C., & Pernier, J. (1997). Oscillatory γ-band (30–70 Hz) activity induced by a visual search task in humans. Journal of Neuroscience, 17(2), 722-734.
         """
         t_wavelet = np.arange(-4, 4, 1 / self.sampfreq)
         freqs = self.freqs
@@ -176,57 +181,49 @@ class wavelet_decomp:
 
         conv_val = sg.fftconvolve(signal, wavelet_at_freqs, mode="same", axes=-1)
 
-        return np.abs(conv_val)
+        return np.abs(conv_val) ** 2
 
-    def tallonBaudry(self):
+    def quyen2008(self):
         """colgin
 
-        Args:
-            lowfreq (int, optional): [description]. Defaults to 1.
-            highfreq (int, optional): [description]. Defaults to 250.
-            nbins (int, optional): [description]. Defaults to 100.
 
         Returns:
             [type]: [description]
-
-        Note: square norm is returned instead of norm, which is different from colgin
+        
+        References
+        ------------
+        1) Le Van Quyen, M., Bragin, A., Staba, R., Crépon, B., Wilson, C. L., & Engel, J. (2008). Cell type-specific firing during ripple oscillations in the hippocampal formation of humans. Journal of Neuroscience, 28(24), 6104-6110.
         """
-        signal = self.lfp
         t_wavelet = np.arange(-4, 4, 1 / self.sampfreq)
         freqs = self.freqs
+        signal = self.lfp
+        signal = np.tile(np.expand_dims(signal, axis=0), (len(freqs), 1))
 
-        wave_spec = []
-        for freq in freqs:
-            sigma = freq / (2 * np.pi * 7)
-            A = (sigma * np.sqrt(np.pi)) ** -0.5
-            my_wavelet = (
+        wavelet_at_freqs = np.zeros((len(freqs), len(t_wavelet)))
+        for i, freq in enumerate(freqs):
+            sigma = 5 / (6 * freq)
+            A = np.sqrt(freq)
+            wavelet_at_freqs[i, :] = (
                 A
-                * np.exp(-((t_wavelet) ** 2) / (2 * sigma ** 2))
+                * np.exp(-((t_wavelet) ** 2) / (sigma ** 2))
                 * np.exp(2j * np.pi * freq * t_wavelet)
             )
-            # conv_val = np.convolve(signal, my_wavelet, mode="same")
-            conv_val = sg.fftconvolve(signal, my_wavelet, mode="same")
 
-            wave_spec.append(conv_val)
+        conv_val = sg.fftconvolve(signal, wavelet_at_freqs, mode="same", axes=-1)
 
-        wave_spec = np.abs(np.asarray(wave_spec))
-        return wave_spec ** 2
+        return np.abs(conv_val) ** 2
 
-    def bergelCohen(self):
+    def bergel2018(self):
         """colgin
 
-        Args:
-            lowfreq (int, optional): [description]. Defaults to 1.
-            highfreq (int, optional): [description]. Defaults to 250.
-            nbins (int, optional): [description]. Defaults to 100.
 
         Returns:
             [type]: [description]
 
         References:
         ---------------
-        1) Bergel ivan cohen,
-        Note: square norm is returned instead of norm 
+        1) Bergel, A., Deffieux, T., Demené, C., Tanter, M., & Cohen, I. (2018). Local hippocampal fast gamma rhythms precede brain-wide hyperemic patterns during spontaneous rodent REM sleep. Nature communications, 9(1), 1-12.
+
         """
         signal = self.lfp
         t_wavelet = np.arange(-4, 4, 1 / self.sampfreq)
@@ -249,8 +246,12 @@ class wavelet_decomp:
         wave_spec = np.abs(np.asarray(wave_spec))
         return wave_spec * np.linspace(1, 150, 100).reshape(-1, 1)
 
+    def torrenceCompo(self):
+        pass
+
 
 def hilbertfast(signal):
+
     """inputs a signal does padding to next power of 2 for faster computation of hilbert transform
 
     Arguments:

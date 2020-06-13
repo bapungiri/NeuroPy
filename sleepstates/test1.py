@@ -1,12 +1,10 @@
-import numpy as np
-from unidip import UniDip, dip
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout
 
-# create bi-modal distribution
-dat = np.concatenate([np.random.randn(200) - 3, np.random.randn(200) + 3])
-
-# sort data so returned indices are meaningful
-dat = np.msort(dat)
-
-# get start and stop indices of peaks
-intervals = UniDip(dat).run()
-test = dip.diptst(dat)
+app = QApplication([])
+window = QWidget()
+layout = QVBoxLayout()
+layout.addWidget(QPushButton("Top"))
+layout.addWidget(QPushButton("Bottom"))
+window.setLayout(layout)
+window.show()
+# app.exec_()

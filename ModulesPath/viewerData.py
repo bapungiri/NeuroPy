@@ -11,6 +11,7 @@ from scipy.ndimage import gaussian_filter
 from sklearn.preprocessing import normalize
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
+from visbrain.gui import Sleep
 
 
 def make_boxes(
@@ -28,13 +29,8 @@ def make_boxes(
     )
 
     # Add collection to axes
-
     ax.add_collection(pc)
 
-    # Plot errorbars
-    # artists = ax.errorbar(
-    #     xdata, ydata, xerr=xerror, yerr=yerror, fmt="None", ecolor="k"
-    # )
     return 1
 
 
@@ -164,3 +160,12 @@ class SessView:
 
         ax = fig.add_subplot(gs[6, :], sharex=ax)
         self.lfpevents(ax=ax)
+
+    def testsleep(self):
+        lfp = self._obj.spindle.best_chan_lfp()[0]
+        lfp = np.c_[lfp, lfp].T
+        lfpt = np.linspace(0, len(lfp) / 1250, len(lfp))
+        channels = [1, 2]
+
+        hypno = None
+        Sleep(data=lfp, hypno=hypno, channels=channels, sf=1250).show()

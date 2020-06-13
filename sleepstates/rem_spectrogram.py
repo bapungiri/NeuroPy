@@ -92,25 +92,27 @@ for sub, sess in enumerate(sessions):
     ax.pcolorfast(specgram.time, specgram.freq, sxx, cmap="YlGn", vmax=1)
     ax.set_ylim([0, 150])
 
-    ax = fig.add_subplot(gs[1, 0])
-    window = 2 * 1250
-    freq, Pxx = sg.welch(lfprem, fs=1250, nperseg=window, noverlap=window / 2)
-    plt.plot(freq, Pxx)
-    plt.yscale("log")
-    ax.set_xlim([2, 150])
+    # ax = fig.add_subplot(gs[1, 0])
+    # window = 2 * 1250
+    # freq, Pxx = sg.welch(lfprem, fs=1250, nperseg=window, noverlap=window / 2)
+    # plt.plot(freq, Pxx)
+    # plt.xscale("log")
+    # plt.yscale("log")
+    # ax.set_xlim([2, 150])
 
     ax = fig.add_subplot(gs[2, 0])
     # for gamma range
     wavefreqs = np.arange(20, 150, 3)
+
     wavdec = wavelet_decomp(lfprem, freqs=wavefreqs)
-    wavcolgin = wavdec.colgin()
+    wavcolgin = wavdec.colgin2009()
     wavcolgin = gaussian_filter(wavcolgin, sigma=2)
-    ax.pcolorfast(lfprem_t, wavefreqs, wavcolgin, cmap="jet")
+    ax.pcolorfast(lfprem_t, wavefreqs, wavcolgin, cmap="jet", vmax=5)
 
     ax = fig.add_subplot(gs[3, 0], sharex=ax)
     # for theta range
     wavdec.freqs = np.arange(4, 16, 1)
-    thetacolgin = wavdec.colgin()
+    thetacolgin = wavdec.colgin2009()
     ax.pcolorfast(lfprem_t, wavdec.freqs, thetacolgin, cmap="jet")
 
     # wavtallon = wavdec.tallonBaudry()

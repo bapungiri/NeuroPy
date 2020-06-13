@@ -37,7 +37,7 @@ for sub, sess in enumerate(sessions):
     tend = sess.epochs.post[0] + 5 * 3600
 
     # sess.spikes.fromCircus("same_folder")
-    # sess.localsleep.detect(period=[tstart, tend])
+    sess.localsleep.detect(period=[tstart, tend])
 
     if sub == 2:
         fig = sess.localsleep.plot()

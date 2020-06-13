@@ -13,6 +13,9 @@ from signal_process import spectrogramBands
 from joblib import Parallel, delayed
 from matplotlib.patches import Rectangle
 from matplotlib.collections import PatchCollection
+from matplotlib.gridspec import GridSpec
+from scipy.ndimage import gaussian_filter
+from matplotlib.widgets import Slider, Button, RadioButtons
 
 
 def make_boxes(
@@ -137,7 +140,7 @@ class SleepScore:
     def detect(self):
 
         # a = np.array([self._obj.epochs.pre[0], self._obj.epochs.post[1]])
-        emg = self._emgfromlfp(fromfile=1)
+        emg = self._emgfromlfp(fromfile=0)
         params_pre, sxx_pre, states_pre = self._getparams(self._obj.epochs.pre, emg)
         params_maze, sxx_maze, states_maze = self._getparams(self._obj.epochs.maze, emg)
         params_post, sxx_post, states_post = self._getparams(self._obj.epochs.post, emg)
@@ -300,8 +303,10 @@ class SleepScore:
 
     def _emgfromlfp(self, fromfile=0):
 
+        emgfilename = self._obj.sessinfo.files.corr_emg
+
         if fromfile:
-            emg_lfp = np.load(self._obj.sessinfo.files.corr_emg)
+            emg_lfp = np.load(emgfilename)
 
         else:
 
@@ -319,7 +324,9 @@ class SleepScore:
             nemgChans = len(emgChans)
 
             # filtering for high frequency band
-            eegdata = np.memmap(self._obj.recfiles.eegfile, dtype="int16", mode="r")
+            eegdata = np.memmap(
+                self._obj.sessinfo.recfiles.eegfile, dtype="int16", mode="r"
+            )
             eegdata = np.memmap.reshape(eegdata, (int(len(eegdata) / nChans), nChans))
             b, a = sg.butter(3, [lowfreq / nyq, highfreq / nyq], btype="bandpass")
             nframes = len(eegdata)
@@ -339,7 +346,7 @@ class SleepScore:
                 delayed(corrchan)(start) for start in frames
             )
             emg_lfp = np.asarray(corr_per_frame)
-            np.save(self._obj.files.corr_emg, emg_lfp)
+            np.save(emgfilename, emg_lfp)
 
         emg_lfp = filtSig.gaussian_filter1d(emg_lfp, 10)
         return emg_lfp
@@ -364,3 +371,82 @@ class SleepScore:
         # ax.annotate("quiet", (-0.1, 3.5))
         # ax.annotate("rem", (0.1, 2.5))
         # ax.annotate("nrem", (-10, 1.5))
+
+    def plot(self):
+        states = self.states
+        params = self.params
+        post = self._obj.epochs.post
+        lfpSrate = self._obj.recinfo.lfpSrate
+        lfp = self._obj.spindle.best_chan_lfp()[0]
+        spec = spectrogramBands(lfp, window=5 * lfpSrate)
+
+        fig = plt.figure(1, figsize=(6, 10))
+        gs = GridSpec(4, 5, figure=fig)
+        fig.subplots_adjust(hspace=0.4)
+
+        ax = fig.add_subplot(gs[0, :4])
+        x = np.asarray(states.start)
+        y = np.zeros(len(x)) + np.asarray(states.state)
+        width = np.asarray(states.duration)
+        height = np.ones(len(x))
+        colors = ["#6b90d1", "#eb9494", "#b6afaf", "#474343"]
+        col = [colors[int(state) - 1] for state in states.state]
+        make_boxes(ax, x, y, width, height, facecolor=col)
+        ax.set_xlim(0, post[1])
+        ax.set_ylim(1, 5)
+
+        ax = fig.add_subplot(gs[1, :4], sharex=ax)
+        sxx = spec.sxx / np.max(spec.sxx)
+        sxx = gaussian_filter(sxx, sigma=1)
+        print(np.max(sxx), np.min(sxx))
+        vmax = np.max(sxx) / 60
+        specplot = ax.pcolorfast(spec.time, spec.freq, sxx, cmap="YlGn", vmax=vmax)
+        ax.set_ylim([0, 60])
+        ax.set_xlim([np.min(spec.time), np.max(spec.time)])
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Frequency (s)")
+
+        # ==== change spectrogram visual properties ========
+        ax = fig.add_subplot(gs[1, 4])
+        loc = list(ax.get_position().bounds)
+        loc[3] = 0.03
+        axcolor = "lightgoldenrodyellow"
+        axfreq = plt.axes(loc, facecolor=axcolor)
+
+        sfreq = Slider(axfreq, "Freq", np.min(sxx), vmax, valinit=vmax, valstep=0.00005)
+
+        def update(val):
+            freq = sfreq.val
+            specplot.set_clim([0, freq])
+            fig.canvas.draw_idle()
+
+        sfreq.on_changed(update)
+
+        resetax = plt.axes([0.8, 0.025, 0.1, 0.04])
+        button = Button(resetax, "Reset", color=axcolor, hovercolor="0.975")
+
+        def reset(event):
+            sfreq.reset()
+
+        button.on_clicked(reset)
+
+        radioloc = loc
+        radioloc[1] = radioloc[1] + 0.1
+        radioloc[3] = radioloc[3] + 0.05
+        rax = plt.axes(radioloc, facecolor=axcolor)
+        radio = RadioButtons(rax, ("copper", "YlGn", "jet"), active=0)
+
+        def colorfunc(label):
+            specplot.set_cmap("copper")
+            fig.canvas.draw_idle()
+
+        radio.on_clicked(colorfunc)
+        plt.show()
+
+        ax.axis("off")
+
+        ax = fig.add_subplot(gs[2, :4], sharex=ax)
+        plt.plot(params.time, params.emg)
+
+        ax = fig.add_subplot(gs[3, :4], sharex=ax)
+        plt.plot(params.time, params.theta_delta_ratio)
