@@ -249,6 +249,39 @@ class wavelet_decomp:
     def torrenceCompo(self):
         pass
 
+    def cohen(self, ncycles=3):
+        """Implementation of ref. 1 chapter 13
+
+
+        Returns:
+            [type]: [description]
+
+        References:
+        ---------------
+        1) Cohen, M. X. (2014). Analyzing neural time series data: theory and practice. MIT press.
+
+        """
+        signal = self.lfp
+        t_wavelet = np.arange(-4, 4, 1 / self.sampfreq)
+        freqs = self.freqs
+
+        wave_spec = []
+        for freq in freqs:
+            s = ncycles / (2 * np.pi * freq)
+            A = (s * np.sqrt(np.pi)) ** -0.5
+            my_wavelet = (
+                A
+                * np.exp(-(t_wavelet ** 2) / (2 * s ** 2))
+                * np.exp(2j * np.pi * freq * t_wavelet)
+            )
+            # conv_val = np.convolve(signal, my_wavelet, mode="same")
+            conv_val = sg.fftconvolve(signal, my_wavelet, mode="same")
+
+            wave_spec.append(conv_val)
+
+        wave_spec = np.abs(np.asarray(wave_spec))
+        return wave_spec ** 2
+
 
 def hilbertfast(signal):
 

@@ -6,18 +6,18 @@ import scipy.signal as sg
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 from signal_process import filter_sig, hilbertfast
-from statsmodels.tsa.stattools import grangercausalitytests
-import matplotlib as mpl
-from tensorpac import Pac
+from signal_process import wavelet_decomp
+from scipy.ndimage import gaussian_filter, gaussian_filter1d
+from matplotlib.widgets import Slider, Button, RadioButtons
 
 from callfunc import processData
 
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
@@ -25,65 +25,88 @@ basePath = [
 
 sessions = [processData(_) for _ in basePath]
 
-# during REM sleep
 plt.clf()
 fig = plt.figure(1, figsize=(1, 15))
-gs = GridSpec(2, 3, figure=fig)
+gs = GridSpec(5, 3, figure=fig)
 fig.subplots_adjust(hspace=0.5)
 
 colband = ["#CE93D8", "#1565C0", "#E65100"]
-p = Pac(idpac=(6, 3, 0), f_pha=(4, 10, 1, 1), f_amp=(30, 100, 5, 5))
 
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    tstart = sess.epochs.post[0]
-    tend = sess.epochs.post[0] + 5 * 3600
+    posx = sess.position.x
+    posy = sess.position.y
+    post = sess.position.t
+    tstart = sess.epochs.maze[0]
+    tend = sess.epochs.maze[1]
     lfp, _, _ = sess.spindle.best_chan_lfp()
     t = np.linspace(0, len(lfp) / 1250, len(lfp))
-    states = sess.brainstates.states
 
-    if sub < 3:
-        plt_ind = sub
-        # color = "r"
-        # color = colband[sub]
-        lnstyle = "solid"
-        rem = states[(states["start"] > tend) & (states["name"] == "rem")]
-    else:
-        plt_ind = sub - 3
-        # color = colband[sub - 3]
-        lnstyle = "dashed"
-        rem = states[(states["start"] > tstart) & (states["name"] == "rem")]
+    lfpmaze = lfp[(t > tstart) & (t < tend)]
+    tmaze = np.linspace(tstart, tend, len(lfpmaze))
+    posmazex = posx[(post > tstart) & (post < tend)]
+    posmazey = posy[(post > tstart) & (post < tend)]
+    postmaze = np.linspace(tstart, tend, len(posmazex))
+    speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2)
+    speed = gaussian_filter1d(speed, sigma=10)
 
-    binlfp = lambda x, t1, t2: x[(t > t1) & (t < t2)]
-    freqIntervals = [[30, 50], [50, 90], [100, 150]]  # in Hz
+    ax = fig.add_subplot(gs[0, :])
+    freqs = np.arange(20, 50, 2)
+    wavdec = wavelet_decomp(lfpmaze, freqs=freqs)
+    wav = wavdec.cohen(ncycles=7)
+    wav = stats.zscore(wav)
+    wav = gaussian_filter(wav, sigma=4)
+    ax.pcolorfast(tmaze, freqs, wav, cmap="jet")
 
-    lfprem = []
-    for epoch in rem.itertuples():
-        lfprem.extend(binlfp(lfp, epoch.start, epoch.end))
+    del wav
 
-    lfprem = np.asarray(lfprem)
+    ax = fig.add_subplot(gs[1, :], sharex=ax)
+    freqs = np.arange(2, 12, 1)
+    wavdec = wavelet_decomp(lfpmaze, freqs=freqs)
+    wav = wavdec.cohen()
+    wav = stats.zscore(wav)
+    wav = gaussian_filter(wav, sigma=4)
+    ax.pcolorfast(tmaze, freqs, wav, cmap="jet")
+    # ax.imshow(wav, cmap="jet", aspect="auto", vmax=3)
 
-    xpac = p.filterfit(1250.0, lfprem, n_perm=20)
-    theta_lfp = stats.zscore(filter_sig.filter_theta(lfprem))
-    hil_theta = hilbertfast(theta_lfp)
-    theta_amp = np.abs(hil_theta)
-    theta_angle = np.angle(hil_theta, deg=True) + 180
-    angle_bin = np.arange(0, 360, 20)
-    bin_ind = np.digitize(theta_angle, bins=angle_bin)
+    ax = fig.add_subplot(gs[2, :], sharex=ax)
+    ax.plot(postmaze, posmazex, "k")
+    ax.plot(postmaze, posmazey, "r")
 
-    ax = fig.add_subplot(gs[sub])
-    # ax.plot(
-    #     angle_bin[:-1] + 10, mean_amp_norm, linestyle=lnstyle, color=colband[band]
-    # )
-    # ax.set_xlabel("Degree (from theta trough)")
-    # ax.set_ylabel("Amplitude")
-    p.comodulogram(
-        xpac.mean(-1),
-        title="Contour plot with 5 regions",
-        cmap="Spectral_r",
-        plotas="contour",
-        ncontours=7,
-    )
+    ax = fig.add_subplot(gs[3, :], sharex=ax)
+    # ax.plot(postmaze[:-1], np.abs(np.diff(posmazex)), "k")
+    # ax.plot(postmaze[:-1], np.abs(np.diff(posmazey)), "r")
+    ax.plot(postmaze[:-1], speed, "k")
 
-    ax.set_title()
+    ax = fig.add_subplot(gs[4, :], sharex=ax)
+    ax.plot(tmaze, lfpmaze, "k")
+
+
+fig, ax = plt.subplots()
+plt.subplots_adjust(left=0.25, bottom=0.25)
+t = np.arange(0.0, 1.0, 0.001)
+a0 = 5
+f0 = 3
+delta_f = 5.0
+s = a0 * np.sin(2 * np.pi * f0 * t)
+(l,) = plt.plot(t, s, lw=2)
+ax.margins(x=0)
+
+axcolor = "lightgoldenrodyellow"
+axfreq = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
+axamp = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=axcolor)
+
+sfreq = Slider(axfreq, "Freq", 0.1, 30.0, valinit=f0, valstep=delta_f)
+samp = Slider(axamp, "Amp", 0.1, 10.0, valinit=a0)
+
+
+def update(val):
+    amp = samp.val
+    freq = sfreq.val
+    l.set_ydata(amp * np.sin(2 * np.pi * freq * t))
+    fig.canvas.draw_idle()
+
+
+sfreq.on_changed(update)
+samp.on_changed(update)

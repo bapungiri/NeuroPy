@@ -11,7 +11,6 @@ from scipy.ndimage import gaussian_filter
 from sklearn.preprocessing import normalize
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
-from visbrain.gui import Sleep
 
 
 def make_boxes(
