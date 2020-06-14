@@ -1,55 +1,32 @@
-import numpy as np
+# from ipywidgets import interact, interactive, fixed, interact_manual
+import ipywidgets as widgets
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider, Button, RadioButtons
+import numpy as np
 
-fig, ax = plt.subplots()
-plt.subplots_adjust(left=0.25, bottom=0.25)
-t = np.arange(0.0, 1.0, 0.001)
-a0 = 5
-f0 = 3
-delta_f = 5.0
-s = a0 * np.sin(2 * np.pi * f0 * t)
-(l,) = plt.plot(t, s, lw=2)
-ax.margins(x=0)
-
-axcolor = "lightgoldenrodyellow"
-axfreq = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
-axamp = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=axcolor)
-
-sfreq = Slider(axfreq, "Freq", 0.1, 30.0, valinit=f0, valstep=delta_f)
-samp = Slider(axamp, "Amp", 0.1, 10.0, valinit=a0)
+# def f(x):
+#     return x
 
 
-def update(val):
-    amp = samp.val
-    freq = sfreq.val
-    l.set_ydata(amp * np.sin(2 * np.pi * freq * t))
-    fig.canvas.draw_idle()
+# interact(f, x=10)
+
+# set up plot
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.set_ylim([-4, 4])
+ax.grid(True)
+
+# generate x values
+x = np.linspace(0, 2 * np.pi, 100)
 
 
-sfreq.on_changed(update)
-samp.on_changed(update)
-
-resetax = plt.axes([0.8, 0.025, 0.1, 0.04])
-button = Button(resetax, "Reset", color=axcolor, hovercolor="0.975")
-
-
-def reset(event):
-    sfreq.reset()
-    samp.reset()
+def my_sine(x, w, amp, phi):
+    """
+    Return a sine for x with angular frequeny w and amplitude amp.
+    """
+    return amp * np.sin(w * (x - phi))
 
 
-button.on_clicked(reset)
-
-rax = plt.axes([0.025, 0.5, 0.15, 0.15], facecolor=axcolor)
-radio = RadioButtons(rax, ("red", "blue", "green"), active=0)
-
-
-def colorfunc(label):
-    l.set_color(label)
-    fig.canvas.draw_idle()
-
-
-radio.on_clicked(colorfunc)
-
-plt.show()
+@widgets.interact(w=(0, 10, 1), amp=(0, 4, 0.1), phi=(0, 2 * np.pi + 0.01, 0.01))
+def update(w=1.0, amp=1, phi=0):
+    """Remove old lines from plot and plot new one"""
+    [l.remove() for l in ax.lines]
+    ax.plot(x, my_sine(x, w, amp, phi), color="C0")
