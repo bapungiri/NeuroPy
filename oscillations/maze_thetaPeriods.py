@@ -13,7 +13,7 @@ import ipywidgets as widgets
 from callfunc import processData
 from signal_process import filter_sig, hilbertfast, wavelet_decomp
 
-
+#%%
 cmap = mpl.cm.get_cmap("hot_r")
 
 basePath = [
@@ -115,11 +115,14 @@ for sub, sess in enumerate(sessions):
     #     ax, "Time", maze[0], maze[1], valinit=tstart, valstep=10, fc="gray"
     # )
     @widgets.interact(time=(maze[0], maze[1], 10))
-    def update(w=tstart):
+    def update(time=tstart):
         # tnow = timetoPlot.val
-        allplts(w - 5, w + 5)
+        allplts(time - 5, time + 5)
         # l.set_ydata(amp * np.sin(2 * np.pi * freq * t))
-        fig.canvas.draw_idle()
+        # fig.canvas.draw_idle()
 
     # timetoPlot.on_changed(update)
     # samp.on_changed(update)
+
+
+#%%
