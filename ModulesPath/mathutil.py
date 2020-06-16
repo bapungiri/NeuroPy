@@ -70,3 +70,54 @@ def getICA_Assembly(x):
     V = eig_mat[:, get_sigeigval] @ W.T
 
     return V
+
+
+def threshPeriods(sig, lowthresh=1, highthresh=2, minDistance=30, minDuration=50):
+
+    ThreshSignal = np.diff(np.where(sig > lowthresh, 1, 0))
+    start = np.where(ThreshSignal == 1)[0]
+    stop = np.where(ThreshSignal == -1)[0]
+
+    if start[0] > stop[0]:
+        stop = stop[1:]
+    if start[-1] > stop[-1]:
+        start = start[:-1]
+
+    firstPass = np.vstack((start, stop)).T
+
+    # ===== merging close events
+    secondPass = []
+    event = firstPass[0]
+    for i in range(1, len(firstPass)):
+        if firstPass[i, 0] - event[1] < minDistance:
+            # Merging states
+            event = [event[0], firstPass[i, 1]]
+        else:
+            secondPass.append(event)
+            event = firstPass[i]
+
+    secondPass.append(event)
+    secondPass = np.asarray(secondPass)
+    event_duration = np.diff(secondPass, axis=1).squeeze()
+
+    # delete very short events
+    shortevents = np.where(event_duration < minDuration)[0]
+    thirdPass = np.delete(secondPass, shortevents, 0)
+    event_duration = np.delete(event_duration, shortevents)
+
+    # keep only events with peak above highthresh
+    fourthPass = []
+    # peakNormalizedPower, peaktime = [], []
+    for i in range(len(thirdPass)):
+        maxValue = max(sig[thirdPass[i, 0] : thirdPass[i, 1]])
+        if maxValue >= highthresh:
+            fourthPass.append(thirdPass[i])
+            # peakNormalizedPower.append(maxValue)
+            # peaktime.append(
+            #     [
+            #         secondPass[i, 0]
+            #         + np.argmax(zscsignal[secondPass[i, 0] : secondPass[i, 1]])
+            #     ]
+            # )
+
+    return np.asarray(fourthPass)
