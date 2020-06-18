@@ -9,6 +9,7 @@ from scipy.interpolate import interp1d
 from scipy import fftpack
 from scipy.fft import fft
 from lspopt import spectrogram_lspopt
+from waveletFunctions import wavelet
 
 
 class filter_sig:
@@ -169,13 +170,13 @@ class wavelet_decomp:
         signal = self.lfp
         signal = np.tile(np.expand_dims(signal, axis=0), (len(freqs), 1))
 
-        wavelet_at_freqs = np.zeros((len(freqs), len(t_wavelet)))
+        wavelet_at_freqs = np.zeros((len(freqs), len(t_wavelet)), dtype=complex)
         for i, freq in enumerate(freqs):
-            sigma = freq / (2 * np.pi * 7)
+            sigma = 7 / (2 * np.pi * freq)
             A = (sigma * np.sqrt(np.pi)) ** -0.5
             wavelet_at_freqs[i, :] = (
                 A
-                * np.exp(-((t_wavelet) ** 2) / (2 * sigma ** 2))
+                * np.exp(-(t_wavelet ** 2) / (2 * sigma ** 2))
                 * np.exp(2j * np.pi * freq * t_wavelet)
             )
 
@@ -247,7 +248,11 @@ class wavelet_decomp:
         return wave_spec * np.linspace(1, 150, 100).reshape(-1, 1)
 
     def torrenceCompo(self):
-        pass
+        wavelet = _check_parameter_wavelet("morlet")
+        sj = 1 / (wavelet.flambda() * self.freqs)
+        # wave, period, scale, coi = wavelet(
+        #     self.lfp, 1 / self.sampfreq, pad=1, dj=0.25, s0, j1, mother
+        # )
 
     def cohen(self, ncycles=3):
         """Implementation of ref. 1 chapter 13
@@ -310,3 +315,109 @@ def fftnormalized(signal, fs=1250):
     pxx = 2.0 / N * np.abs(yf[0 : N // 2])
 
     return pxx, freq
+
+
+class Morlet(object):
+    """Implements the Morlet wavelet class.
+    Note that the input parameters f and f0 are angular frequencies.
+    f0 should be more than 0.8 for this function to be correct, its
+    default value is f0 = 6.
+    """
+
+    def __init__(self, f0=6):
+        self._set_f0(f0)
+        self.name = "Morlet"
+
+    def psi_ft(self, f):
+        """Fourier transform of the approximate Morlet wavelet."""
+        return (np.pi ** -0.25) * np.exp(-0.5 * (f - self.f0) ** 2)
+
+    def psi(self, t):
+        """Morlet wavelet as described in Torrence and Compo (1998)."""
+        return (np.pi ** -0.25) * np.exp(1j * self.f0 * t - t ** 2 / 2)
+
+    def flambda(self):
+        """Fourier wavelength as of Torrence and Compo (1998)."""
+        return (4 * np.pi) / (self.f0 + np.sqrt(2 + self.f0 ** 2))
+
+    def coi(self):
+        """e-Folding Time as of Torrence and Compo (1998)."""
+        return 1.0 / np.sqrt(2)
+
+    def sup(self):
+        """Wavelet support defined by the e-Folding time."""
+        return 1.0 / self.coi
+
+    def _set_f0(self, f0):
+        # Sets the Morlet wave number, the degrees of freedom and the
+        # empirically derived factors for the wavelet bases C_{\delta},
+        # \gamma, \delta j_0 (Torrence and Compo, 1998, Table 2)
+        self.f0 = f0  # Wave number
+        self.dofmin = 2  # Minimum degrees of freedom
+        if self.f0 == 6:
+            self.cdelta = 0.776  # Reconstruction factor
+            self.gamma = 2.32  # Decorrelation factor for time averaging
+            self.deltaj0 = 0.60  # Factor for scale averaging
+        else:
+            self.cdelta = -1
+            self.gamma = -1
+            self.deltaj0 = -1
+
+    def smooth(self, W, dt, dj, scales):
+        """Smoothing function used in coherence analysis.
+        Parameters
+        ----------
+        W :
+        dt :
+        dj :
+        scales :
+        Returns
+        -------
+        T :
+        """
+        # The smoothing is performed by using a filter given by the absolute
+        # value of the wavelet function at each scale, normalized to have a
+        # total weight of unity, according to suggestions by Torrence &
+        # Webster (1999) and by Grinsted et al. (2004).
+        m, n = W.shape
+
+        # Filter in time.
+        k = 2 * np.pi * fft.fftfreq(fft_kwargs(W[0, :])["n"])
+        k2 = k ** 2
+        snorm = scales / dt
+        # Smoothing by Gaussian window (absolute value of wavelet function)
+        # using the convolution theorem: multiplication by Gaussian curve in
+        # Fourier domain for each scale, outer product of scale and frequency
+        F = np.exp(-0.5 * (snorm[:, np.newaxis] ** 2) * k2)  # Outer product
+        smooth = fft.ifft(
+            F * fft.fft(W, axis=1, **fft_kwargs(W[0, :])),
+            axis=1,  # Along Fourier frequencies
+            **fft_kwargs(W[0, :], overwrite_x=True)
+        )
+        T = smooth[:, :n]  # Remove possibly padded region due to FFT
+
+        if np.isreal(W).all():
+            T = T.real
+
+        # Filter in scale. For the Morlet wavelet it's simply a boxcar with
+        # 0.6 width.
+        wsize = self.deltaj0 / dj * 2
+        win = rect(np.int(np.round(wsize)), normalize=True)
+        T = convolve2d(T, win[:, np.newaxis], "same")  # Scales are "vertical"
+
+        return T
+
+
+def _check_parameter_wavelet(wavelet):
+    mothers = {"morlet": Morlet, "paul": Paul, "dog": DOG, "mexicanhat": MexicanHat}
+    # Checks if input parameter is a string. For backwards
+    # compatibility with Python 2 we check either if instance is a
+    # `basestring` or a `str`.
+    try:
+        if isinstance(wavelet, basestring):
+            return mothers[wavelet]()
+    except NameError:
+        if isinstance(wavelet, str):
+            return mothers[wavelet]()
+    # Otherwise, return itself.
+    return wavelet
