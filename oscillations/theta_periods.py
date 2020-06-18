@@ -1,4 +1,3 @@
-
 # %%
 
 import matplotlib as mpl
@@ -19,15 +18,19 @@ from signal_process import filter_sig, hilbertfast, wavelet_decomp
 from mathutil import threshPeriods
 
 
-#%%
-"""functions needed for some computation"""
+#%% ====== functions needed for some computation ============
+
+
 def doWavelet(lfp, freqs, ncycles=3):
     wavdec = wavelet_decomp(lfp, freqs=freqs)
+    # wav = wavdec.cohen(ncycles=ncycles)
     wav = wavdec.colgin2009()
+
     wav = stats.zscore(wav)
     wav = gaussian_filter(wav, sigma=4)
 
     return wav
+
 
 def compute(tstart, tend):
     lfpmaze = lfp[(t > tstart) & (t < tend)]
@@ -41,9 +44,9 @@ def compute(tstart, tend):
     frgamma = np.arange(25, 50, 1)
     wav = doWavelet(lfpmaze, freqs=frgamma, ncycles=7)
 
-
     frtheta = np.arange(2, 20, 0.5)
     wav = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
+
 
 def getPxx(lfp):
     window = 5 * 1250
@@ -60,11 +63,7 @@ def getPxx(lfp):
     return Pxx, freq
 
 
-# %%
-"""Example plots for brief periods 10s on maze"""
-
-cmap = mpl.cm.get_cmap("hot_r")
-
+#%% Subjects to choose from
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
@@ -74,9 +73,12 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
-
-
 sessions = [processData(_) for _ in basePath]
+
+
+# %% Example plots for brief periods 10s on maze
+# region
+cmap = mpl.cm.get_cmap("hot_r")
 
 plt.clf()
 fig = plt.figure(1, figsize=(1, 15))
@@ -162,29 +164,11 @@ for sub, sess in enumerate(sessions):
 
     # timetoPlot.on_changed(update)
     # samp.on_changed(update)
+# endregion
 
-
-
-
-# %%
-"""This detects strong theta periods within the maze exploration
-"""
+# %% This detects strong theta periods within the maze exploration
+# region
 cmap = mpl.cm.get_cmap("hot_r")
-
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-]
-
-sessions = [processData(_) for _ in basePath]
-
-
-
 
 for sub, sess in enumerate(sessions):
 
@@ -198,7 +182,7 @@ for sub, sess in enumerate(sessions):
     t = np.linspace(0, len(lfp) / 1250, len(lfp))
 
     tstart = maze[0]
-    tend = maze[1] 
+    tend = maze[1]
 
     lfpmaze = lfp[(t > tstart) & (t < tend)]
     tmaze = np.linspace(tstart, tend, len(lfpmaze))
@@ -206,7 +190,7 @@ for sub, sess in enumerate(sessions):
     posmazey = posy[(post > tstart) & (post < tend)]
     postmaze = np.linspace(tstart, tend, len(posmazex))
     speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2)
-    speed = gaussian_filter1d(speed, sigma=10)
+    speed = stats.zscore(gaussian_filter1d(speed, sigma=10))
 
     # frgamma = np.arange(25, 50, 1)
     # wavgamma = doWavelet(lfpmaze, freqs=frgamma, ncycles=7)
@@ -216,11 +200,12 @@ for sub, sess in enumerate(sessions):
     wav = wavdec.cohen(ncycles=7)
     # wavtheta = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
 
-    sum_theta = gaussian_filter1d(np.sum(wav,axis=0),sigma=10)
+    sum_theta = gaussian_filter1d(np.sum(wav, axis=0), sigma=10)
     zsc_theta = stats.zscore(sum_theta)
-    thetaevents = threshPeriods(zsc_theta,lowthresh=0,highthresh=1,minDistance=625,minDuration=2*1250)
-    thetaevents = thetaevents/1250 + tstart
-
+    thetaevents = threshPeriods(
+        zsc_theta, lowthresh=0, highthresh=1.5, minDistance=625, minDuration=2 * 1250
+    )
+    thetaevents = thetaevents / 1250 + tstart
 
     plt.clf()
     fig = plt.figure(1, figsize=(10, 15))
@@ -228,19 +213,21 @@ for sub, sess in enumerate(sessions):
     fig.subplots_adjust(hspace=0.2)
 
     def ex_plts(tstart, tend, pltind):
-        inner = gridspec.GridSpecFromSubplotSpec(5, 3, subplot_spec=outer[pltind], wspace=0.1,hspace=0.3)
+        inner = gridspec.GridSpecFromSubplotSpec(
+            5, 3, subplot_spec=outer[pltind], wspace=0.1, hspace=0.3
+        )
 
-        axgamma = fig.add_subplot(inner[0,:])
-        axtheta = fig.add_subplot(inner[1,:], sharex=axgamma)
-        axspeed = fig.add_subplot(inner[2,:], sharex=axgamma)
-        axlfp = fig.add_subplot(inner[3,:], sharex=axgamma)
-        axpos = fig.add_subplot(inner[4,0])
+        axgamma = fig.add_subplot(inner[0, :])
+        axtheta = fig.add_subplot(inner[1, :], sharex=axgamma)
+        axspeed = fig.add_subplot(inner[2, :], sharex=axgamma)
+        axlfp = fig.add_subplot(inner[3, :], sharex=axgamma)
+        axpos = fig.add_subplot(inner[4, 0])
 
         lfpevent = lfp[(t > tstart) & (t < tend)]
-        tevent = np.linspace(tstart, tend, len(lfpevent))-tstart
+        tevent = np.linspace(tstart, tend, len(lfpevent)) - tstart
         poseventx = posx[(post > tstart) & (post < tend)]
         poseventy = posy[(post > tstart) & (post < tend)]
-        postevent = np.linspace(tstart, tend, len(poseventx))-tstart
+        postevent = np.linspace(tstart, tend, len(poseventx)) - tstart
         speedevent = np.sqrt(np.diff(poseventx) ** 2 + np.diff(poseventy) ** 2)
         speedevent = gaussian_filter1d(speedevent, sigma=10)
 
@@ -248,18 +235,19 @@ for sub, sess in enumerate(sessions):
         wav = doWavelet(lfpevent, freqs=frgamma, ncycles=7)
         axgamma.pcolorfast(tevent, frgamma, wav, cmap="jet")
         axgamma.set_xlim([tevent[0], tevent[-1]])
-        axgamma.set_ylabel("Frequency")
-        axgamma.tick_params(axis='x',which='both',bottom=False,labelbottom=False)
+        axgamma.set_ylabel("Frequency (Hz)")
+        axgamma.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
 
         frtheta = np.arange(2, 20, 0.5)
         wav = doWavelet(lfpevent, freqs=frtheta, ncycles=7)
         axtheta.pcolorfast(tevent, frtheta, wav, cmap="jet")
-        axtheta.set_ylabel("Amplitude")
-        axtheta.tick_params(axis='x',which='both',bottom=False,labelbottom=False)
+        axtheta.set_ylabel("Frequency (Hz)")
+        axtheta.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
 
         axspeed.plot(postevent[:-1], speedevent, "k")
         axspeed.set_ylabel("Speed (a.u.)")
-        axspeed.tick_params(axis='x',which='both',bottom=False,labelbottom=False)
+        axspeed.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
+        axspeed.set_ylim([0, 5])
 
         axlfp.plot(tevent, stats.zscore(lfpevent), "k")
         axlfp.set_xlabel("Time (s)")
@@ -270,49 +258,34 @@ for sub, sess in enumerate(sessions):
         axpos.scatter(poseventy, poseventx, s=3, zorder=2, c=colpos)
         axpos.axis("off")
 
-    for plt_id,evt in enumerate(random.sample(range(thetaevents.shape[0]),10)):
-        ex_plts(thetaevents[evt,0], thetaevents[evt,1],plt_id)
+    for plt_id, evt in enumerate(random.sample(range(thetaevents.shape[0]), 10)):
+        ex_plts(thetaevents[evt, 0], thetaevents[evt, 1], plt_id)
 
     # @widgets.interact(time=(maze[0], maze[1], 10))
     # def updateExamples(time=tstart):
     #     # tnow = timetoPlot.val
     #     allplts(time - 5, time + 5)
+    fig.suptitle("Example periods of strong theta in RatN Day1")
+# endregion
 
-
-
-# %%
-"""This detects strong theta periods within the maze exploration and averages the spectrogram around theta cycles
-"""
+# %% Detects strong theta within maze and averages spectrogram around theta cycles
+# region
 cmap = mpl.cm.get_cmap("hot_r")
-
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-]
-
-sessions = [processData(_) for _ in basePath]
-
-
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    eegSrate= sess.recinfo.lfpSrate
+    eegSrate = sess.recinfo.lfpSrate
     posx = sess.position.x
     posy = sess.position.y
     post = sess.position.t
     maze = sess.epochs.maze
 
     lfp, _, _ = sess.ripple.best_chan_lfp()
-    lfp= lfp[0,:]
+    lfp = lfp[0, :]
     t = np.linspace(0, len(lfp) / 1250, len(lfp))
 
     tstart = maze[0]
-    tend = maze[1] 
+    tend = maze[1]
 
     lfpmaze = lfp[(t > tstart) & (t < tend)]
     tmaze = np.linspace(tstart, tend, len(lfpmaze))
@@ -322,99 +295,104 @@ for sub, sess in enumerate(sessions):
     speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2)
     speed = gaussian_filter1d(speed, sigma=10)
 
-
     frtheta = np.arange(5, 12, 0.5)
     wavdec = wavelet_decomp(lfpmaze, freqs=frtheta)
-    wav = wavdec.cohen(ncycles=7)
+    wav = wavdec.cohen()
+    # frgamma = np.arange(25, 50, 1)
+    # wavdec = wavelet_decomp(lfpmaze, freqs=frgamma)
+    # wav = wavdec.colgin2009()
     # wavtheta = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
 
-    sum_theta = gaussian_filter1d(np.sum(wav,axis=0),sigma=10)
+    sum_theta = gaussian_filter1d(np.sum(wav, axis=0), sigma=10)
     zsc_theta = stats.zscore(sum_theta)
-    thetaevents = threshPeriods(zsc_theta,lowthresh=0,highthresh=1,minDistance=625,minDuration=2*1250)
+    thetaevents = threshPeriods(
+        zsc_theta, lowthresh=0, highthresh=1.5, minDistance=300, minDuration=1250
+    )
 
-    strong_theta= [] 
-    for (beg,end) in thetaevents:
+    strong_theta = []
+    theta_indices = []
+    for (beg, end) in thetaevents:
         strong_theta.extend(lfpmaze[beg:end])
-    strong_theta=np.asarray(strong_theta)
+        theta_indices.extend(np.arange(beg, end))
+    strong_theta = np.asarray(strong_theta)
+    theta_indices = np.asarray(theta_indices)
 
-    # frgamma = np.arange(25, 150, 1)
-    frgamma = np.linspace(25, 150, 65)
+    non_theta = np.delete(lfpmaze, theta_indices)
+    frgamma = np.arange(25, 150, 1)
+    # frgamma = np.linspace(25, 150, 1)
     wavdec = wavelet_decomp(strong_theta, freqs=frgamma)
-    # wav = wavdec.colgin2009()
-    wav = wavdec.cohen(ncycles=3)
+    wav = wavdec.colgin2009()
+    # wav = wavdec.cohen(ncycles=7)
     wav = stats.zscore(wav)
 
-    theta_filter = stats.zscore(filter_sig.filter_cust(strong_theta,lf=5,hf=11))
+    theta_filter = stats.zscore(filter_sig.filter_cust(strong_theta, lf=4, hf=11))
     hil_theta = hilbertfast(theta_filter)
+
     theta_amp = np.abs(hil_theta)
     theta_angle = np.angle(hil_theta, deg=True) + 180
 
     theta_troughs = sg.find_peaks(-theta_filter)[0]
 
     avg_theta = np.zeros(156)
-    mean_gamma = np.zeros((wav.shape[0],156))
+    mean_gamma = np.zeros((wav.shape[0], 156))
     for i in theta_troughs[1:]:
-        mean_gamma = mean_gamma+ wav[:,i-125:i+31]
-        avg_theta = avg_theta + strong_theta[i-125:i+31]
+        mean_gamma = mean_gamma + wav[:, i - 125 : i + 31]
+        avg_theta = avg_theta + strong_theta[i - 125 : i + 31]
 
-    mean_gamma=mean_gamma/len(theta_troughs)
+    mean_gamma = mean_gamma / len(theta_troughs)
 
+    mean_gamma = stats.zscore(mean_gamma, axis=1)
 
     plt.clf()
     fig = plt.figure(1, figsize=(10, 15))
-    gs = gridspec.GridSpec(4, 1, figure=fig)
+    gs = gridspec.GridSpec(3, 1, figure=fig)
     fig.subplots_adjust(hspace=0.2)
 
     ax = fig.add_subplot(gs[0])
-    t_thetacycle = np.linspace(-100,25,156)
-    ax.pcolorfast(t_thetacycle,frgamma,mean_gamma)
-    ax.set_xlim([-100,25])
-    ax = fig.add_subplot(gs[1],sharex=ax)
-    ax.plot(t_thetacycle,avg_theta/len(theta_troughs))
+    t_thetacycle = np.linspace(-100, 25, 156)
+    ax.pcolorfast(t_thetacycle, frgamma, mean_gamma, cmap="jet")
+    ax.set_ylabel("Frequency (Hz)")
+
+    # ax.contourf(t_thetacycle,frgamma,mean_gamma)
+    ax.set_xlim([-100, 25])
+    ax = fig.add_subplot(gs[1], sharex=ax)
+    ax.plot(t_thetacycle, avg_theta / len(theta_troughs), "k")
+    ax.set_xlabel("Time from theta trough (ms)")
+    ax.set_ylabel("Amplitude")
 
     ax = fig.add_subplot(gs[2])
     todB = lambda power: 10 * np.log10(power)
     pxx_theta, f_theta = getPxx(strong_theta)
+    pxx_nontheta, f_nontheta = getPxx(non_theta)
     ax.plot(f_theta, todB(pxx_theta), color="#ef253c", alpha=0.8)
-    ax.set_xscale('log')
+    ax.plot(f_theta, todB(pxx_nontheta), color="#4e5c73", alpha=0.8)
+    ax.set_xscale("log")
     ax.set_xlim([4, 220])
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Power")
+    ax.legend(["Theta", "non-theta"])
 
     # thetaevents = thetaevents/eegSrate + tstart
+# endregion
 
-
-# %%
-"""This detects slow gamma periods within the maze exploration and averages the spectrogram around theta cycles
-"""
+# %% Detects slow gamma periods during MAZE and averages spectrogram around theta cycles
+# region
 cmap = mpl.cm.get_cmap("hot_r")
-
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-]
-
-sessions = [processData(_) for _ in basePath]
-
-
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    eegSrate= sess.recinfo.lfpSrate
+    eegSrate = sess.recinfo.lfpSrate
     posx = sess.position.x
     posy = sess.position.y
     post = sess.position.t
     maze = sess.epochs.maze
 
     lfp, _, _ = sess.ripple.best_chan_lfp()
-    lfp= lfp[0,:]
+    lfp = lfp[0, :]
     t = np.linspace(0, len(lfp) / 1250, len(lfp))
 
     tstart = maze[0]
-    tend = maze[1] 
+    tend = maze[1]
 
     lfpmaze = lfp[(t > tstart) & (t < tend)]
     tmaze = np.linspace(tstart, tend, len(lfpmaze))
@@ -424,27 +402,28 @@ for sub, sess in enumerate(sessions):
     speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2)
     speed = gaussian_filter1d(speed, sigma=10)
 
-
     frtheta = np.arange(5, 12, 0.5)
     wavdec = wavelet_decomp(lfpmaze, freqs=frtheta)
     wav = wavdec.cohen(ncycles=7)
     # wavtheta = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
 
-    sum_theta = gaussian_filter1d(np.sum(wav,axis=0),sigma=10)
+    sum_theta = gaussian_filter1d(np.sum(wav, axis=0), sigma=10)
     zsc_theta = stats.zscore(sum_theta)
-    thetaevents = threshPeriods(zsc_theta,lowthresh=0,highthresh=1,minDistance=625,minDuration=2*1250)
+    thetaevents = threshPeriods(
+        zsc_theta, lowthresh=0, highthresh=1, minDistance=625, minDuration=2 * 1250
+    )
 
-    strong_theta= [] 
-    for (beg,end) in thetaevents:
+    strong_theta = []
+    for (beg, end) in thetaevents:
         strong_theta.extend(lfpmaze[beg:end])
-    strong_theta=np.asarray(strong_theta)
+    strong_theta = np.asarray(strong_theta)
 
     frgamma = np.arange(25, 50, 1)
     wavdec = wavelet_decomp(strong_theta, freqs=frgamma)
     wav = wavdec.colgin2009()
     # wav = wavdec.colgin2009(ncycles=3)
 
-    theta_filter = stats.zscore(filter_sig.filter_cust(strong_theta,lf=5,hf=11))
+    theta_filter = stats.zscore(filter_sig.filter_cust(strong_theta, lf=5, hf=11))
     hil_theta = hilbertfast(theta_filter)
     theta_amp = np.abs(hil_theta)
     theta_angle = np.angle(hil_theta, deg=True) + 180
@@ -452,31 +431,145 @@ for sub, sess in enumerate(sessions):
     theta_troughs = sg.find_peaks(-theta_filter)[0]
 
     avg_theta = np.zeros(156)
-    mean_gamma = np.zeros((wav.shape[0],156))
+    mean_gamma = np.zeros((wav.shape[0], 156))
     for i in theta_troughs[1:]:
-        mean_gamma = mean_gamma+ wav[:,i-125:i+31]
-        avg_theta = avg_theta + strong_theta[i-125:i+31]
+        mean_gamma = mean_gamma + wav[:, i - 125 : i + 31]
+        avg_theta = avg_theta + strong_theta[i - 125 : i + 31]
 
-    mean_gamma=mean_gamma/len(theta_troughs)
-
+    mean_gamma = mean_gamma / len(theta_troughs)
 
     plt.clf()
     fig = plt.figure(1, figsize=(10, 15))
-    gs = gridspec.GridSpec(4, 1, figure=fig)
+    gs = gridspec.GridSpec(3, 1, figure=fig)
     fig.subplots_adjust(hspace=0.2)
 
     ax = fig.add_subplot(gs[0])
-    t_thetacycle = np.linspace(-100,25,156)
-    ax.pcolorfast(t_thetacycle,frgamma,mean_gamma)
-    ax.set_xlim([-100,25])
-    ax = fig.add_subplot(gs[1],sharex=ax)
-    ax.plot(t_thetacycle,avg_theta/len(theta_troughs))
+    t_thetacycle = np.linspace(-100, 25, 156)
+    ax.pcolorfast(t_thetacycle, frgamma, mean_gamma)
+    ax.set_xlim([-100, 25])
+    ax.set_ylabel("Frequency (Hz)")
+
+    ax = fig.add_subplot(gs[1], sharex=ax)
+    ax.plot(t_thetacycle, avg_theta / len(theta_troughs))
+    ax.set_xlabel("Time from theta trough (ms)")
+    ax.set_ylabel("Amplitude")
 
     ax = fig.add_subplot(gs[2])
     todB = lambda power: 10 * np.log10(power)
     pxx_theta, f_theta = getPxx(strong_theta)
     ax.plot(f_theta, todB(pxx_theta), color="#ef253c", alpha=0.8)
-    ax.set_xscale('log')
+    ax.set_xscale("log")
     ax.set_xlim([4, 220])
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Power")
 
     # thetaevents = thetaevents/eegSrate + tstart
+
+# endregion
+
+# %% Detects theta periods during SD and spectrogram around theta cycle
+# region
+cmap = mpl.cm.get_cmap("hot_r")
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    posx = sess.position.x
+    posy = sess.position.y
+    post = sess.position.t
+    maze = sess.epochs.maze
+
+    lfp, _, _ = sess.ripple.best_chan_lfp()
+    lfp = lfp[0, :]
+    t = np.linspace(0, len(lfp) / 1250, len(lfp))
+
+    tstart = maze[0]
+    tend = maze[1]
+
+    lfpSD = lfp[(t > tstart) & (t < tend)]
+    tmaze = np.linspace(tstart, tend, len(lfpSD))
+    posmazex = posx[(post > tstart) & (post < tend)]
+    posmazey = posy[(post > tstart) & (post < tend)]
+    postmaze = np.linspace(tstart, tend, len(posmazex))
+    speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2)
+    speed = gaussian_filter1d(speed, sigma=10)
+
+    frtheta = np.arange(5, 12, 0.5)
+    wavdec = wavelet_decomp(lfpSD, freqs=frtheta)
+    wav = wavdec.cohen()
+    # frgamma = np.arange(25, 50, 1)
+    # wavdec = wavelet_decomp(lfpSD, freqs=frgamma)
+    # wav = wavdec.colgin2009()
+    # wavtheta = doWavelet(lfpSD, freqs=frtheta, ncycles=3)
+
+    sum_theta = gaussian_filter1d(np.sum(wav, axis=0), sigma=10)
+    zsc_theta = stats.zscore(sum_theta)
+    thetaevents = threshPeriods(
+        zsc_theta, lowthresh=0, highthresh=1.5, minDistance=300, minDuration=1250
+    )
+
+    strong_theta = []
+    theta_indices = []
+    for (beg, end) in thetaevents:
+        strong_theta.extend(lfpSD[beg:end])
+        theta_indices.extend(np.arange(beg, end))
+    strong_theta = np.asarray(strong_theta)
+    theta_indices = np.asarray(theta_indices)
+
+    non_theta = np.delete(lfpSD, theta_indices)
+    frgamma = np.arange(25, 150, 1)
+    # frgamma = np.linspace(25, 150, 1)
+    wavdec = wavelet_decomp(strong_theta, freqs=frgamma)
+    wav = wavdec.colgin2009()
+    # wav = wavdec.cohen(ncycles=7)
+    wav = stats.zscore(wav)
+
+    theta_filter = stats.zscore(filter_sig.filter_cust(strong_theta, lf=4, hf=11))
+    hil_theta = hilbertfast(theta_filter)
+    theta_amp = np.abs(hil_theta)
+    theta_angle = np.angle(hil_theta, deg=True) + 180
+
+    theta_troughs = sg.find_peaks(-theta_filter)[0]
+
+    avg_theta = np.zeros(156)
+    mean_gamma = np.zeros((wav.shape[0], 156))
+    for i in theta_troughs[1:]:
+        mean_gamma = mean_gamma + wav[:, i - 125 : i + 31]
+        avg_theta = avg_theta + strong_theta[i - 125 : i + 31]
+
+    mean_gamma = mean_gamma / len(theta_troughs)
+
+    mean_gamma = stats.zscore(mean_gamma, axis=1)
+
+    plt.clf()
+    fig = plt.figure(1, figsize=(10, 15))
+    gs = gridspec.GridSpec(3, 1, figure=fig)
+    fig.subplots_adjust(hspace=0.2)
+
+    ax = fig.add_subplot(gs[0])
+    t_thetacycle = np.linspace(-100, 25, 156)
+    ax.pcolorfast(t_thetacycle, frgamma, mean_gamma, cmap="jet")
+    ax.set_ylabel("Frequency (Hz)")
+
+    # ax.contourf(t_thetacycle,frgamma,mean_gamma)
+    ax.set_xlim([-100, 25])
+    ax = fig.add_subplot(gs[1], sharex=ax)
+    ax.plot(t_thetacycle, avg_theta / len(theta_troughs), "k")
+    ax.set_xlabel("Time from theta trough (ms)")
+    ax.set_ylabel("Amplitude")
+
+    ax = fig.add_subplot(gs[2])
+    todB = lambda power: 10 * np.log10(power)
+    pxx_theta, f_theta = getPxx(strong_theta)
+    pxx_nontheta, f_nontheta = getPxx(non_theta)
+    ax.plot(f_theta, todB(pxx_theta), color="#ef253c", alpha=0.8)
+    ax.plot(f_theta, todB(pxx_nontheta), color="#4e5c73", alpha=0.8)
+    ax.set_xscale("log")
+    ax.set_xlim([4, 220])
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Power")
+    ax.legend(["Theta", "non-theta"])
+
+    # thetaevents = thetaevents/eegSrate + tstart
+# endregion
+
