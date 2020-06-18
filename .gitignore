@@ -47,3 +47,4 @@ ModulesPath/__pycache__
 .ipynb_checkpoints
 
 *.evt
+oscillations/.ipynb_checkpoints/theta_periods-checkpoint.ipynb
