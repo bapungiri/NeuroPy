@@ -11,6 +11,7 @@ from scipy.ndimage import gaussian_filter
 from sklearn.preprocessing import normalize
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
+import matplotlib as mpl
 
 
 def make_boxes(
@@ -48,16 +49,16 @@ class SessView:
         sxx = spec.sxx / np.max(spec.sxx)
         sxx = gaussian_filter(sxx, sigma=1)
         print(np.max(sxx), np.min(sxx))
-        vmax = np.max(sxx) / 1000
+        vmax = np.max(sxx) / 4
 
         if ax is None:
             _, ax = plt.subplots(1, 1)
 
         ax.pcolorfast(spec.time, spec.freq, sxx, cmap="YlGn", vmax=vmax)
-        ax.set_ylim([0, 60])
+        ax.set_ylim([0, 30])
         ax.set_xlim([np.min(spec.time), np.max(spec.time)])
         ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Frequency (s)")
+        ax.set_ylabel("Frequency (Hz)")
 
     def epoch(self, ax=None):
         epochs = self._obj.epochs.times
@@ -83,14 +84,37 @@ class SessView:
     def position(self):
         pass
 
-    def raster(self, ax=None):
+    def raster(self, ax=None, period=None):
         spikes = self._obj.spikes.times
+        totalduration = self._obj.epochs.totalduration
+        frate = [len(cell) / totalduration for cell in spikes]
 
         if ax is None:
             ax = plt.subplots(1, 1)
 
+        if period is not None:
+            period_duration = np.diff(period)
+            spikes = [
+                cell[np.where((cell > period[0]) & (cell < period[1]))[0]]
+                for cell in spikes
+            ]
+            frate = np.asarray(
+                [len(cell) / period_duration for cell in spikes]
+            ).squeeze()
+            print(frate.shape)
+
+        sort_frate_indices = np.argsort(frate)
+        spikes = [spikes[indx] for indx in sort_frate_indices]
+
+        cmap = mpl.cm.get_cmap("inferno_r")
         for cell, spk in enumerate(spikes):
-            plt.plot(spk, cell * np.ones(len(spk)), "|", markersize=1)
+            color = cmap(cell / len(spikes))
+            plt.plot(
+                spk, (cell + 1) * np.ones(len(spk)), "|", markersize=0.75, color=color
+            )
+
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Neurons")
 
     def brainstates(self, ax1=None):
         states = self._obj.brainstates.states
