@@ -1,18 +1,20 @@
+#%%
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
 import scipy.signal as sg
-from matplotlib.gridspec import GridSpec
+import matplotlib.gridspec as gridspec
 import seaborn as sns
 import matplotlib as mpl
 from scipy.ndimage import gaussian_filter
 from signal_process import spectrogramBands
 from sklearn.preprocessing import MinMaxScaler
 from callfunc import processData
-from signal_process import wavelet_decomp
+import signal_process
 from scipy import fftpack
 
+#%% Subjects
 basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     "/data/Clustering/SleepDeprivation/RatK/Day1/",
@@ -26,9 +28,7 @@ basePath = [
 
 sessions = [processData(_) for _ in basePath]
 
-# during REM sleep
-
-
+#%% functions
 def scale(x):
 
     x = x - np.min(x)
@@ -52,6 +52,8 @@ def getPxx(lfp):
     return Pxx, freq
 
 
+#%% Powerspectrum compare during REM
+# region
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
@@ -134,3 +136,70 @@ ax.legend(["REM-SD", "MAZE-SD", "REM-NSD", "MAZE-NSD"])
 fig.suptitle(
     f"Power spectrum REM and MAZE epochs between SD and NSD session. Only REM periods in POST are compared. \n Note: curves have been artificially shifted for clarity"
 )
+# endregion
+
+#%% Bicoherence plots of REM sleep
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(2, 3, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+
+    sampfreq = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    tstart = sess.epochs.post[0]
+
+    lfp, _, _ = sess.spindle.best_chan_lfp()
+    t = np.linspace(0, len(lfp) / 1250, len(lfp))
+    deadfile = sess.sessinfo.files.filePrefix.with_suffix(".dead")
+    if deadfile.is_file():
+        with deadfile.open("r") as f:
+            noisy = []
+            for line in f:
+                epc = line.split(" ")
+                epc = [float(_) for _ in epc]
+                noisy.append(epc)
+            noisy = np.asarray(noisy)
+            noisy = ((noisy / 1000) * sampfreq).astype(int)
+
+        for noisy_ind in range(noisy.shape[0]):
+            st = noisy[noisy_ind, 0]
+            en = noisy[noisy_ind, 1]
+            numnoisy = en - st
+            lfp[st:en] = np.nan
+
+    states = sess.brainstates.states
+    rem = states[(states["start"] > tstart) & (states["name"] == "rem")]
+
+    binlfp = lambda x, t1, t2: x[(t > t1) & (t < t2)]
+    lfprem = []
+    for epoch in rem.itertuples():
+        lfprem.extend(binlfp(lfp, epoch.start, epoch.end))
+    lfprem = stats.zscore(np.asarray(lfprem))
+
+    # strong_theta = strong_theta - np.mean(strong_theta)
+    lfprem = sg.detrend(lfprem, type="linear")
+    bicoh, bicoh_freq = signal_process.bicoherence(
+        lfprem, window=4 * 1250, overlap=2 * 1250
+    )
+
+    ax = fig.add_subplot(gs[sub])
+    ax.pcolorfast(bicoh_freq, bicoh_freq, bicoh, cmap="YlGn", vmax=0.2)
+    ax.set_ylabel("Frequency (Hz)")
+    ax.set_xlabel("Frequency (Hz)")
+    # plt.pcolormesh(bispec_freq, bispec_freq, bispec, vmin=0, vmax=0.1, cmap="YlGn")
+    ax.set_ylim([2, 75])
+
+    # ax = fig.add_subplot(gs[sub + 2])
+    # f, t, sxx = sg.spectrogram(strong_theta, nperseg=1250, noverlap=625, fs=1250)
+    # ax.pcolorfast(t, f, sxx, cmap="YlGn", vmax=0.05)
+    # ax.set_ylabel("Frequency (Hz)")
+    # ax.set_xlabel("Time (s)")
+    # # plt.pcolormesh(bispec_freq, bispec_freq, bispec, vmin=0, vmax=0.1, cmap="YlGn")
+    # ax.set_ylim([1, 75])
+
+fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
+# endregion
