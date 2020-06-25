@@ -132,6 +132,7 @@ for sub, sess in enumerate(sessions):
     binlfp = lambda x, t1, t2: x[(t > t1) & (t < t2)]
     freqIntervals = [[30, 50], [50, 90], [100, 150]]  # in Hz
 
+    lfprem = []
     for epoch in rem.itertuples():
         lfprem.extend(binlfp(lfp, epoch.start, epoch.end))
 
@@ -162,7 +163,7 @@ for sub, sess in enumerate(sessions):
         ax.plot(
             angle_bin[:-1] + 10, mean_amp_norm, linestyle=lnstyle, color=colband[band]
         )
-        ax.set_xlabel("Degree (from theta trough)")
+        ax.set_xlabel("Degrees (from theta trough)")
         ax.set_ylabel("Amplitude")
         # p.comodulogram(
         #     xpac.mean(-1),
