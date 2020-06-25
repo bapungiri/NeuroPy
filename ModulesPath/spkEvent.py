@@ -6,7 +6,8 @@ from mathutil import parcorr_mult, getICA_Assembly
 import scipy.stats as stats
 import scipy.signal as sg
 from pathlib import Path
-from matplotlib.gridspec import GridSpec
+import matplotlib.gridspec as gridspec
+import matplotlib as mpl
 
 
 class LocalSleep:
@@ -124,19 +125,38 @@ class LocalSleep:
 
         np.save(self._filename, locsleep)
 
-    def plot(self):
+    def plot(self, fig=None, ax=None):
         lfpSrate = self._obj.recinfo.lfpSrate
         lfp, _, _ = self._obj.spindle.best_chan_lfp()
         t = np.linspace(0, len(lfp) / lfpSrate, len(lfp))
         spikes = self._obj.spikes.times
 
+        post = self._obj.epochs.post
+        period = post
+        period_duration = np.diff(period)
+        spikes_sd = [
+            cell[np.where((cell > period[0]) & (cell < period[1]))[0]]
+            for cell in spikes
+        ]
+        frate = np.asarray(
+            [len(cell) / period_duration for cell in spikes_sd]
+        ).squeeze()
+        sort_frate_indices = np.argsort(frate)
+        spikes = [spikes[indx] for indx in sort_frate_indices]
+
         selectedEvents = self.events.sample(n=5)
         instfiring = self.instfiring
         t_instfiring = np.linspace(self.period[0], self.period[1], len(instfiring))
 
-        fig = plt.figure(num=None, figsize=(20, 7))
-        gs = GridSpec(3, 5, figure=fig)
-        fig.subplots_adjust(hspace=0.5)
+        if ax is None:
+            fig = plt.figure(num=None, figsize=(20, 7))
+            gs = gridspec.GridSpec(3, 5, figure=fig)
+            fig.subplots_adjust(hspace=0.5)
+
+        else:
+            gs = gridspec.GridSpecFromSubplotSpec(
+                2, 5, subplot_spec=ax, wspace=0.1, hspace=0.1
+            )
 
         taround = 2
         for ind, period in enumerate(selectedEvents.itertuples()):
@@ -170,11 +190,13 @@ class LocalSleep:
                 linewidth=0.8,
             )
 
+            cmap = mpl.cm.get_cmap("inferno_r")
+
             for cell, spk in enumerate(spikes):
+                color = cmap(cell / len(spikes))
+
                 spk = spk[(spk > period.start - taround) & (spk < period.end + taround)]
-                ax.plot(
-                    spk, cell * np.ones(len(spk)), "|", color="#757575", markersize=2
-                )
+                ax.plot(spk, cell * np.ones(len(spk)), "|", color=color, markersize=2)
 
             ax.set_title(f"{round(period.duration,2)} s")
             ax.axis("off")
@@ -221,8 +243,6 @@ class LocalSleep:
 
         subname = self._obj.sessinfo.session.subname
         fig.suptitle(f"Local sleep during sleep deprivation in {subname}")
-
-        return fig
 
     def plotAll(self):
         spikes = self._obj.spikes.times
