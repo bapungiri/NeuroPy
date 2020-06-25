@@ -35,19 +35,19 @@ def getPxx(lfp):
     return Pxx, freq
 
 
-#%% Subjects to choose from
+#%% Subjects
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 sessions = [processData(_) for _ in basePath]
 
-#%% Detects Low States
+#%% Detects Low States during SD
 # region
 plt.clf()
 fig = plt.figure(1, figsize=(10, 15))
@@ -93,5 +93,50 @@ for sess in sessions:
 
 
 # endregion
+
+# %% Detect lowstates during NREM episodes
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(3, 2, figure=fig)
+fig.subplots_adjust(hspace=0.2)
+
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    post = sess.epochs.post
+    states = sess.brainstates.states
+    nrem = states[(states["start"] > post[0]) & (states["name"] == "nrem")]
+
+    lfp, _, _ = sess.ripple.best_chan_lfp()
+    lfp = lfp[0, :]
+    t = np.linspace(0, len(lfp) / eegSrate, len(lfp))
+
+    lfpNrem = []
+    for epoch in nrem.itertuples():
+        lfpNrem = lfp[(t > epoch.start) & (t < epoch.end)]
+    lfpNrem = np.asarray(lfpNrem)
+
+    specgram = signal_process.spectrogramBands(
+        lfpNrem, window=eegSrate, overlap=0.1 * eegSrate
+    )
+    pxx = specgram.sxx
+    freq = specgram.freq
+    pxx_time = specgram.time
+
+    # low states band
+    lowState_freq = np.where((freq > 0.5) & (freq < 50))[0]
+    pxx_lowState = pxx[lowState_freq, :]
+    mean_pxx_lowState = np.mean(pxx_lowState, axis=0)
+    zsc_lowState = stats.zscore(gaussian_filter1d(mean_pxx_lowState, sigma=0.5))
+    histlfp, edges = np.histogram(zsc_lowState, bins=np.linspace(-2, 2, 100))
+    # zsc_t = np.linspace(tstart, tend, len(zsc_lowState))
+
+    subname = sess.sessinfo.session.sessionName
+    ax = fig.add_subplot(gs[sub])
+    ax.plot(edges[:-1], histlfp)
+    ax.set_title(subname)
+# endregion
+
 
 # %%
