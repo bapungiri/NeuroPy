@@ -317,6 +317,36 @@ def fftnormalized(signal, fs=1250):
     return pxx, freq
 
 
+def bicoherence(signal, flow=2, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250):
+
+    f, t, sxx = sg.spectrogram(
+        signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
+    )
+
+    freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
+
+    bispec = np.zeros((len(freq_req), len(freq_req)))
+    for row, freq1 in enumerate(freq_req):
+        for col, freq2 in enumerate(freq_req):
+            f1_ind = np.where(f == freq1)[0]
+            f2_ind = np.where(f == freq2)[0]
+            f1f2_ind = np.where(f == (freq1 + freq2))[0]
+
+            numer = np.mean(sxx[f1_ind, :] * sxx[f2_ind, :] * np.conj(sxx[f1f2_ind, :]))
+            denom_left = np.mean(np.abs(sxx[f1_ind, :] * sxx[f2_ind, :]) ** 2)
+            denom_right = np.mean(np.abs(sxx[f1f2_ind, :]) ** 2)
+            bispec_here = numer / np.sqrt(denom_left * denom_right)
+
+            bispec[row, col] = np.abs(bispec_here) ** 2
+
+    bispec = np.triu(bispec, k=0)
+    bispec = np.fliplr(bispec)
+    bispec = np.triu(bispec, k=0)
+    bispec = np.fliplr(bispec)
+
+    return bispec, freq_req
+
+
 class Morlet(object):
     """Implements the Morlet wavelet class.
     Note that the input parameters f and f0 are angular frequencies.
