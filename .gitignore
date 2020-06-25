@@ -45,6 +45,6 @@ nodeLanguageServer/**
 nodeLanguageServer.*/**
 ModulesPath/__pycache__
 .ipynb_checkpoints
-
+*.pdf
 *.evt
 oscillations/.ipynb_checkpoints/theta_periods-checkpoint.ipynb
