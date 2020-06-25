@@ -319,32 +319,34 @@ def fftnormalized(signal, fs=1250):
 
 def bicoherence(signal, flow=2, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250):
 
+    """Generate bicoherence plot for signal
+
+    Returns:
+        bicoher: fxf plot
+
+    References:
+    -----------------------
+    1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
+    """
     f, t, sxx = sg.spectrogram(
         signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
     )
 
     freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
+    freq_ind = np.where((f > flow) & (f < fhigh))[0]
+    bispec = np.zeros((len(freq_ind), len(freq_ind)), dtype=complex)
+    for row, f_ind in enumerate(freq_ind):
+        numer = np.mean(
+            sxx[f_ind, :] * sxx[freq_ind, :] * np.conj(sxx[freq_ind + f_ind, :]), axis=1
+        )
+        denom_left = np.mean(np.abs(sxx[f_ind, :] * sxx[freq_ind, :]) ** 2, axis=1)
+        denom_right = np.mean(np.abs(sxx[freq_ind + f_ind, :]) ** 2, axis=1)
+        bispec[row, :] = numer / np.sqrt(denom_left * denom_right)
 
-    bispec = np.zeros((len(freq_req), len(freq_req)))
-    for row, freq1 in enumerate(freq_req):
-        for col, freq2 in enumerate(freq_req):
-            f1_ind = np.where(f == freq1)[0]
-            f2_ind = np.where(f == freq2)[0]
-            f1f2_ind = np.where(f == (freq1 + freq2))[0]
+    bicoher = np.abs(bispec) ** 2
+    bicoher = np.fliplr(np.triu(np.fliplr(np.triu(bicoher, k=0)), k=0))
 
-            numer = np.mean(sxx[f1_ind, :] * sxx[f2_ind, :] * np.conj(sxx[f1f2_ind, :]))
-            denom_left = np.mean(np.abs(sxx[f1_ind, :] * sxx[f2_ind, :]) ** 2)
-            denom_right = np.mean(np.abs(sxx[f1f2_ind, :]) ** 2)
-            bispec_here = numer / np.sqrt(denom_left * denom_right)
-
-            bispec[row, col] = np.abs(bispec_here) ** 2
-
-    bispec = np.triu(bispec, k=0)
-    bispec = np.fliplr(bispec)
-    bispec = np.triu(bispec, k=0)
-    bispec = np.fliplr(bispec)
-
-    return bispec, freq_req
+    return bicoher, freq_req
 
 
 class Morlet(object):
