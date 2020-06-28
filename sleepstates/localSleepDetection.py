@@ -7,10 +7,12 @@ import scipy.signal as sg
 import matplotlib.gridspec as gridspec
 import seaborn as sns
 import matplotlib as mpl
-from scipy.ndimage import gaussian_filter1d
+import scipy.ndimage as smooth
+import signal_process
 
 from callfunc import processData
 
+#%% Subjects
 basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     "/data/Clustering/SleepDeprivation/RatK/Day1/",
@@ -246,3 +248,80 @@ for sub, sess in enumerate(sessions):
 ax.set_xlim([0, 3])
 ax.set_xlabel("Duration (s)")
 # endregion
+
+
+#%% localsleep and ripples around it
+# region
+plt.clf()
+fig = plt.figure(num=1, figsize=(10, 15))
+gs = gridspec.GridSpec(1, 1, figure=fig)
+fig.subplots_adjust(hspace=0.5)
+
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    locsleep = sess.localsleep.events
+    ripples = sess.ripple.time
+
+    tbin = lambda t: np.linspace(t - 1, t, 20)
+    ripples_counts = np.asarray(
+        [np.histogram(ripples[:, 0], bins=tbin(event))[0] for event in locsleep.start]
+    )
+
+    total_ripples = np.sum(ripples_counts, axis=0)
+    ripple_density = total_ripples / np.sum(total_ripples)
+
+    subname = sess.sessinfo.session.sessionName
+    ax = fig.add_subplot(gs[0])
+    ax.plot(ripple_density, label=subname)
+    ax.set_xlabel("")
+# endregion
+
+#%% Spectrogram around localsleep
+# region
+plt.clf()
+fig = plt.figure(num=1, figsize=(10, 15))
+gs = gridspec.GridSpec(3, 1, figure=fig)
+fig.subplots_adjust(hspace=0.2)
+
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    locslp = sess.localsleep.events
+    lfp, chan, _ = sess.spindle.best_chan_lfp()
+    print(chan)
+    t = np.linspace(0, len(lfp) / eegSrate, len(lfp))
+
+    lfp_locslp_ind = []
+    for evt in locslp.itertuples():
+        lfp_locslp_ind.extend(
+            np.arange(
+                int((evt.start - 0.1) * eegSrate), int((evt.start + 0.1) * eegSrate)
+            )
+        )
+    lfp_locslp_ind = np.asarray(lfp_locslp_ind)
+    lfp_locslp = lfp[lfp_locslp_ind]
+    lfp_locslp_avg = np.reshape(lfp_locslp, (len(locslp), 250)).mean(axis=0)
+    t_locslp = np.linspace(0, len(lfp_locslp) / eegSrate, len(lfp_locslp))
+
+    freqs = np.arange(20, 100, 0.5)
+    wavdec = signal_process.wavelet_decomp(lfp_locslp, freqs=freqs)
+    # wav = wavdec.cohen(ncycles=ncycles)
+    wav = wavdec.colgin2009()
+    wav = (
+        stats.zscore(wav, axis=1).reshape((wav.shape[0], 250, len(locslp))).mean(axis=2)
+    )
+    wav = smooth.gaussian_filter(wav, sigma=2)
+
+    ax = fig.add_subplot(gs[sub])
+    ax.pcolorfast(np.linspace(-100, 100, 250), freqs, wav, cmap="jet")
+    ax2 = ax.twinx()
+    ax2.plot(np.linspace(-100, 100, 250), lfp_locslp_avg, color="white")
+
+    ax.set_xlabel("Time from start of localsleep periods (ms)")
+    ax.set_ylabel("Frequency (Hz)")
+
+
+# endregion
+
