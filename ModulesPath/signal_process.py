@@ -319,10 +319,11 @@ def fftnormalized(signal, fs=1250):
 
 def bicoherence(signal, flow=2, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250):
 
-    """Generate bicoherence plot for signal
+    """Generate bicoherence triangular matrix for signal
 
     Returns:
-        bicoher: fxf plot
+        bicoher (freq_req x freq_req, array): bicoherence matrix
+        freq_req {array}: frequencies at which bicoherence was calculated
 
     References:
     -----------------------
