@@ -20,6 +20,7 @@ from pfPlot import pf
 from decoders import DecodeBehav
 from spkEvent import LocalSleep
 from viewerData import SessView
+from sessionUtil import SessionUtil
 
 
 class processData:
@@ -34,6 +35,7 @@ class processData:
         self.epochs = behavior_epochs(self)
         self.artifact = findartifact(self)
         self.makePrmPrb = makePrmPrb(self)
+        self.utils = SessionUtil(self)
         self._trange = None
 
     @property

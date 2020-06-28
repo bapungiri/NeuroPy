@@ -97,32 +97,3 @@ class recinfo:
 
         return [xcoord, ycoord]
 
-    def geteeg(self, channels, timeRange):
-        """Returns eeg signal for given channels and timeperiod
-
-        Args:
-            channels (list): list of channels required index should in order of binary file
-            timeRange (list, optional): In seconds and must have length 2.
-
-        Returns:
-            eeg: [array of channels x timepoints]
-        """
-        eegfile = self._obj.sessinfo.recfiles.eegfile
-        eegSrate = self.lfpSrate
-        nChans = self.nChans
-
-        assert len(timeRange) == 2
-
-        frameStart = int(timeRange[0] * eegSrate)
-        frameEnd = int(timeRange[1] * eegSrate)
-
-        eeg = np.memmap(
-            eegfile,
-            dtype="int16",
-            offset=2 * frameStart * nChans,
-            shape=((frameEnd - frameStart), nChans),
-        )
-
-        eeg = np.asarray(eeg[:, channels].T)
-
-        return eeg
