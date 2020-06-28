@@ -6,6 +6,9 @@ import warnings
 
 warnings.simplefilter(action="default")
 
+
+#%%bicoh test
+# region
 # Number of samplepoints
 N = 60000
 # sample spacing
@@ -80,6 +83,31 @@ bispec = np.fliplr(bispec)
 # bispec = np.flipud(bispec)
 
 plt.pcolormesh(freq_req, freq_req, bispec, cmap="jet", vmax=0.7)
-# fig, ax = plt.subplots()
-# ax.plot(xf, 2.0 / N * np.abs(yf[: N // 2]))
-# plt.show()
+fig, ax = plt.subplots()
+ax.plot(xf, 2.0 / N * np.abs(yf[: N // 2]))
+plt.show()
+# endregion
+
+#%% spectral whitening test
+# region
+
+# Number of samplepoints
+N = 60000
+# sample spacing
+T = 1.0 / 1250.0
+x = np.linspace(0.0, N * T, N)
+y = (
+    np.sin(10.0 * 2.0 * np.pi * x)
+    + 0.8 * np.sin(20.0 * 2.0 * np.pi * x)
+    # + 0.4 * np.sin(20.0 * 2.0 * np.pi * x)
+    # + sg.sawtooth(2 * 8 * np.pi * x)[::-1]
+    + 0.2 * np.random.randn(len(x))
+)
+
+
+yf = scipy.fftpack.fft(y)
+xf = np.linspace(0.0, 1.0 / (2.0 * T), int(N / 2))
+
+spec_amp = np.sqrt(np.abs(np.multiply(yf, np.conjugate(yf))))
+yf /= spec_amp
+y_whiten = np.real(scipy.fftpack.ifft(yf))[: len(y)]
