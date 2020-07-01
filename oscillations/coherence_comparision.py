@@ -70,15 +70,15 @@ for sub, sess in enumerate(sessions):
     sampfreq = sess.recinfo.lfpSrate
     channels = sess.recinfo.channels
     badchans = sess.recinfo.badchans
-    goodchans = np.setdiff1d(channels, badchans)
+    goodchans = np.setdiff1d(channels, badchans, assume_unique=True)
     firstchan = goodchans[0]
     lastchan = goodchans[-1]
 
     firsthr_time = [post[0], post[0] + 3600]
     fifthhr_time = [post[0] + 4 * 3600, post[0] + 5 * 3600]
 
-    eeg1sthr = sess.recinfo.geteeg([firstchan, lastchan], firsthr_time)
-    eeg5thhr = sess.recinfo.geteeg([firstchan, lastchan], fifthhr_time)
+    eeg1sthr = sess.utils.geteeg([firstchan, lastchan], firsthr_time)
+    eeg5thhr = sess.utils.geteeg([firstchan, lastchan], fifthhr_time)
 
     freq1, cxx1st = sg.coherence(
         eeg1sthr[0, :], eeg1sthr[1, :], fs=sampfreq, nperseg=10 * sampfreq
