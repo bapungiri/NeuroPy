@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 import scipy.signal as sg
+from scipy.ndimage import gaussian_filter
 import seaborn as sns
 import matplotlib
 from collections import namedtuple
@@ -21,7 +22,7 @@ base_freq = 8  # in Hz
 N = 60000
 beta = 1  # the exponent
 samples = N  # number of samples to generate
-y_noise = 0.3 * cn.powerlaw_psd_gaussian(beta, samples)
+y_noise = 0.2 * cn.powerlaw_psd_gaussian(beta, samples)
 # y_noise = 0.2 * np.random.randn(len(x))
 
 # sample spacing
@@ -30,12 +31,12 @@ x = np.linspace(0.0, N * T, N)
 y1 = np.sin(base_freq * 2.0 * np.pi * x) + y_noise
 y2 = (
     np.sin(base_freq * 2.0 * np.pi * x)
-    + 0.8 * np.sin(2 * base_freq * 2.0 * np.pi * x)
+    + 0.6 * np.sin(2 * base_freq * 2.0 * np.pi * x)
     + y_noise
 )
 y3 = (
     np.sin(base_freq * 2.0 * np.pi * x)
-    + 0.8 * np.sin(2 * base_freq * 2.0 * np.pi * x)
+    + 0.6 * np.sin(2 * base_freq * 2.0 * np.pi * x)
     + 0.4 * np.sin(4 * base_freq * 2.0 * np.pi * x)
     + y_noise
 )
@@ -51,8 +52,9 @@ fig.subplots_adjust(hspace=0.3)
 
 
 for i in range(len(y)):
-    bicoh, freq = signal_process.bicoherence(y[i], fhigh=60)
+    bicoh, freq, _ = signal_process.bicoherence(y[i], fhigh=60)
     f, pxx = sg.welch(y[i], fs=1250, nperseg=4 * 1250, noverlap=2 * 1250)
+    bicoh = gaussian_filter(bicoh, sigma=2)
 
     axsig = fig.add_subplot(gs[0, i])
     axsig.plot(y[i][:625], "#564d4d")
@@ -64,7 +66,7 @@ for i in range(len(y)):
     axpxx.set_yscale("log")
 
     axbcoh = fig.add_subplot(gs[2, i])
-    axbcoh.pcolormesh(freq, freq, bicoh, cmap="hot", vmax=0.7)
+    axbcoh.pcolormesh(freq, freq, bicoh, cmap="Spectral_r", vmin=-0.7, vmax=0.7)
     axbcoh.set_ylim([2, 30])
     axbcoh.set_xlabel("Frequency (Hz)")
     axbcoh.set_ylabel("Frequency (Hz)")
