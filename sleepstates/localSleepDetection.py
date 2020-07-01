@@ -256,6 +256,8 @@ plt.clf()
 fig = plt.figure(num=1, figsize=(10, 15))
 gs = gridspec.GridSpec(1, 1, figure=fig)
 fig.subplots_adjust(hspace=0.5)
+ax = fig.add_subplot(gs[0])
+colors = ["#ff928a", "#424242", "#3bceac"]
 
 for sub, sess in enumerate(sessions):
 
@@ -263,18 +265,47 @@ for sub, sess in enumerate(sessions):
     locsleep = sess.localsleep.events
     ripples = sess.ripple.time
 
-    tbin = lambda t: np.linspace(t - 1, t, 20)
-    ripples_counts = np.asarray(
-        [np.histogram(ripples[:, 0], bins=tbin(event))[0] for event in locsleep.start]
+    tbin_before = lambda t: np.linspace(t - 1, t, 20)
+    tbin_after = lambda t: np.linspace(t, t + 1, 20)
+    ripples_counts_before = np.asarray(
+        [
+            np.histogram(ripples[:, 0], bins=tbin_before(event))[0]
+            for event in locsleep.start
+        ]
+    )
+    ripples_counts_after = np.asarray(
+        [
+            np.histogram(ripples[:, 0], bins=tbin_after(event))[0]
+            for event in locsleep.end
+        ]
     )
 
-    total_ripples = np.sum(ripples_counts, axis=0)
-    ripple_density = total_ripples / np.sum(total_ripples)
+    total_ripples_before = np.sum(ripples_counts_before, axis=0)
+    total_ripples_after = np.sum(ripples_counts_after, axis=0)
+
+    combined = np.concatenate((total_ripples_before, total_ripples_after))
 
     subname = sess.sessinfo.session.sessionName
-    ax = fig.add_subplot(gs[0])
-    ax.plot(ripple_density, label=subname)
-    ax.set_xlabel("")
+    ax.plot(
+        np.linspace(-1, 0, 19),
+        total_ripples_before,
+        color=colors[sub],
+        label=subname,
+        lw=2,
+        alpha=0.8,
+    )
+    ax.plot(
+        np.linspace(0.5, 1.5, 19),
+        total_ripples_after,
+        color=colors[sub],
+        lw=2,
+        alpha=0.8,
+    )
+    ax.set_xlabel("Time from localsleep (s)")
+    ax.set_ylabel("# SWRs")
+ax.set_xticks([-1, -0.5, 0, 0.5, 1, 1.5])
+ax.set_xticklabels([-1, -0.5, "start", "end", 1, 1.5])
+ax.legend()
 # endregion
 
 #%% Spectrogram around localsleep
@@ -287,18 +318,20 @@ fig.subplots_adjust(hspace=0.2)
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    eegSrate = sess.recinfo.lfpSrate
     locslp = sess.localsleep.events
-    lfp, chan, _ = sess.spindle.best_chan_lfp()
-    print(chan)
+    eegSrate = sess.recinfo.lfpSrate
+    nShanks = sess.recinfo.nShanks
+    changrp = sess.recinfo.channelgroups[3]
+    lfp = np.asarray(sess.utils.geteeg(channels=changrp[-1]))
+
+    # lfp, chan, _ = sess.spindle.best_chan_lfp()
+    # print(chan)
     t = np.linspace(0, len(lfp) / eegSrate, len(lfp))
 
     lfp_locslp_ind = []
     for evt in locslp.itertuples():
         lfp_locslp_ind.extend(
-            np.arange(
-                int((evt.start - 0.1) * eegSrate), int((evt.start + 0.1) * eegSrate)
-            )
+            np.arange(int((evt.end - 0.1) * eegSrate), int((evt.end + 0.1) * eegSrate))
         )
     lfp_locslp_ind = np.asarray(lfp_locslp_ind)
     lfp_locslp = lfp[lfp_locslp_ind]
@@ -308,7 +341,7 @@ for sub, sess in enumerate(sessions):
     freqs = np.arange(20, 100, 0.5)
     wavdec = signal_process.wavelet_decomp(lfp_locslp, freqs=freqs)
     # wav = wavdec.cohen(ncycles=ncycles)
-    wav = wavdec.colgin2009()
+    wav = wavdec.cohen(ncycles=3)
     wav = (
         stats.zscore(wav, axis=1).reshape((wav.shape[0], 250, len(locslp))).mean(axis=2)
     )
@@ -318,9 +351,10 @@ for sub, sess in enumerate(sessions):
     ax.pcolorfast(np.linspace(-100, 100, 250), freqs, wav, cmap="jet")
     ax2 = ax.twinx()
     ax2.plot(np.linspace(-100, 100, 250), lfp_locslp_avg, color="white")
-
+    ax.spines["right"].set_visible(True)
     ax.set_xlabel("Time from start of localsleep periods (ms)")
     ax.set_ylabel("Frequency (Hz)")
+    ax.set_xlim([-100, 100])
 
 
 # endregion
