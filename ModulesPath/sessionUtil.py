@@ -22,7 +22,7 @@ class SessionUtil:
     def __init__(self, obj):
         self._obj = obj
 
-    def geteeg(self, channels, timeRange):
+    def geteeg(self, channels, timeRange=None):
         """Returns eeg signal for given channels and timeperiod
 
         Args:
@@ -36,23 +36,31 @@ class SessionUtil:
         eegSrate = self._obj.recinfo.lfpSrate
         nChans = self._obj.recinfo.nChans
 
-        assert len(timeRange) == 2
+        if timeRange is None:
+            eeg = np.memmap(eegfile, dtype="int16", mode="r")
+            eeg = np.memmap.reshape(eeg, (int(len(eeg) / nChans), nChans))
+            eeg = eeg[:, channels].T
 
-        frameStart = int(timeRange[0] * eegSrate)
-        frameEnd = int(timeRange[1] * eegSrate)
+        else:
 
-        eeg = np.memmap(
-            eegfile,
-            dtype="int16",
-            offset=2 * frameStart * nChans,
-            shape=((frameEnd - frameStart), nChans),
-        )
+            assert len(timeRange) == 2
 
-        eeg = np.asarray(eeg[:, channels].T)
+            frameStart = int(timeRange[0] * eegSrate)
+            frameEnd = int(timeRange[1] * eegSrate)
+
+            eeg = np.memmap(
+                eegfile,
+                dtype="int16",
+                offset=2 * frameStart * nChans,
+                shape=((frameEnd - frameStart), nChans),
+                mode="r",
+            )
+
+            eeg = np.asarray(eeg[:, channels].T)
 
         return eeg
 
-    def plotChanPos(self, chans=None, ax=None):
+    def plotChanPos(self, chans=None, ax=None, colors=None):
 
         nShanks = self._obj.recinfo.nShanks
         channelgrp = self._obj.recinfo.channelgroups[:nShanks]
@@ -72,6 +80,9 @@ class SessionUtil:
             fig.subplots_adjust(hspace=0.3)
             ax = fig.add_subplot(gs[0])
 
-        ax.plot(xpos, ypos, ".")
-        ax.plot(xpos[chan_rank], ypos[chan_rank], "r.")
+        ax.plot(xpos, ypos, ".", color="gray", zorder=1)
+        if colors is None:
+            ax.plot(xpos[chan_rank], ypos[chan_rank], "r.")
+        else:
+            ax.scatter(xpos[chan_rank], ypos[chan_rank], c=colors, s=40, zorder=2)
 
