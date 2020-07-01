@@ -8,7 +8,6 @@ import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
 import matplotlib.gridspec as gridspec
-from matplotlib.widgets import Button, RadioButtons, Slider
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 import ipywidgets as widgets
 import random
@@ -23,7 +22,7 @@ warnings.simplefilter(action="default")
 #%% ====== functions needed for some computation ============
 # region
 def doWavelet(lfp, freqs, ncycles=3):
-    wavdec = wavelet_decomp(lfp, freqs=freqs)
+    wavdec = signal_process.wavelet_decomp(lfp, freqs=freqs)
     # wav = wavdec.cohen(ncycles=ncycles)
     wav = wavdec.colgin2009()
 
@@ -68,9 +67,9 @@ def getPxx(lfp):
 
 #%% Subjects to choose from
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
@@ -199,7 +198,7 @@ for sub, sess in enumerate(sessions):
     # wavgamma = doWavelet(lfpmaze, freqs=frgamma, ncycles=7)
 
     frtheta = np.arange(5, 12, 0.5)
-    wavdec = wavelet_decomp(lfpmaze, freqs=frtheta)
+    wavdec = signal_process.wavelet_decomp(lfpmaze, freqs=frtheta)
     wav = wavdec.cohen(ncycles=7)
     # wavtheta = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
 
@@ -299,7 +298,7 @@ for sub, sess in enumerate(sessions):
     speed = gaussian_filter1d(speed, sigma=10)
 
     frtheta = np.arange(5, 12, 0.5)
-    wavdec = wavelet_decomp(lfpmaze, freqs=frtheta)
+    wavdec = signal_process.wavelet_decomp(lfpmaze, freqs=frtheta)
     wav = wavdec.cohen()
     # frgamma = np.arange(25, 50, 1)
     # wavdec = wavelet_decomp(lfpmaze, freqs=frgamma)
@@ -323,13 +322,15 @@ for sub, sess in enumerate(sessions):
     non_theta = np.delete(lfpmaze, theta_indices)
     frgamma = np.arange(25, 150, 1)
     # frgamma = np.linspace(25, 150, 1)
-    wavdec = wavelet_decomp(strong_theta, freqs=frgamma)
+    wavdec = signal_process.wavelet_decomp(strong_theta, freqs=frgamma)
     wav = wavdec.colgin2009()
     # wav = wavdec.cohen(ncycles=7)
     wav = stats.zscore(wav)
 
-    theta_filter = stats.zscore(filter_sig.filter_cust(strong_theta, lf=4, hf=11))
-    hil_theta = hilbertfast(theta_filter)
+    theta_filter = stats.zscore(
+        signal_process.filter_sig.filter_cust(strong_theta, lf=4, hf=11)
+    )
+    hil_theta = signal_process.hilbertfast(theta_filter)
 
     theta_amp = np.abs(hil_theta)
     theta_angle = np.angle(hil_theta, deg=True) + 180
@@ -406,7 +407,7 @@ for sub, sess in enumerate(sessions):
     speed = gaussian_filter1d(speed, sigma=10)
 
     frtheta = np.arange(5, 12, 0.5)
-    wavdec = wavelet_decomp(lfpmaze, freqs=frtheta)
+    wavdec = signal_process.wavelet_decomp(lfpmaze, freqs=frtheta)
     wav = wavdec.cohen(ncycles=7)
     # wavtheta = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
 
@@ -421,13 +422,16 @@ for sub, sess in enumerate(sessions):
         strong_theta.extend(lfpmaze[beg:end])
     strong_theta = np.asarray(strong_theta)
 
-    frgamma = np.arange(25, 50, 1)
-    wavdec = wavelet_decomp(strong_theta, freqs=frgamma)
+    frgamma = np.arange(25, 150, 1)
+    wavdec = signal_process.wavelet_decomp(strong_theta, freqs=frgamma)
     wav = wavdec.colgin2009()
+    wav = stats.zscore(wav, axis=1)
     # wav = wavdec.colgin2009(ncycles=3)
 
-    theta_filter = stats.zscore(filter_sig.filter_cust(strong_theta, lf=5, hf=11))
-    hil_theta = hilbertfast(theta_filter)
+    theta_filter = stats.zscore(
+        signal_process.filter_sig.filter_cust(strong_theta, lf=5, hf=11)
+    )
+    hil_theta = signal_process.hilbertfast(theta_filter)
     theta_amp = np.abs(hil_theta)
     theta_angle = np.angle(hil_theta, deg=True) + 180
 
@@ -1019,9 +1023,12 @@ for sub, sess in enumerate(sessions):
 # region
 plt.clf()
 fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(5, 1, figure=fig)
+gs = gridspec.GridSpec(1, 1, figure=fig)
 fig.subplots_adjust(hspace=0.3)
-cmap = mpl.cm.get_cmap("hot_r")
+ax = fig.add_subplot(gs[0])
+axins = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
+
+cmap = mpl.cm.get_cmap("Set2")
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
@@ -1071,18 +1078,333 @@ for sub, sess in enumerate(sessions):
     for phase in range(1, len(angle_bin)):
         strong_theta_atphase = strong_theta[np.where(bin_ind == phase)[0]]
 
-        ax = fig.add_subplot(gs[phase - 1])
+        # ax = fig.add_subplot(gs[phase - 1])
         f, t, sxx = sg.spectrogram(
             strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250
         )
-        ax.pcolorfast(t, f, stats.zscore(sxx, axis=1), cmap="YlGn")
-        ax.set_ylabel("Frequency (Hz)")
-        ax.set_xlabel("Time (s)")
+        # ax.pcolorfast(t, f, stats.zscore(sxx, axis=1), cmap="YlGn")
+        ax.plot(
+            f,
+            np.mean(sxx, axis=1),
+            color=cmap(phase),
+            label=f"{int(angle_bin[phase-1])}-{int(angle_bin[phase])}",
+        )
+        ax.set_xlabel("Frequency (Hz)")
+        ax.set_ylabel("Mean amplitude across time")
         # plt.pcolormesh(bispec_freq, bispec_freq, bispec, vmin=0, vmax=0.1, cmap="YlGn")
-        ax.set_ylim([1, 75])
+        ax.set_xlim([2, 100])
+
+        axins.plot(
+            [angle_bin[phase - 1], angle_bin[phase]], [1, 1], color=cmap(phase), lw=2
+        )
+
+    axins.axis("off")
+    ax.legend(title="Theta Phase")
+    ax.set_title("Mean power spectrum by breaking down theta signal by phase")
 
 
-fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
+# fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
 
 
 # endregion
+
+
+#%% Theta periods and velocity power spectrum with channels at different depths
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(2, 3, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+colors = ["red", "purple", "blue", "green", "k", "orange"]
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    nShanks = sess.recinfo.nShanks
+    changrp = sess.recinfo.channelgroups[7]
+
+    posx = sess.position.x
+    posy = sess.position.y
+    post = sess.position.t
+    maze = sess.epochs.maze
+
+    lfp = sess.utils.geteeg(channels=changrp[::3])
+    # lfp, _, _ = sess.ripple.best_chan_lfp()
+    # lfp = lfp[0, :]
+    t = np.linspace(0, lfp.shape[1] / eegSrate, lfp.shape[1])
+
+    tstart = maze[0]
+    tend = maze[1]
+
+    # lfpmaze = lfp[(t > tstart) & (t < tend)]
+    # tmaze = np.linspace(tstart, tend, len(lfpmaze))
+    posmazex = posx[(post > tstart) & (post < tend)]
+    posmazey = posy[(post > tstart) & (post < tend)]
+    postmaze = np.linspace(tstart, tend, len(posmazex))
+    speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2) / np.diff(postmaze)
+    speed = gaussian_filter1d(speed, sigma=10)
+
+    mean_speed = stats.binned_statistic(
+        postmaze[:-1], speed, statistic="mean", bins=np.arange(tstart, tend, 1)
+    )
+
+    nQuantiles = 8
+    quantiles = pd.qcut(mean_speed.statistic, nQuantiles, labels=False)
+
+    alpha_val = np.linspace(0.3, 1, nQuantiles)
+    for quantile in range(nQuantiles):
+        indx = np.where(quantiles == quantile)[0]
+        timepoints = mean_speed.bin_edges[indx]
+        lfp_ind = np.concatenate(
+            [
+                np.arange(int(tstart * 1250), int((tstart + 1) * 1250))
+                for tstart in timepoints
+            ]
+        )
+        lfp_quantile = lfp[:, lfp_ind]
+        f, pxx = sg.welch(
+            lfp_quantile, fs=1250, nperseg=2 * 1250, noverlap=1250, axis=1
+        )
+
+        for i in range(6):
+            ax = fig.add_subplot(gs[i])
+            ax.plot(f, np.log10(pxx[i, :]), color=colors[i], alpha=alpha_val[quantile])
+            ax.set_xscale("log")
+            # ax.set_yscale("log")
+            ax.set_xlim([1, 150])
+            ax.set_ylim([2, 6])
+# endregion
+
+#%% Selecting channel which shows most theta gamma power at high speed
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(2, 3, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    nShanks = sess.recinfo.nShanks
+    changrp = sess.recinfo.channelgroups[:nShanks]
+    badchans = sess.recinfo.badchans
+    goodchans = np.setdiff1d(np.concatenate(changrp), badchans, assume_unique=True)
+
+    posx = sess.position.x
+    posy = sess.position.y
+    post = sess.position.t
+    maze = sess.epochs.maze
+
+    tstart = maze[0]
+    tend = maze[1]
+
+    # lfpmaze = lfp[(t > tstart) & (t < tend)]
+    # tmaze = np.linspace(tstart, tend, len(lfpmaze))
+    posmazex = posx[(post > tstart) & (post < tend)]
+    posmazey = posy[(post > tstart) & (post < tend)]
+    postmaze = np.linspace(tstart, tend, len(posmazex))
+    speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2) / np.diff(postmaze)
+    speed = gaussian_filter1d(speed, sigma=10)
+
+    mean_speed = stats.binned_statistic(
+        postmaze[:-1], speed, statistic="mean", bins=np.arange(tstart, tend, 1)
+    )
+
+    nQuantiles = 4
+    quantiles = pd.qcut(mean_speed.statistic, nQuantiles, labels=False)
+
+    indx = np.where(quantiles == 3)[0]
+    timepoints = mean_speed.bin_edges[indx]
+    lfp_ind = np.concatenate(
+        [
+            np.arange(int(tstart * 1250), int((tstart + 1) * 1250))
+            for tstart in timepoints
+        ]
+    )
+
+    auc = []
+    for chan in goodchans:
+        lfp = sess.utils.geteeg(channels=chan)
+        lfp_quantile = lfp[lfp_ind]
+        f, pxx = sg.welch(lfp_quantile, fs=1250, nperseg=2 * 1250, noverlap=1250)
+        f_theta = np.where((f > 20) & (f < 100))[0]
+        area_chan = np.trapz(y=pxx[f_theta], x=f[f_theta])
+        auc.append(area_chan)
+
+    # for i in range(len(goodchans)):
+    #     ax.plot(f, pxx[i, :])
+
+
+# endregion
+
+#%% Bicoherence for selected channel at varying speeds
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(2, 4, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    nShanks = sess.recinfo.nShanks
+    changrp = sess.recinfo.channelgroups[7]
+
+    posx = sess.position.x
+    posy = sess.position.y
+    post = sess.position.t
+    maze = sess.epochs.maze
+
+    lfp = np.asarray(sess.utils.geteeg(channels=125))
+    # lfp, _, _ = sess.ripple.best_chan_lfp()
+    # lfp = lfp[0, :]
+    t = np.linspace(0, len(lfp) / eegSrate, len(lfp))
+
+    tstart = maze[0]
+    tend = maze[1]
+
+    # lfpmaze = lfp[(t > tstart) & (t < tend)]
+    # tmaze = np.linspace(tstart, tend, len(lfpmaze))
+    posmazex = posx[(post > tstart) & (post < tend)]
+    posmazey = posy[(post > tstart) & (post < tend)]
+    postmaze = np.linspace(tstart, tend, len(posmazex))
+    speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2) / np.diff(postmaze)
+    speed = gaussian_filter1d(speed, sigma=10)
+
+    mean_speed = stats.binned_statistic(
+        postmaze[:-1], speed, statistic="mean", bins=np.arange(tstart, tend, 1)
+    )
+
+    nQuantiles = 8
+    quantiles = pd.qcut(mean_speed.statistic, nQuantiles, labels=False)
+
+    for quant, quantile in enumerate([1, 7]):
+        indx = np.where(quantiles == quantile)[0]
+        timepoints = mean_speed.bin_edges[indx]
+        lfp_ind = np.concatenate(
+            [
+                np.arange(int(tstart * 1250), int((tstart + 1) * 1250))
+                for tstart in timepoints
+            ]
+        )
+        lfp_quantile = lfp[lfp_ind]
+        bicoh, freq, bispec = signal_process.bicoherence(lfp_quantile, fhigh=90)
+        # f, pxx = sg.welch(lfp_quantile, fs=1250, nperseg=2 * 1250, noverlap=1250)
+
+        bicoh = gaussian_filter(np.sqrt(bicoh), sigma=2)
+        bicoh = np.where(bicoh > 0.05, bicoh, 0)
+        bispec_real = gaussian_filter(np.real(bispec), sigma=2)
+        bispec_imag = gaussian_filter(np.imag(bispec), sigma=2)
+        bispec_angle = gaussian_filter(np.angle(bispec, deg=True), sigma=2)
+
+        ax = fig.add_subplot(gs[quant, 0])
+        im = ax.pcolorfast(freq, freq, bicoh, cmap="Spectral_r", vmax=0.3, vmin=-0.3)
+        ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
+        ax.set_ylim([1, max(freq) / 2])
+
+        ax = fig.add_subplot(gs[quant, 1])
+        ax.pcolorfast(freq, freq, bispec_real, cmap="Spectral_r", vmax=0.3, vmin=-0.3)
+        ax.contour(
+            freq, freq, bispec_real, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1
+        )
+        ax.set_ylim([1, max(freq) / 2])
+
+        ax = fig.add_subplot(gs[quant, 2])
+        ax.pcolorfast(freq, freq, bispec_imag, cmap="Spectral_r", vmax=0.3, vmin=-0.3)
+        ax.contour(
+            freq,
+            freq,
+            bispec_imag,
+            levels=[-0.3, -0.2, -0.1],
+            colors="k",
+            linewidths=1,
+        )
+        ax.set_ylim([1, max(freq) / 2])
+
+        ax = fig.add_subplot(gs[quant, 3])
+        ang = ax.pcolorfast(freq, freq, bispec_angle, cmap="bwr", vmax=180, vmin=-180)
+        ax.set_ylim([1, max(freq) / 2])
+    cax = plt.axes([0.05, 0.88, 0.3, 0.2])
+    fig.colorbar(im, ax=cax, orientation="horizontal")
+    cax.axis("off")
+
+    cax = plt.axes([0.65, 0.88, 0.3, 0.2])
+    fig.colorbar(ang, ax=cax, orientation="horizontal")
+    cax.axis("off")
+
+# endregion
+
+#%% Power-Power correlation
+# region
+
+
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(2, 3, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+colors = ["red", "purple", "blue", "green", "k", "orange"]
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    nShanks = sess.recinfo.nShanks
+    changrp = sess.recinfo.channelgroups[7]
+
+    posx = sess.position.x
+    posy = sess.position.y
+    post = sess.position.t
+    maze = sess.epochs.maze
+
+    lfp = sess.utils.geteeg(channels=changrp[::3])
+    # lfp, _, _ = sess.ripple.best_chan_lfp()
+    # lfp = lfp[0, :]
+    t = np.linspace(0, lfp.shape[1] / eegSrate, lfp.shape[1])
+
+    tstart = maze[0]
+    tend = maze[1]
+
+    # lfpmaze = lfp[(t > tstart) & (t < tend)]
+    # tmaze = np.linspace(tstart, tend, len(lfpmaze))
+    posmazex = posx[(post > tstart) & (post < tend)]
+    posmazey = posy[(post > tstart) & (post < tend)]
+    postmaze = np.linspace(tstart, tend, len(posmazex))
+    speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2) / np.diff(postmaze)
+    speed = gaussian_filter1d(speed, sigma=10)
+
+    mean_speed = stats.binned_statistic(
+        postmaze[:-1], speed, statistic="mean", bins=np.arange(tstart, tend, 1)
+    )
+
+    nQuantiles = 8
+    quantiles = pd.qcut(mean_speed.statistic, nQuantiles, labels=False)
+
+    alpha_val = np.linspace(0.3, 1, nQuantiles)
+    for quantile in [7]:
+        indx = np.where(quantiles == quantile)[0]
+        timepoints = mean_speed.bin_edges[indx]
+        lfp_ind = np.concatenate(
+            [
+                np.arange(int(tstart * 1250), int((tstart + 1) * 1250))
+                for tstart in timepoints
+            ]
+        )
+        lfp_quantile = lfp[:, lfp_ind]
+
+        for i in range(6):
+            f, t, sxx = sg.spectrogram(
+                lfp_quantile[i, :], fs=1250, nperseg=2 * 1250, noverlap=1250
+            )
+            corr_quantile = np.corrcoef(sxx)
+            f_req = np.where(f < 120)[0]
+            ax = fig.add_subplot(gs[i])
+            ax.pcolorfast(
+                f[f_req], f[f_req], corr_quantile[np.ix_(f_req, f_req)], vmax=0.3
+            )
+            # ax.set_xscale("log")
+            # # ax.set_yscale("log")
+            # ax.set_xlim([1, 150])
+            # ax.set_ylim([2, 6])
+# endregion
+
