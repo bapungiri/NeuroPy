@@ -317,7 +317,7 @@ def fftnormalized(signal, fs=1250):
     return pxx, freq
 
 
-def bicoherence(signal, flow=2, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250):
+def bicoherence(signal, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250):
 
     """Generate bicoherence triangular matrix for signal
 
@@ -346,8 +346,13 @@ def bicoherence(signal, flow=2, fhigh=150, fs=1250, window=4 * 1250, overlap=2 *
 
     bicoher = np.abs(bispec) ** 2
     bicoher = np.fliplr(np.triu(np.fliplr(np.triu(bicoher, k=0)), k=0))
+    bispec = np.fliplr(np.triu(np.fliplr(np.triu(bispec, k=0)), k=0))
 
-    return bicoher, freq_req
+    return bicoher, freq_req, bispec
+
+
+def phasePowerCorrelation(signal):
+    pass
 
 
 class Morlet(object):
