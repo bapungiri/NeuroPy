@@ -21,8 +21,7 @@ import warnings
 warnings.simplefilter(action="default")
 
 #%% ====== functions needed for some computation ============
-
-
+# region
 def doWavelet(lfp, freqs, ncycles=3):
     wavdec = wavelet_decomp(lfp, freqs=freqs)
     # wav = wavdec.cohen(ncycles=ncycles)
@@ -45,10 +44,12 @@ def getPxx(lfp):
     return Pxx, freq
 
 
+# endregion
+
 #%% Subjects to choose from
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
@@ -153,4 +154,54 @@ for sub, sess in enumerate(sessions):
 # endregion
 
 
-# %%
+# %% MUA from lfp (300-600 Hz) across time durung Sleep deprivation (chewing artifacts)
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(3, 1, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+fig.suptitle("Cross-coherence first hour vs last hour of SD furthest channels")
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    post = sess.epochs.post
+    eegSrate = sess.recinfo.lfpSrate
+    channels = sess.recinfo.channels
+    badchans = sess.recinfo.badchans
+    goodchans = np.setdiff1d(channels, badchans, assume_unique=True)
+    firstchan = goodchans[0]
+    lastchan = goodchans[-1]
+
+    sd_time = [post[0], post[0] + 5 * 3600]
+
+    eegSD = sess.utils.geteeg([firstchan, lastchan], sd_time)
+    eegMUA_SD = filter_sig.filter_cust(eegSD[0, :], lf=300, hf=600)
+
+    hilbert_MUA = hilbertfast(eegMUA_SD)
+    MUA_amp = gaussian_filter1d(stats.zscore(np.abs(hilbert_MUA)), sigma=3)
+
+    mua_events = threshPeriods(MUA_amp, lowthresh=2, highthresh=4, minDistance=50)
+    mua_events = (mua_events / eegSrate) + post[0]
+    sess.utils.export2Neuroscope(mua_events)
+
+    subname = sess.sessinfo.session.sessionName
+    ax = fig.add_subplot(gs[sub])
+    ax.plot(
+        np.linspace(sd_time[0], sd_time[1], len(MUA_amp)),
+        MUA_amp,
+        label="1st",
+        color="#545a6d",
+    )
+    ax.plot(mua_events[:, 0], 3 * np.ones(mua_events.shape[0]), "r.")
+    ax.plot(mua_events[:, 1], 3 * np.ones(mua_events.shape[0]), "g.")
+    ax.legend()
+    # ax.set_xscale("log")
+    ax.set_ylabel("Time (s)")
+    ax.set_xlabel("Zscore amplitude")
+    ax.set_title(subname)
+# endregion
+
+#%% MUA across all channels
+# region
+
+# endregion
+
