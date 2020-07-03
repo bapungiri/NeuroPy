@@ -39,6 +39,7 @@ class recinfo:
                     chan_group = []
                     for chan in z.findall("channel"):
                         chan_session.append(int(chan.text))
+
                         chan_group.append(int(chan.text))
                     channelgroups.append(chan_group)
 
