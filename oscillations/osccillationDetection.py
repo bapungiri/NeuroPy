@@ -62,3 +62,14 @@ for sub, sess in enumerate(sessions):
 
 # ax.set_xlim([-5, 10])
 # endregion
+
+#%% H-SWA
+# region
+plt.clf()
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+
+    sess.swa.detect()
+    sess.swa.plot()
+# endregion
