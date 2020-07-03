@@ -86,3 +86,11 @@ class SessionUtil:
         else:
             ax.scatter(xpos[chan_rank], ypos[chan_rank], c=colors, s=40, zorder=2)
 
+    def export2Neuroscope(self, times, suffix="evt"):
+        times = times * 1000  # convert to ms
+        file_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(
+            f".evt.{suffix}"
+        )
+        with file_neuroscope.open("w") as a:
+            for beg, stop in times:
+                a.write(f"{beg} start\n{stop} end\n")
