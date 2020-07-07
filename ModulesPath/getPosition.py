@@ -145,6 +145,9 @@ class ExtractPosition:
             self.y = posInfo["y"]  # in seconds
             self.t = posInfo["time"]  # in seconds
             self.datetime = posInfo["datetime"]  # in seconds
+            self.speed = np.sqrt(np.diff(self.x) ** 2 + np.diff(self.y) ** 2) / (
+                1 / self.tracking_sRate
+            )
 
         else:
             "Position file does not exist....did not load _position.npy"
@@ -241,9 +244,6 @@ class ExtractPosition:
 
         plt.clf()
         plt.plot(self.x, self.y)
-
-    def speed(self):
-        pass
 
     def export2Neuroscope(self):
 
