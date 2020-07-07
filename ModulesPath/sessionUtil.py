@@ -6,12 +6,13 @@ import scipy.stats as stats
 import scipy.signal as sg
 from pathlib import Path
 import matplotlib.gridspec as gridspec
-from signal_process import spectrogramBands
-from scipy.ndimage import gaussian_filter
+import signal_process
+from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from sklearn.preprocessing import normalize
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import matplotlib as mpl
+from mathutil import threshPeriods
 
 
 class SessionUtil:
@@ -22,11 +23,11 @@ class SessionUtil:
     def __init__(self, obj):
         self._obj = obj
 
-    def geteeg(self, channels, timeRange=None):
+    def geteeg(self, chans, timeRange=None):
         """Returns eeg signal for given channels and timeperiod
 
         Args:
-            channels (list): list of channels required index should in order of binary file
+            chans (list): list of channels required index should in order of binary file
             timeRange (list, optional): In seconds and must have length 2.
 
         Returns:
@@ -39,7 +40,7 @@ class SessionUtil:
         if timeRange is None:
             eeg = np.memmap(eegfile, dtype="int16", mode="r")
             eeg = np.memmap.reshape(eeg, (int(len(eeg) / nChans), nChans))
-            eeg = eeg[:, channels].T
+            eeg = eeg[:, chans].T
 
         else:
 
@@ -56,7 +57,7 @@ class SessionUtil:
                 mode="r",
             )
 
-            eeg = np.asarray(eeg[:, channels].T)
+            eeg = np.asarray(eeg[:, chans].T)
 
         return eeg
 
@@ -64,12 +65,10 @@ class SessionUtil:
 
         nShanks = self._obj.recinfo.nShanks
         channelgrp = self._obj.recinfo.channelgroups[:nShanks]
-        lfpchans = [chan for shank in channelgrp for chan in shank]
+        lfpchans = np.asarray([chan for shank in channelgrp for chan in shank])
 
         chans2plot = chans
-        chan_rank = [
-            order for order in range(len(lfpchans)) if lfpchans[order] in chans2plot
-        ]
+        chan_rank = np.where(np.isin(lfpchans, chans2plot))[0]
         xpos, ypos = self._obj.recinfo.probemap()
         xpos = np.asarray(xpos)
         ypos = np.asarray(ypos)
@@ -80,9 +79,9 @@ class SessionUtil:
             fig.subplots_adjust(hspace=0.3)
             ax = fig.add_subplot(gs[0])
 
-        ax.plot(xpos, ypos, ".", color="gray", zorder=1)
+        ax.scatter(xpos, ypos, s=4, color="gray", zorder=1)
         if colors is None:
-            ax.plot(xpos[chan_rank], ypos[chan_rank], "r.")
+            ax.scatter(xpos[chan_rank], ypos[chan_rank], c="red", s=20, zorder=2)
         else:
             ax.scatter(xpos[chan_rank], ypos[chan_rank], c=colors, s=40, zorder=2)
 
@@ -94,3 +93,42 @@ class SessionUtil:
         with file_neuroscope.open("w") as a:
             for beg, stop in times:
                 a.write(f"{beg} start\n{stop} end\n")
+
+    def strong_theta_lfp(self, chans, period):
+
+        assert len(period) == 2
+        tstart, tend = period
+
+        eegSrate = self._obj.recinfo.lfpSrate
+        lfp, _, _ = self._obj.spindle.best_chan_lfp()
+        t = np.linspace(0, len(lfp) / eegSrate, len(lfp))
+
+        lfpperiod = lfp[(t > tstart) & (t < tend)]
+        tperiod = np.linspace(tstart, tend, len(lfpperiod))
+
+        frtheta = np.arange(5, 12, 0.5)
+        wavdec = signal_process.wavelet_decomp(lfpperiod, freqs=frtheta)
+        wav = wavdec.cohen(ncycles=7)
+
+        sum_theta = gaussian_filter1d(np.sum(wav, axis=0), sigma=10)
+        zsc_theta = stats.zscore(sum_theta)
+        thetaevents = threshPeriods(
+            zsc_theta,
+            lowthresh=0,
+            highthresh=1.5,
+            minDistance=625,
+            minDuration=2 * 1250,
+        )
+        thetaevents = thetaevents / eegSrate + tstart
+
+        lfp_ind = np.concatenate(
+            [
+                np.arange(int(beg * eegSrate), int((end) * eegSrate))
+                for (beg, end) in thetaevents
+            ]
+        )
+
+        chanlfp = self.geteeg(chans=chans)
+        lfp_theta = chanlfp[:, lfp_ind]
+
+        return lfp_theta
