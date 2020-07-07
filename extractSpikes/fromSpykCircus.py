@@ -14,7 +14,9 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/"
+    # "/data/Clustering/SleepDeprivation/RatJ/Day4/"
     "/data/Clustering/SleepDeprivation/RatK/Day4/"
+    # "/data/Clustering/SleepDeprivation/RatN/Day4/"
 ]
 
 
@@ -25,8 +27,8 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
 
     sess.spikes.fromCircus(fileformat="same_folder")
-    sess.placefield.pf2d.compute()
-    sess.placefield.pf2d.plot()
+    # sess.placefield.pf2d.compute()
+    # sess.placefield.pf2d.plot()
 
 #     sess.spikes.stability.firingRate()
 

@@ -12,6 +12,7 @@ from sklearn.preprocessing import normalize
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import matplotlib as mpl
+import random
 
 
 def make_boxes(
@@ -43,7 +44,10 @@ class SessView:
         self._obj = obj
 
     def specgram(self, ax=None):
-        lfp, _, _ = self._obj.spindle.best_chan_lfp()
+        # lfp, _, _ = self._obj.spindle.best_chan_lfp()
+        goodchans = self._obj.recinfo.goodchans
+        specChan = random.choice(goodchans)
+        lfp = self._obj.utils.geteeg(channels=specChan)
         lfpSrate = self._obj.recinfo.lfpSrate
         spec = spectrogramBands(lfp, window=5 * lfpSrate)
         sxx = spec.sxx / np.max(spec.sxx)
@@ -59,6 +63,11 @@ class SessView:
         ax.set_xlim([np.min(spec.time), np.max(spec.time)])
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Frequency (Hz)")
+        ax.set_title(f"Spectrogram for {specChan} channel")
+
+        axins = ax.inset_axes([0, 0.6, 0.3, 0.2])
+        self._obj.utils.plotChanPos(chans=[specChan], ax=axins)
+        axins.axis("off")
 
     def epoch(self, ax=None):
         epochs = self._obj.epochs.times
@@ -90,7 +99,10 @@ class SessView:
         frate = [len(cell) / totalduration for cell in spikes]
 
         if ax is None:
-            ax = plt.subplots(1, 1)
+            fig = plt.figure(1, figsize=(6, 10))
+            gs = GridSpec(1, 1, figure=fig)
+            fig.subplots_adjust(hspace=0.4)
+            ax = fig.add_subplot(gs[0])
 
         if period is not None:
             period_duration = np.diff(period)

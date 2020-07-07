@@ -15,12 +15,12 @@ from waveletFunctions import wavelet
 class filter_sig:
     @staticmethod
     def filter_cust(
-        signal, sampleRate=1250, hf=None, lf=None, order=3, fs=1.0, axis=-1,
+        signal, sampleRate=1250, hf=None, lf=None, order=3, fs=1.0, ax=-1,
     ):
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(order, [lf / nyq, hf / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=axis)
+        yf = sg.filtfilt(b, a, signal, axis=ax)
 
         return yf
 
