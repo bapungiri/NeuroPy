@@ -111,12 +111,13 @@ class pf2d:
     def __init__(self, obj, **kwargs):
         self._obj = obj
 
-    def compute(self):
+    def compute(self, gridbin=10):
         spkAll = self._obj.spikes.times
         xcoord = self._obj.position.x
         ycoord = self._obj.position.y
         time = self._obj.position.t
         maze = self._obj.epochs.maze  # in seconds
+        trackingRate = self._obj.position.tracking_sRate
 
         ind_maze = np.where((time > maze[0]) & (time < maze[1]))
         x = xcoord[ind_maze]
@@ -127,8 +128,8 @@ class pf2d:
         # y = gaussian_filter1d(y, sigma=4)
         # t = gaussian_filter1d(t, sigma=4)
 
-        x_grid = np.arange(min(x), max(x), 3)
-        y_grid = np.arange(min(y), max(y), 3)
+        x_grid = np.arange(min(x), max(x), gridbin)
+        y_grid = np.arange(min(y), max(y), gridbin)
         x_, y_ = np.meshgrid(x_grid, y_grid)
 
         diff_posx = np.diff(x)
@@ -144,8 +145,8 @@ class pf2d:
 
         occupancy = np.histogram2d(x, y, bins=(x_grid, y_grid))[0]
         occupancy = occupancy
-        occupancy = occupancy / 120  # converting to seconds
-        occupancy = gaussian_filter(occupancy, sigma=7)
+        occupancy = occupancy / trackingRate  # converting to seconds
+        occupancy = gaussian_filter(occupancy, sigma=3)
 
         # spk_pfx, spk_pfy, spk_pft = [], [], []
         pf, spk_pos = [], []
@@ -157,11 +158,11 @@ class pf2d:
             spk_x = np.interp(spk_maze, t, x)
 
             spk_map = np.histogram2d(spk_x, spk_y, bins=(x_grid, y_grid))[0]
-            spk_map = gaussian_filter(spk_map / occupancy, sigma=5)
-            pf.append(spk_map)
+            spk_map = gaussian_filter(spk_map, sigma=3)
+            pf.append(spk_map / occupancy)
 
             # speed threshold
-            spd_ind = np.where(spk_speed > 2)
+            spd_ind = np.where(spk_speed > 0.5)
             spk_spd = spk_speed[spd_ind]
             spk_x = spk_x[spd_ind]
             spk_y = spk_y[spd_ind]
@@ -189,7 +190,7 @@ class pf2d:
 
         for cell, pfmap in enumerate(self.maps):
             ax1 = fig.add_subplot(gs[cell])
-            im = ax1.imshow(pfmap, cmap="hot", vmax=12, vmin=0)
+            im = ax1.imshow(pfmap, cmap="hot", vmin=0)
             # max_frate =
             ax1.axis("off")
             ax1.set_title(f"{round(np.nanmax(pfmap),2)} Hz")
