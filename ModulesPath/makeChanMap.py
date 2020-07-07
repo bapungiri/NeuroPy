@@ -23,6 +23,7 @@ class recinfo:
         self.lfpSrate = myinfo["lfpSrate"]
         self.channelgroups = myinfo["channelgroups"]
         self.badchans = myinfo["badchans"]
+        self.goodchans = np.setdiff1d(self.channels, self.badchans, assume_unique=True)
 
     def makerecinfo(self, badchans=None):
 
@@ -98,3 +99,10 @@ class recinfo:
 
         return [xcoord, ycoord]
 
+    @property
+    def getNframesDat(self):
+        nChans = self.nChans
+        datfile = self._obj.sessinfo.recfiles.datfile
+        data = np.memmap(datfile, dtype="int16", mode="r")
+
+        return len(data) / nChans
