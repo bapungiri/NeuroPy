@@ -10,6 +10,7 @@ from scipy import fftpack
 from scipy.fft import fft
 from lspopt import spectrogram_lspopt
 from waveletFunctions import wavelet
+import scipy.interpolate as interp
 
 
 class filter_sig:
@@ -99,52 +100,74 @@ def whiten(strain, interp_psd, dt):
 class spectrogramBands:
     lfp: Any
     sampfreq: float = 1250.0
-    window: int = 1250
-    overlap: int = int(window / 8)
-    smooth: int = 10
+    window: int = 1  # in seconds
+    overlap: int = window / 8  # in seconds
+    # smooth: int = None
 
     def __post_init__(self):
 
-        f, t, sxx = sg.spectrogram(
-            self.lfp, fs=self.sampfreq, nperseg=self.window, noverlap=self.overlap
-        )
+        window = int(self.window * self.sampfreq)
+        overlap = int(self.overlap * self.sampfreq)
+        # f, t, sxx = sg.spectrogram(
+        #     self.lfp, fs=self.sampfreq, nperseg=window, noverlap=overlap
+        # )
         # f, t, sxx = spectrogram_lspopt(
-        #     self.lfp, fs=self.sampfreq, nperseg=self.window, c_parameter=30
+        #     self.lfp,
+        #     fs=self.sampfreq,
+        #     nperseg=window,
+        #     noverlap=overlap,
+        #     c_parameter=20,
         # )
 
-        # sxx = stats.zscore(sxx, axis=None)
-        smooth = self.smooth
+        tapers = sg.windows.dpss(M=window, NW=5, Kmax=6)
 
-        delta_ind = np.where(((f > 0.5) & (f < 4)) | ((f > 12) & (f < 15)))[0]
-        # delta_ind = np.where(((f > 0.5) & (f < 16)))[0]
+        sxx_taper = []
+        for taper in tapers:
+            f, t, sxx = sg.spectrogram(
+                self.lfp, window=taper, fs=self.sampfreq, noverlap=overlap
+            )
+            sxx_taper.append(sxx)
+
+        sxx = np.dstack(sxx_taper).mean(axis=2)
+
+        delta_ind = np.where((f > 0.5) & (f < 4))[0]
         delta_sxx = np.mean(sxx[delta_ind, :], axis=0)
-        delta_smooth = filtSig.gaussian_filter1d(delta_sxx, smooth, axis=0)
+
+        deltaplus_ind = np.where(((f > 0.5) & (f < 4)) | ((f > 12) & (f < 15)))[0]
+        deltaplus_sxx = np.mean(sxx[deltaplus_ind, :], axis=0)
+        # delta_ind = np.where(((f > 0.5) & (f < 16)))[0]
+        # delta_smooth = filtSig.gaussian_filter1d(delta_sxx, smooth, axis=0)
 
         theta_ind = np.where((f > 6) & (f < 10))[0]
         theta_sxx = np.mean(sxx[theta_ind, :], axis=0)
-        theta_smooth = filtSig.gaussian_filter1d(theta_sxx, smooth, axis=0)
+        # theta_smooth = filtSig.gaussian_filter1d(theta_sxx, smooth, axis=0)
 
         spindle_ind = np.where((f > 10) & (f < 20))[0]
         spindle_sxx = np.mean(sxx[spindle_ind, :], axis=0)
-        spindle_smooth = filtSig.gaussian_filter1d(spindle_sxx, smooth, axis=0)
+        # spindle_smooth = filtSig.gaussian_filter1d(spindle_sxx, smooth, axis=0)
 
         gamma_ind = np.where((f > 30) & (f < 90))[0]
         gamma_sxx = np.mean(sxx[gamma_ind, :], axis=0)
-        gamma_smooth = filtSig.gaussian_filter1d(gamma_sxx, smooth, axis=0)
+        # gamma_smooth = filtSig.gaussian_filter1d(gamma_sxx, smooth, axis=0)
 
         ripple_ind = np.where((f > 140) & (f < 250))[0]
         ripple_sxx = np.mean(sxx[ripple_ind, :], axis=0)
-        ripple_smooth = filtSig.gaussian_filter1d(ripple_sxx, smooth, axis=0)
 
-        self.delta = delta_smooth
-        self.theta = theta_smooth
+        # if smooth is not None:
+        #     smooth = self.smooth
+        #     # ripple_smooth = filtSig.gaussian_filter1d(ripple_sxx, smooth, axis=0)
+
+        self.delta = delta_sxx
+        self.deltaplus = deltaplus_sxx
+        self.theta = theta_sxx
         self.spindle = spindle_sxx
-        self.gamma = gamma_smooth
+        self.gamma = gamma_sxx
         self.ripple = ripple_sxx
         self.freq = f
         self.time = t
         self.sxx = sxx
         self.theta_delta_ratio = self.theta / self.delta
+        self.theta_deltaplus_ratio = self.theta / self.deltaplus
 
 
 @dataclass
@@ -352,6 +375,22 @@ def bicoherence(signal, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 *
 
 
 def phasePowerCorrelation(signal):
+    pass
+
+
+def csdClassic(lfp, coords):
+    time = np.arange(0, lfp.shape[1], 1)
+    print(lfp.shape)
+    f_pot = interp.interp2d(time, coords, lfp, kind="cubic")
+
+    y_new = np.linspace(min(coords), max(coords), 200)
+    lfp_new = f_pot(time, y_new)
+    csd = np.diff(np.diff(lfp_new, axis=0), axis=0)
+
+    return csd
+
+
+def icsd(lfp, coords):
     pass
 
 

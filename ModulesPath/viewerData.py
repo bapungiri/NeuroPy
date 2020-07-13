@@ -47,9 +47,9 @@ class SessView:
         # lfp, _, _ = self._obj.spindle.best_chan_lfp()
         goodchans = self._obj.recinfo.goodchans
         specChan = random.choice(goodchans)
-        lfp = self._obj.utils.geteeg(channels=specChan)
+        lfp = self._obj.utils.geteeg(chans=specChan)
         lfpSrate = self._obj.recinfo.lfpSrate
-        spec = spectrogramBands(lfp, window=5 * lfpSrate)
+        spec = spectrogramBands(lfp, window=5)
         sxx = spec.sxx / np.max(spec.sxx)
         sxx = gaussian_filter(sxx, sigma=1)
         print(np.max(sxx), np.min(sxx))
@@ -58,14 +58,20 @@ class SessView:
         if ax is None:
             _, ax = plt.subplots(1, 1)
 
-        ax.pcolorfast(spec.time, spec.freq, sxx, cmap="YlGn", vmax=vmax)
+        ax.pcolorfast(spec.time, spec.freq, sxx, cmap="Spectral_r", vmax=vmax)
+        ax.text(
+            np.max(spec.time) / 2,
+            25,
+            f"Spectrogram for channel {specChan}",
+            ha="center",
+            color="w",
+        )
         ax.set_ylim([0, 30])
         ax.set_xlim([np.min(spec.time), np.max(spec.time)])
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Frequency (Hz)")
-        ax.set_title(f"Spectrogram for {specChan} channel")
 
-        axins = ax.inset_axes([0, 0.6, 0.3, 0.2])
+        axins = ax.inset_axes([0, 0.6, 0.1, 0.25])
         self._obj.utils.plotChanPos(chans=[specChan], ax=axins)
         axins.axis("off")
 
@@ -128,7 +134,7 @@ class SessView:
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Neurons")
 
-    def brainstates(self, ax1=None):
+    def hypnogram(self, ax1=None):
         states = self._obj.brainstates.states
 
         if ax1 is None:
@@ -148,6 +154,7 @@ class SessView:
 
         make_boxes(ax1, x, y, width, height, facecolor=col)
         ax1.set_ylim(1, 5)
+        ax1.axis("off")
 
     def lfpevents(self, ax=None):
         ripples = self._obj.ripple.time

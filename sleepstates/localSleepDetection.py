@@ -307,7 +307,7 @@ ax.set_xticks([-1, -0.5, 0, 0.5, 1, 1.5])
 ax.set_xticklabels([-1, -0.5, "start", "end", 1, 1.5])
 ax.legend()
 # endregion
-
+....
 #%% Spectrogram around localsleep
 # region
 plt.clf()

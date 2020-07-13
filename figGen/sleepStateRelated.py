@@ -58,10 +58,10 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     if sub < 3:
         t_start = sess.epochs.post[0] + 5 * 3600
-        condition = "sd"
+        condition = "SD"
     else:
         t_start = sess.epochs.post[0]
-        condition = "nsd"
+        condition = "NSD"
 
     df = sess.brainstates.states
     df = df.loc[((df["state"] == 2) | (df["state"] == 1)) & (df["start"] > t_start)]
@@ -86,10 +86,10 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     if sub < 3:
         t_start = sess.epochs.post[0] + 5 * 3600
-        condition = "sd"
+        condition = "SD"
     else:
         t_start = sess.epochs.post[0]
-        condition = "nsd"
+        condition = "NSD"
 
     states = sess.brainstates.states
     states = states.loc[(states["name"] == "rem") & (states["start"] > t_start)]
@@ -127,10 +127,10 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     if sub < 3:
         t_start = sess.epochs.post[0] + 5 * 3600
-        condition = "sd"
+        condition = "SD"
     else:
         t_start = sess.epochs.post[0]
-        condition = "nsd"
+        condition = "NSD"
 
     states = sess.brainstates.states
     states = states.loc[
@@ -167,10 +167,10 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     if sub < 3:
         t_start = sess.epochs.post[0] + 5 * 3600
-        condition = "sd"
+        condition = "SD"
     else:
         t_start = sess.epochs.post[0]
-        condition = "nsd"
+        condition = "NSD"
 
     states = sess.brainstates.states
     states = states.loc[
