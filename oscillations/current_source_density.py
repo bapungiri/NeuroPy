@@ -31,11 +31,15 @@ sessions = [processData(_) for _ in basePath]
 #%% csd theta period
 # region
 plt.close("all")
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(1, 8, figure=fig)
+fig.subplots_adjust(hspace=0.3)
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
     maze = sess.epochs.maze
-    changrp = sess.recinfo.channelgroups[6]
+    changrp = np.concatenate(sess.recinfo.channelgroups[:8])
 
     period = [maze[0], maze[0] + 3600]
     sess.lfpTheta = sess.utils.strong_theta_lfp(chans=changrp, period=period)
@@ -45,66 +49,60 @@ for sub, sess in enumerate(sessions):
     nframes_2theta = 312
     n2theta = int(sess.lfpTheta.shape[1] / nframes_2theta)  # number of two theta cycles
     theta_last = signal_process.filter_sig.filter_cust(
-        sess.lfpTheta[-1, :], lf=5, hf=12, ax=-1
+        sess.lfpTheta[16, :], lf=5, hf=12, ax=-1
     )
     peak = sg.find_peaks(theta_last)[0]
     peak = peak[np.where((peak > 1250) & (peak < len(theta_last) - 1250))[0]]
 
-    avg_theta = np.zeros((16, 1250))
+    avg_theta = np.zeros((nChans, 1250))
     for ind in peak:
         avg_theta = avg_theta + sess.lfpTheta[:, ind - 625 : ind + 625]
 
     avg_theta = avg_theta / len(peak)
 
-    # lfptheta = sess.lfpTheta[:, : n2theta * nframes_2theta]
-    # lfptheta = np.reshape(lfptheta, (nChans, nframes_2theta, n2theta), order="F").mean(
-    #     axis=2
-    # )
-    # filter_theta = signal_process.filter_sig.filter_cust(lfptheta, lf=0.5, hf=20, ax=1)
+    nshanks = sess.rec
+    changrp = np.concatenate(sess.recinfo.channelgroups[:8])
+    for sh_id, shank in enumerate(sess.recinfo.channelgroups[:8]):
 
-    ycoord = np.arange(20, 17 * 20, 20)
-    # xcoord = sess.recinfo.probemap()[:16] + 10
-    # coords = tuple(zip(xcoord, ycoord))
+        chan_where = np.argwhere(np.isin(changrp, shank)).squeeze()
+        theta_lfp = avg_theta[chan_where, :]
+        badchans = sess.recinfo.badchans
+        badchan_indx = np.argwhere(np.isin(shank, badchans))
+        ycoord = np.arange(20, 17 * 20, 20)
+        if badchan_indx.shape[0]:
+            theta_lfp = np.delete(theta_lfp, badchan_indx, axis=0)
+            ycoord = np.delete(ycoord, badchan_indx)
 
-    csd = signal_process.csdClassic(avg_theta, ycoord)
-    plt.imshow(csd, aspect="auto")
+        # xcoord = np.asarray(sess.recinfo.probemap()[0][:16]) + 10
+        # coords = np.vstack((xcoord, ycoord)).T
 
-    # csd_data = KCSD(xcoord.T, filter_theta)
+        # csd = signal_process.csdClassic(avg_theta, ycoord)
+        # plt.imshow(csd, aspect="auto")
 
-    # from kcsd import KCSD2D
+        sigarr = AnalogSignal(theta_lfp.T, units="uV", sampling_rate=1250 * pq.Hz)
 
-    # def do_kcsd(ele_pos, pots):
-    #     h = 50.0  # distance between the electrode plane and the midslice
-    #     sigma = 1.0  # S/m
-    #     pots = pots.reshape((len(ele_pos), 1))  # first time point
-    #     k = KCSD2D(
-    #         ele_pos,
-    #         pots,
-    #         h=h,
-    #         sigma=sigma,
-    #         xmin=0.0,
-    #         xmax=1.0,
-    #         ymin=0.0,
-    #         ymax=1.0,
-    #         n_src_init=1000,
-    #         src_type="gauss",
-    #         R_init=1.0,
-    #     )
-    #     return k
+        csd_data = csd2d.estimate_csd(
+            sigarr, coords=ycoord.reshape(-1, 1) * pq.um, method="KCSD1D"
+        )
 
-    # k = KCSD2D(xcoord.T, filter_theta)
-    # est_csd = k.values("CSD")
+        ypos = csd_data.annotations["x_coords"]
+        t = np.linspace(-0.5, 0.5, 1250)
+        theta_lfp = np.flipud(theta_lfp)
 
-    # current = np.diff(np.diff(filter_theta, axis=0), axis=0)
-    # ycoord = np.arange(0, 16 * 20, 20)
-    # xcoord = np.arange(0, 312, 1)
-    # f_csd = interp.interp2d(xcoord, ycoord, current)
+        ax = fig.add_subplot(gs[sh_id])
+        im = ax.pcolorfast(t, ypos, np.asarray(csd_data).T, cmap="jet", zorder=1)
+        ax2 = ax.twinx()
+        ax2.plot(
+            t,
+            theta_lfp.T / 60000 + np.linspace(ypos[0], ypos[-1], theta_lfp.shape[0]),
+            zorder=2,
+            color="#616161",
+        )
+        ax.set_ylim([0, 0.35])
+        ax2.axes.get_yaxis().set_visible(False)
+        ax.axes.get_yaxis().set_visible(False)
 
-    # sigarr = AnalogSignal(filter_theta.T, units="V", sampling_rate=1250 * pq.Hz)
-
-    # x_req = np.arange(0, 312, 1)
-    # y_req = np.arange(0, 14 * 20, 2)
-    # csd = f_csd(x_req, y_req)
+        fig.colorbar(im, ax=ax, orientation="horizontal")
 
 
 # endregion
