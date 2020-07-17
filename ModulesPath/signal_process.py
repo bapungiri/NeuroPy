@@ -11,6 +11,8 @@ from scipy.fft import fft
 from lspopt import spectrogram_lspopt
 from waveletFunctions import wavelet
 import scipy.interpolate as interp
+from scipy.fftpack import next_fast_len
+import time
 
 
 class filter_sig:
@@ -102,7 +104,7 @@ class spectrogramBands:
     sampfreq: float = 1250.0
     window: int = 1  # in seconds
     overlap: int = window / 8  # in seconds
-    # smooth: int = None
+    smooth: int = None
 
     def __post_init__(self):
 
@@ -110,13 +112,6 @@ class spectrogramBands:
         overlap = int(self.overlap * self.sampfreq)
         # f, t, sxx = sg.spectrogram(
         #     self.lfp, fs=self.sampfreq, nperseg=window, noverlap=overlap
-        # )
-        # f, t, sxx = spectrogram_lspopt(
-        #     self.lfp,
-        #     fs=self.sampfreq,
-        #     nperseg=window,
-        #     noverlap=overlap,
-        #     c_parameter=20,
         # )
 
         tapers = sg.windows.dpss(M=window, NW=5, Kmax=6)
@@ -127,7 +122,6 @@ class spectrogramBands:
                 self.lfp, window=taper, fs=self.sampfreq, noverlap=overlap
             )
             sxx_taper.append(sxx)
-
         sxx = np.dstack(sxx_taper).mean(axis=2)
 
         delta_ind = np.where((f > 0.5) & (f < 4))[0]
@@ -138,7 +132,7 @@ class spectrogramBands:
         # delta_ind = np.where(((f > 0.5) & (f < 16)))[0]
         # delta_smooth = filtSig.gaussian_filter1d(delta_sxx, smooth, axis=0)
 
-        theta_ind = np.where((f > 6) & (f < 10))[0]
+        theta_ind = np.where((f > 5) & (f < 11))[0]
         theta_sxx = np.mean(sxx[theta_ind, :], axis=0)
         # theta_smooth = filtSig.gaussian_filter1d(theta_sxx, smooth, axis=0)
 
@@ -153,9 +147,14 @@ class spectrogramBands:
         ripple_ind = np.where((f > 140) & (f < 250))[0]
         ripple_sxx = np.mean(sxx[ripple_ind, :], axis=0)
 
-        # if smooth is not None:
-        #     smooth = self.smooth
-        #     # ripple_smooth = filtSig.gaussian_filter1d(ripple_sxx, smooth, axis=0)
+        if self.smooth is not None:
+            smooth = self.smooth
+            delta_sxx = filtSig.gaussian_filter1d(delta_sxx, smooth, axis=0)
+            deltaplus_sxx = filtSig.gaussian_filter1d(deltaplus_sxx, smooth, axis=0)
+            theta_sxx = filtSig.gaussian_filter1d(theta_sxx, smooth, axis=0)
+            spindle_sxx = filtSig.gaussian_filter1d(spindle_sxx, smooth, axis=0)
+            gamma_sxx = filtSig.gaussian_filter1d(gamma_sxx, smooth, axis=0)
+            ripple_sxx = filtSig.gaussian_filter1d(ripple_sxx, smooth, axis=0)
 
         self.delta = delta_sxx
         self.deltaplus = deltaplus_sxx
@@ -190,20 +189,25 @@ class wavelet_decomp:
         """
         t_wavelet = np.arange(-4, 4, 1 / self.sampfreq)
         freqs = self.freqs
-        signal = self.lfp
-        signal = np.tile(np.expand_dims(signal, axis=0), (len(freqs), 1))
-
-        wavelet_at_freqs = np.zeros((len(freqs), len(t_wavelet)), dtype=complex)
+        n = len(self.lfp)
+        fastn = next_fast_len(n)
+        signal = np.pad(self.lfp, (0, fastn - n), "constant", constant_values=0)
+        print(len(signal))
+        # signal = np.tile(np.expand_dims(signal, axis=0), (len(freqs), 1))
+        # wavelet_at_freqs = np.zeros((len(freqs), len(t_wavelet)), dtype=complex)
+        conv_val = np.zeros((len(freqs), n), dtype=complex)
         for i, freq in enumerate(freqs):
             sigma = 7 / (2 * np.pi * freq)
             A = (sigma * np.sqrt(np.pi)) ** -0.5
-            wavelet_at_freqs[i, :] = (
+            wavelet_at_freq = (
                 A
                 * np.exp(-(t_wavelet ** 2) / (2 * sigma ** 2))
                 * np.exp(2j * np.pi * freq * t_wavelet)
             )
 
-        conv_val = sg.fftconvolve(signal, wavelet_at_freqs, mode="same", axes=-1)
+            conv_val[i, :] = sg.fftconvolve(
+                signal, wavelet_at_freq, mode="same", axes=-1
+            )[:n]
 
         return np.abs(conv_val) ** 2
 
@@ -352,6 +356,7 @@ def bicoherence(signal, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 *
     -----------------------
     1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
     """
+    signal = signal - np.mean(signal)
     f, t, sxx = sg.spectrogram(
         signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
     )
@@ -360,6 +365,15 @@ def bicoherence(signal, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 *
     freq_ind = np.where((f > flow) & (f < fhigh))[0]
     bispec = np.zeros((len(freq_ind), len(freq_ind)), dtype=complex)
     for row, f_ind in enumerate(freq_ind):
+        numer = np.mean(
+            sxx[f_ind, :] * sxx[freq_ind, :] * np.conj(sxx[freq_ind + f_ind, :]), axis=1
+        )
+        denom_left = np.mean(np.abs(sxx[f_ind, :] * sxx[freq_ind, :]) ** 2, axis=1)
+        denom_right = np.mean(np.abs(sxx[freq_ind + f_ind, :]) ** 2, axis=1)
+        bispec[row, :] = numer / np.sqrt(denom_left * denom_right)
+
+    bispec = np.zeros((len(freq_ind), len(freq_ind)), dtype=complex)
+    for i in range(sxx.shape[1]):
         numer = np.mean(
             sxx[f_ind, :] * sxx[freq_ind, :] * np.conj(sxx[freq_ind + f_ind, :]), axis=1
         )
@@ -393,108 +407,3 @@ def csdClassic(lfp, coords):
 def icsd(lfp, coords):
     pass
 
-
-class Morlet(object):
-    """Implements the Morlet wavelet class.
-    Note that the input parameters f and f0 are angular frequencies.
-    f0 should be more than 0.8 for this function to be correct, its
-    default value is f0 = 6.
-    """
-
-    def __init__(self, f0=6):
-        self._set_f0(f0)
-        self.name = "Morlet"
-
-    def psi_ft(self, f):
-        """Fourier transform of the approximate Morlet wavelet."""
-        return (np.pi ** -0.25) * np.exp(-0.5 * (f - self.f0) ** 2)
-
-    def psi(self, t):
-        """Morlet wavelet as described in Torrence and Compo (1998)."""
-        return (np.pi ** -0.25) * np.exp(1j * self.f0 * t - t ** 2 / 2)
-
-    def flambda(self):
-        """Fourier wavelength as of Torrence and Compo (1998)."""
-        return (4 * np.pi) / (self.f0 + np.sqrt(2 + self.f0 ** 2))
-
-    def coi(self):
-        """e-Folding Time as of Torrence and Compo (1998)."""
-        return 1.0 / np.sqrt(2)
-
-    def sup(self):
-        """Wavelet support defined by the e-Folding time."""
-        return 1.0 / self.coi
-
-    def _set_f0(self, f0):
-        # Sets the Morlet wave number, the degrees of freedom and the
-        # empirically derived factors for the wavelet bases C_{\delta},
-        # \gamma, \delta j_0 (Torrence and Compo, 1998, Table 2)
-        self.f0 = f0  # Wave number
-        self.dofmin = 2  # Minimum degrees of freedom
-        if self.f0 == 6:
-            self.cdelta = 0.776  # Reconstruction factor
-            self.gamma = 2.32  # Decorrelation factor for time averaging
-            self.deltaj0 = 0.60  # Factor for scale averaging
-        else:
-            self.cdelta = -1
-            self.gamma = -1
-            self.deltaj0 = -1
-
-    def smooth(self, W, dt, dj, scales):
-        """Smoothing function used in coherence analysis.
-        Parameters
-        ----------
-        W :
-        dt :
-        dj :
-        scales :
-        Returns
-        -------
-        T :
-        """
-        # The smoothing is performed by using a filter given by the absolute
-        # value of the wavelet function at each scale, normalized to have a
-        # total weight of unity, according to suggestions by Torrence &
-        # Webster (1999) and by Grinsted et al. (2004).
-        m, n = W.shape
-
-        # Filter in time.
-        k = 2 * np.pi * fft.fftfreq(fft_kwargs(W[0, :])["n"])
-        k2 = k ** 2
-        snorm = scales / dt
-        # Smoothing by Gaussian window (absolute value of wavelet function)
-        # using the convolution theorem: multiplication by Gaussian curve in
-        # Fourier domain for each scale, outer product of scale and frequency
-        F = np.exp(-0.5 * (snorm[:, np.newaxis] ** 2) * k2)  # Outer product
-        smooth = fft.ifft(
-            F * fft.fft(W, axis=1, **fft_kwargs(W[0, :])),
-            axis=1,  # Along Fourier frequencies
-            **fft_kwargs(W[0, :], overwrite_x=True)
-        )
-        T = smooth[:, :n]  # Remove possibly padded region due to FFT
-
-        if np.isreal(W).all():
-            T = T.real
-
-        # Filter in scale. For the Morlet wavelet it's simply a boxcar with
-        # 0.6 width.
-        wsize = self.deltaj0 / dj * 2
-        win = rect(np.int(np.round(wsize)), normalize=True)
-        T = convolve2d(T, win[:, np.newaxis], "same")  # Scales are "vertical"
-
-        return T
-
-
-def _check_parameter_wavelet(wavelet):
-    mothers = {"morlet": Morlet, "paul": Paul, "dog": DOG, "mexicanhat": MexicanHat}
-    # Checks if input parameter is a string. For backwards
-    # compatibility with Python 2 we check either if instance is a
-    # `basestring` or a `str`.
-    try:
-        if isinstance(wavelet, basestring):
-            return mothers[wavelet]()
-    except NameError:
-        if isinstance(wavelet, str):
-            return mothers[wavelet]()
-    # Otherwise, return itself.
-    return wavelet

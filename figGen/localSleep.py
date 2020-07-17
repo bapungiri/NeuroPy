@@ -61,6 +61,7 @@ for sub, sess in enumerate([sessions[2]]):
     for ind, period in enumerate(selectedEvents.itertuples()):
 
         ax = fig.add_subplot(gs[0, ind])
+        ax.clear()
         lfp_period = lfp[(t > period.start - taround) & (t < period.end + taround)]
         t_period = np.linspace(
             period.start - taround, period.end + taround, len(lfp_period)
@@ -77,7 +78,7 @@ for sub, sess in enumerate([sessions[2]]):
         # ax.plot([period.start, period.start], [0, 100], "r")
         # ax.plot([period.end, period.end], [0, 100], "k")
         ax.fill_between(
-            [period.start, period.end], [0, 0], [90, 90], alpha=0.3, color="#BDBDBD"
+            [period.start, period.end], [0, 0], [160, 160], alpha=0.3, color="#BDBDBD"
         )
         ax.fill_between(
             inst_tperiod, instfiring_period / 50, alpha=0.3, color="#212121",
@@ -89,7 +90,7 @@ for sub, sess in enumerate([sessions[2]]):
             linewidth=0.8,
         )
 
-        cmap = mpl.cm.get_cmap("inferno_r")
+        cmap = mpl.cm.get_cmap("plasma")
 
         for cell, spk in enumerate(spikes):
             color = cmap(cell / len(spikes))
@@ -98,7 +99,9 @@ for sub, sess in enumerate([sessions[2]]):
             ax.plot(spk, cell * np.ones(len(spk)), "|", color=color, markersize=2)
 
         ax.set_title(f"{round(period.duration,2)} s")
+
         ax.axis("off")
+        ax.set_facecolor("k")
 
 
 # endregion
@@ -124,6 +127,7 @@ for sub, sess in enumerate(sessions):
     fafterstd = sess.localsleep.instfiringafter[:-1].std(axis=0) / np.sqrt(
         len(sess.localsleep.events)
     )
+    sum_inst = np.sum(np.vstack((fbefore, fafter)))
     tbefore = np.linspace(-1, 0, len(fbefore))
     tafter = np.linspace(0.2, 1.2, len(fafter))
 
@@ -135,10 +139,18 @@ for sub, sess in enumerate(sessions):
     #     alpha=0.3,
     # )
     ax.fill_between(
-        tbefore, fbefore + fbeforestd, fbefore - fbeforestd, color="#BDBDBD"
+        tbefore,
+        (fbefore + fbeforestd) / sum_inst,
+        (fbefore - fbeforestd) / sum_inst,
+        color=colors[sub],
     )
     # ax.plot(tbefore, fbefore, color="#616161")
-    ax.fill_between(tafter, fafter + fafterstd, fafter - fafterstd, color="#BDBDBD")
+    ax.fill_between(
+        tafter,
+        (fafter + fafterstd) / sum_inst,
+        (fafter - fafterstd) / sum_inst,
+        color=colors[sub],
+    )
     # ax.plot(tafter, fafter, color="#616161")
 
     # self.events["duration"].plot.kde(ax=ax, color="k")
@@ -147,6 +159,7 @@ for sub, sess in enumerate(sessions):
     ax.set_ylabel("Instantneous firing")
     ax.set_xticks([-1, -0.5, 0, 0.2, 0.7, 1.2])
     ax.set_xticklabels(["-1", "-0.5", "start", "end", "0.5", "1"], rotation=45)
+    ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 
 
 # ax = fig.add_subplot(3, 5, 13)
@@ -200,7 +213,7 @@ for sub, sess in enumerate(sessions):
         alpha=0.8,
     )
     ax.plot(
-        np.linspace(0.5, 1.5, 19),
+        np.linspace(0.2, 1.2, 19),
         total_ripples_after,
         color=colors[sub],
         lw=2,
@@ -208,14 +221,16 @@ for sub, sess in enumerate(sessions):
     )
     ax.set_xlabel("Time from localsleep (s)")
     ax.set_ylabel("# SWRs")
-ax.set_xticks([-1, -0.5, 0, 0.5, 1, 1.5])
-ax.set_xticklabels([-1, -0.5, "start", "end", 0.5, 1])
+ax.set_xticks([-1, -0.5, 0, 0.2, 0.7, 1.2])
+ax.set_xticklabels([-1, -0.5, "start", "end", 0.5, 1], rotation=45)
 ax.legend()
 # endregion
 
 #%% Numbers per minute during SD
 # region
-col = ["#FF8F00", "#388E3C", "#9C27B0"]
+# col = ["#FF8F00", "#388E3C", "#9C27B0"]
+colors = ["#ff928a", "#424242", "#3bceac"]
+
 
 sd1 = np.zeros(3)
 sd5 = np.zeros(3)
@@ -282,10 +297,10 @@ for sub, sess in enumerate([sessions[0]]):
     lfp_locslp_avg = np.reshape(lfp_locslp, (len(locslp), 250)).mean(axis=0)
     t_locslp = np.linspace(0, len(lfp_locslp) / eegSrate, len(lfp_locslp))
 
-    freqs = np.arange(20, 100, 0.5)
+    freqs = np.arange(2, 100, 0.5)
     wavdec = signal_process.wavelet_decomp(lfp_locslp, freqs=freqs)
     # wav = wavdec.cohen(ncycles=ncycles)
-    wav = wavdec.cohen(ncycles=3)
+    wav = wavdec.cohen(ncycles=7)
     wav = (
         stats.zscore(wav, axis=1).reshape((wav.shape[0], 250, len(locslp))).mean(axis=2)
     )
@@ -313,7 +328,7 @@ for sub, sess in enumerate([sessions[0]]):
     freqs = np.arange(20, 100, 0.5)
     wavdec = signal_process.wavelet_decomp(lfp_locslp, freqs=freqs)
     # wav = wavdec.cohen(ncycles=ncycles)
-    wav = wavdec.cohen(ncycles=3)
+    wav = wavdec.cohen(ncycles=7)
     wav = (
         stats.zscore(wav, axis=1).reshape((wav.shape[0], 250, len(locslp))).mean(axis=2)
     )

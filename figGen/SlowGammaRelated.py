@@ -9,12 +9,12 @@ import seaborn as sns
 import signal_process
 import matplotlib as mpl
 import scipy.signal as sg
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d, gaussian_filter
 from mathutil import threshPeriods
 
 basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
     "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
@@ -77,7 +77,7 @@ for sub, sess in enumerate(sessions):
         zsc_theta, lowthresh=0, highthresh=1.5, minDistance=300, minDuration=1250
     )
 
-    strong_theta = []
+    # strong_theta = []
     theta_indices = []
     for (beg, end) in thetaevents:
         strong_theta.extend(lfpmaze[beg:end])
@@ -93,36 +93,75 @@ strong_theta = np.asarray(strong_theta)
 wavdec = signal_process.wavelet_decomp(strong_theta, freqs=frgamma)
 wav = wavdec.colgin2009()
 # wav = wavdec.cohen(ncycles=7)
-# wav = stats.zscore(wav, axis=1)
+
+wav = stats.zscore(wav, axis=1)
 
 theta_filter = stats.zscore(
     signal_process.filter_sig.filter_cust(strong_theta, lf=4, hf=11)
 )
+
 hil_theta = signal_process.hilbertfast(theta_filter)
 theta_amp = np.abs(hil_theta)
 theta_angle = np.angle(hil_theta, deg=True) + 180
 theta_troughs = sg.find_peaks(-theta_filter)[0]
 
-avg_theta = np.zeros(156)
-mean_gamma = np.zeros((wav.shape[0], 156))
-for i in theta_troughs[1:]:
-    mean_gamma = mean_gamma + wav[:, i - 125 : i + 31]
-    avg_theta = avg_theta + strong_theta[i - 125 : i + 31]
+bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+bin_ind = np.digitize(theta_angle, bin_angle)
 
-mean_gamma = mean_gamma / len(theta_troughs)
-mean_gamma = stats.zscore(mean_gamma, axis=1)
+wav_phase = []
+for i in np.unique(bin_ind):
+    find_where = np.where(bin_ind == i)[0]
+    wav_at_angle = np.mean(wav[:, find_where], axis=1)
+    wav_phase.append(wav_at_angle)
 
+wav_phase = np.asarray(wav_phase).T
 
-ax = fig.add_subplot(inner[0])
-t_thetacycle = np.linspace(-100, 25, 156)
-ax.pcolorfast(t_thetacycle, frgamma, mean_gamma, cmap="Spectral")
+ax = fig.add_subplot(inner[:, :])
+ax.pcolorfast(bin_angle[:-1], frgamma[:-1], wav_phase, cmap="Spectral_r")
+ax.set_xlabel(r"$\theta$ phase")
+ax.set_ylabel("frequency (Hz)")
+
+bicoh, freq, bispec = signal_process.bicoherence(strong_theta, fhigh=100)
+
+# bicoh = gaussian_filter(bicoh, sigma=2)
+# bicoh = np.where(bicoh > 0.05, bicoh, 0)
+bispec_real = gaussian_filter(np.real(bispec), sigma=2)
+bispec_imag = gaussian_filter(np.imag(bispec), sigma=2)
+bispec_angle = gaussian_filter(np.angle(bispec, deg=True), sigma=2)
+
+ax = fig.add_subplot(gs[0, 1])
+ax.clear()
+im = ax.pcolorfast(freq, freq, bicoh, cmap="Spectral_r", vmax=0.05, vmin=0)
+# ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
+ax.set_ylim([1, max(freq) / 2])
+ax.set_xlabel("Frequency (Hz)")
 ax.set_ylabel("Frequency (Hz)")
 
-# ax.contourf(t_thetacycle,frgamma,mean_gamma)
-ax.set_xlim([-100, 25])
-ax = fig.add_subplot(inner[1], sharex=ax)
-ax.plot(t_thetacycle, avg_theta / len(theta_troughs), "k")
-ax.set_xlabel("Time from theta trough (ms)")
-ax.set_ylabel("Amplitude")
+
+# cax = fig.add_axes([0.3, 0.8, 0.5, 0.05])
+# cax.clear()
+# ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
+fig.colorbar(im, ax=ax, orientation="horizontal")
+# avg_theta = np.zeros(156)
+# mean_gamma = np.zeros((wav.shape[0], 156))
+# for i in theta_troughs[1:]:
+#     mean_gamma = mean_gamma + wav[:, i - 125 : i + 31]
+#     avg_theta = avg_theta + strong_theta[i - 125 : i + 31]
+
+# mean_gamma = mean_gamma / len(theta_troughs)
+# mean_gamma = stats.zscore(mean_gamma, axis=1)
+
+
+# ax = fig.add_subplot(inner[0])
+# t_thetacycle = np.linspace(-100, 25, 156)
+# ax.pcolorfast(t_thetacycle, frgamma, mean_gamma, cmap="Spectral")
+# ax.set_ylabel("Frequency (Hz)")
+
+# # ax.contourf(t_thetacycle,frgamma,mean_gamma)
+# ax.set_xlim([-100, 25])
+# ax = fig.add_subplot(inner[1], sharex=ax)
+# ax.plot(t_thetacycle, avg_theta / len(theta_troughs), "k")
+# ax.set_xlabel("Time from theta trough (ms)")
+# ax.set_ylabel("Amplitude")
 
 # endregion

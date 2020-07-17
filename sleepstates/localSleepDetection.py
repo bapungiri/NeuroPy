@@ -14,8 +14,8 @@ from callfunc import processData
 
 #%% Subjects
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
@@ -25,6 +25,16 @@ basePath = [
 
 
 sessions = [processData(_) for _ in basePath]
+
+#%% localsleep detection
+# region
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    post = sess.epochs.post
+    period = [post[0], post[0] + 5 * 3600]
+    sess.localsleep.detect(period=period)
+# endregion
 
 
 #%% Local sleep example plots plus summary from all SD sessions
@@ -307,7 +317,8 @@ ax.set_xticks([-1, -0.5, 0, 0.5, 1, 1.5])
 ax.set_xticklabels([-1, -0.5, "start", "end", 1, 1.5])
 ax.legend()
 # endregion
-....
+
+
 #%% Spectrogram around localsleep
 # region
 plt.clf()

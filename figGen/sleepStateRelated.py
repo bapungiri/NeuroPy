@@ -100,7 +100,7 @@ for sub, sess in enumerate(sessions):
     for epoch in states.itertuples():
         val = params.loc[
             (params["time"] > epoch.start) & (params["time"] < epoch.end),
-            "theta_delta_ratio",
+            "theta_deltaplus_ratio",
         ]
         theta_delta.append(np.mean(val))
 
@@ -152,6 +152,7 @@ for sub, sess in enumerate(sessions):
 
 group = pd.concat(group, ignore_index=True)
 ax = fig.add_subplot(gs[1, 2])
+ax.clear()
 sns.boxplot(x="condition", y="delta", data=group, palette="Set3", ax=ax)
 ax.set_ylabel("amplitude")
 ax.set_xlabel("")
@@ -192,10 +193,13 @@ for sub, sess in enumerate(sessions):
 
 group = pd.concat(group, ignore_index=True)
 ax = fig.add_subplot(gs[1, 3])
+ax.clear()
 sns.boxplot(x="condition", y="ripple", data=group, palette="Set3", ax=ax)
 ax.set_ylabel("amplitude")
 ax.set_xlabel("")
 ax.set_title("Ripple band Power 1st NREM \n (>5 minutes)", fontsize=titlesize)
+ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+
 # ax.set_xticklabels(["nrem"])
 # endregion
 
@@ -260,11 +264,12 @@ sns.barplot(
     # edgecolor=".05",
     errwidth=1,
     # ax=ax,
+    ci="sd",
 )
 ax.set_ylabel("Normalized amplitude")
 # ax.legend(ncol=5)
 ax.legend("")
-# ax.set_xlabel("")
+ax.set_xlabel("")
 ax.set_title("Band power during SD (hourly, 5 hours)", fontsize=titlesize)
 fig.show()
 # endregion

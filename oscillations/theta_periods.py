@@ -32,22 +32,6 @@ def doWavelet(lfp, freqs, ncycles=3):
     return wav
 
 
-def compute(tstart, tend):
-    lfpmaze = lfp[(t > tstart) & (t < tend)]
-    tmaze = np.linspace(tstart, tend, len(lfpmaze))
-    posmazex = posx[(post > tstart) & (post < tend)]
-    posmazey = posy[(post > tstart) & (post < tend)]
-    postmaze = np.linspace(tstart, tend, len(posmazex))
-    speed = np.sqrt(np.diff(posmazex) ** 2 + np.diff(posmazey) ** 2)
-    speed = gaussian_filter1d(speed, sigma=10)
-
-    frgamma = np.arange(25, 50, 1)
-    wav = doWavelet(lfpmaze, freqs=frgamma, ncycles=7)
-
-    frtheta = np.arange(2, 20, 0.5)
-    wav = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
-
-
 def getPxx(lfp):
     window = 5 * 1250
 
@@ -67,12 +51,12 @@ def getPxx(lfp):
 
 #%% Subjects to choose from
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 sessions = [processData(_) for _ in basePath]
@@ -1257,7 +1241,7 @@ for sub, sess in enumerate(sessions):
     post = sess.position.t
     maze = sess.epochs.maze
 
-    lfp = np.asarray(sess.utils.geteeg(channels=125))
+    lfp = np.asarray(sess.utils.geteeg(chans=125))
     # lfp, _, _ = sess.ripple.best_chan_lfp()
     # lfp = lfp[0, :]
     t = np.linspace(0, len(lfp) / eegSrate, len(lfp))
@@ -1406,5 +1390,64 @@ for sub, sess in enumerate(sessions):
             # # ax.set_yscale("log")
             # ax.set_xlim([1, 150])
             # ax.set_ylim([2, 6])
+# endregion
+
+#%% Slow Gamma/Spectrogram for REM sleep theta oscillation
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(1, 6, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    states = sess.brainstates.states
+    rems = states.loc[states["name"] == "rem"]
+
+    lfp, _, _ = sess.ripple.best_chan_lfp()
+    lfp = lfp[0, :]
+    t = np.linspace(0, len(lfp) / 1250, len(lfp))
+
+    rem_indx = []
+    for rem in rems.itertuples():
+        rem_indx.extend(lfp[int(rem.start * eegSrate) : int(rem.end * eegSrate)])
+    rem_theta = lfp[rem_indx]
+
+    # -----wavelet computation -------
+    frgamma = np.arange(25, 150, 1)
+    wavdec = signal_process.wavelet_decomp(rem_theta, freqs=frgamma)
+    wav = wavdec.colgin2009()
+    # wav = wavdec.cohen(ncycles=7)
+    wav = stats.zscore(wav, axis=1)
+
+    # ---phase calculation -----------
+    theta_filter = stats.zscore(
+        signal_process.filter_sig.filter_cust(rem_theta, lf=4, hf=11)
+    )
+    hil_theta = signal_process.hilbertfast(theta_filter)
+    theta_amp = np.abs(hil_theta)
+    theta_angle = np.angle(hil_theta, deg=True) + 180
+    theta_troughs = sg.find_peaks(-theta_filter)[0]
+    bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+    bin_ind = np.digitize(theta_angle, bin_angle)
+
+    wav_phase = []
+    for i in np.unique(bin_ind):
+        find_where = np.where(bin_ind == i)[0]
+        wav_at_angle = np.mean(wav[:, find_where], axis=1)
+        wav_phase.append(wav_at_angle)
+
+    wav_phase = np.asarray(wav_phase).T
+
+    # wav_theta_all = np.dstack(wav_theta_all).mean(axis=2)
+
+    ax = fig.add_subplot(gs[sub])
+    ax.clear()
+    im = ax.pcolorfast(bin_angle[:-1], frgamma[:-1], wav_phase, cmap="Spectral_r")
+    ax.set_xlabel(r"$\theta$ phase")
+    ax.set_ylabel("frequency (Hz)")
+    fig.colorbar(im, ax=ax, orientation="horizontal")
+
 # endregion
 

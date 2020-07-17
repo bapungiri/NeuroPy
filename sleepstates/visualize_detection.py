@@ -18,22 +18,23 @@ plt.clf()
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day2/",
 ]
 
 
 sessions = [processData(_) for _ in basePath]
 
 
+#%% visualize detection
 for sub, sess in enumerate(sessions):
 
     # sess.recinfo.makerecinfo()
     sess.trange = np.array([])
-    # sess.brainstates.detect()
-    sess.brainstates.plot()
+    sess.brainstates.detect()
+    # sess.brainstates.plot()
 
 
 # a = sess.spindle.best_chan_lfp()[0]

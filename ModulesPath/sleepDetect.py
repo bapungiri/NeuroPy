@@ -16,6 +16,8 @@ from matplotlib.collections import PatchCollection
 from matplotlib.gridspec import GridSpec
 from scipy.ndimage import gaussian_filter
 from matplotlib.widgets import Slider, Button, RadioButtons
+import ipywidgets as widgets
+import numpy.ma as ma
 
 
 def make_boxes(
@@ -79,6 +81,15 @@ def genepoch(start, end):
 
 def hmmfit1d(Data):
     # hmm states on 1d data and returns labels with highest mean = highest label
+    flag = None
+    if np.isnan(Data).any():
+        nan_indices = np.where(np.isnan(Data) == 1)[0]
+        non_nan_indices = np.where(np.isnan(Data) == 0)[0]
+        Data_og = Data
+        Data = np.delete(Data, nan_indices)
+        hmmlabels = np.nan * np.ones(len(Data_og))
+        flag = 1
+
     Data = (np.asarray(Data)).reshape(-1, 1)
     model = GaussianHMM(n_components=2, n_iter=100).fit(Data)
     hidden_states = model.predict(Data)
@@ -100,9 +111,16 @@ def hmmfit1d(Data):
     relabeled_states[:2] = [0, 0]
     relabeled_states[-2:] = [0, 0]
 
-    state_diff = np.diff(relabeled_states)
-    start = np.where(state_diff == 1)[0]
-    stop = np.where(state_diff == -1)[0]
+    if flag:
+
+        hmmlabels[non_nan_indices] = relabeled_states
+
+    else:
+        hmmlabels = relabeled_states
+
+    # state_diff = np.diff(relabeled_states)
+    # start = np.where(state_diff == 1)[0]
+    # stop = np.where(state_diff == -1)[0]
 
     # for s, e in zip(start, stop):
     #     if e - s < 50:
@@ -111,7 +129,7 @@ def hmmfit1d(Data):
     # states = np.concatenate((start_ripple, stop_ripple), axis=1)
 
     # relabeled_states = hidden_states
-    return relabeled_states
+    return hmmlabels
 
 
 class SleepScore:
@@ -139,19 +157,7 @@ class SleepScore:
 
     def detect(self):
 
-        # a = np.array([self._obj.epochs.pre[0], self._obj.epochs.post[1]])
-        emg = self._emgfromlfp(fromfile=0)
-        params_pre, sxx_pre, states_pre = self._getparams(self._obj.epochs.pre, emg)
-        params_maze, sxx_maze, states_maze = self._getparams(self._obj.epochs.maze, emg)
-        params_post, sxx_post, states_post = self._getparams(self._obj.epochs.post, emg)
-
-        df = [params_pre, params_maze, params_post]
-        states = [states_pre, states_maze, states_post]
-
-        self.params = pd.concat(df, ignore_index=True)
-        self.sxx = np.concatenate((sxx_pre, sxx_maze, sxx_post), axis=1)
-        self.states = pd.concat(states, ignore_index=True)
-
+        self.params, self.sxx, self.states = self._getparams()
         self.params.to_pickle(self._obj.sessinfo.files.stateparams)
         self.states.to_pickle(self._obj.sessinfo.files.states)
 
@@ -241,46 +247,79 @@ class SleepScore:
 
         return statetime
 
-    def _getparams(self, interval, emg):
+    def _getparams(self):
         sRate = self._obj.recinfo.lfpSrate
-
-        lfp = np.load(self._obj.sessinfo.files.thetalfp)
+        # lfp = np.load(self._obj.sessinfo.files.thetalfp)
+        lfp = self._obj.spindle.best_chan_lfp()[0]
         # ripplelfp = np.load(self._obj.files.ripplelfp).item()["BestChan"]
 
         lfp = stats.zscore(lfp)
         bands = spectrogramBands(
-            lfp, window=self.window * sRate, overlap=self.overlap * sRate
+            lfp, window=self.window, overlap=self.overlap, smooth=10
         )
         time = bands.time
+        delta = bands.delta
+        deltaplus = bands.deltaplus
+        theta = bands.theta
+        spindle = bands.spindle
+        gamma = bands.gamma
+        ripple = bands.ripple
+        theta_deltaplus_ratio = theta / deltaplus
+        sxx = stats.zscore(bands.sxx, axis=None)  # zscored only for visualization
 
-        ind = np.where((time > interval[0]) & (time < interval[1]))[0]
-        t = time[ind]
-        delta = bands.delta[ind]
-        theta = bands.theta[ind]
-        spindle = bands.spindle[ind]
-        gamma = bands.gamma[ind]
-        ripple = bands.ripple[ind]
-        theta_delta_ratio = theta / delta
-        theta_delta_label = hmmfit1d(theta_delta_ratio)
-        delta_label = hmmfit1d(delta)
-        sxx = stats.zscore(bands.sxx[:, ind], axis=None)
+        emg = self._emgfromlfp(fromfile=1)
+        print(emg.shape, theta_deltaplus_ratio.shape)
 
+        deadfile = (self._obj.sessinfo.files.filePrefix).with_suffix(".dead")
+        if deadfile.is_file():
+            with deadfile.open("r") as f:
+                noisy = []
+                for line in f:
+                    epc = line.split(" ")
+                    epc = [float(_) for _ in epc]
+                    noisy.append(epc)
+                noisy = np.asarray(noisy) / 1000  # seconds
+
+            noisy_timepoints = []
+            for noisy_ind in range(noisy.shape[0]):
+                st = noisy[noisy_ind, 0]
+                en = noisy[noisy_ind, 1]
+                # numnoisy = en - st
+                noisy_indices = np.where((time > st) & (time < en))[0]
+                noisy_timepoints.extend(noisy_indices)
+
+            # noisy_boolean = np.zeros(len(deltaplus))
+            # noisy_boolean[noisy_timepoints] = np.ones(len(noisy_timepoints))
+            theta_deltaplus_ratio[noisy_timepoints] = np.nan
+            emg[noisy_timepoints] = np.nan
+            deltaplus[noisy_timepoints] = np.nan
+
+            # emg = np.asarray(pd.Series.fillna(pd.Series(emg), method="bfill"))
+            # theta_deltaplus_ratio = np.asarray(
+            #     pd.Series.fillna(pd.Series(theta_deltaplus_ratio), method="bfill")
+            # )
+
+        deltaplus_label = hmmfit1d(deltaplus)
+        theta_deltaplus_label = hmmfit1d(theta_deltaplus_ratio)
         emg_label = hmmfit1d(emg)
-        emg = emg[ind]
-        emg_label = emg_label[ind]
 
-        states = self._label2states(theta_delta_label, delta_label, emg_label)
+        states = self._label2states(theta_deltaplus_label, deltaplus_label, emg_label)
+
+        print(
+            states.shape, emg.shape, deltaplus_label.shape, theta_deltaplus_label.shape
+        )
         statetime = (self._states2time(states)).astype(int)
 
         data = pd.DataFrame(
             {
-                "time": t,
+                "time": time,
                 "delta": delta,
+                "deltaplus": deltaplus,
                 "theta": theta,
                 "spindle": spindle,
                 "gamma": gamma,
                 "ripple": ripple,
-                "theta_delta_ratio": theta_delta_ratio,
+                "theta_deltaplus_ratio": theta_deltaplus_ratio,
                 "emg": emg,
                 "state": states,
             }
@@ -288,9 +327,9 @@ class SleepScore:
 
         statetime = pd.DataFrame(
             {
-                "start": t[statetime[:, 0]],
-                "end": t[statetime[:, 1]],
-                "duration": t[statetime[:, 1]] - t[statetime[:, 0]],
+                "start": time[statetime[:, 0]],
+                "end": time[statetime[:, 1]],
+                "duration": time[statetime[:, 1]] - time[statetime[:, 0]],
                 "state": statetime[:, 2],
             }
         )
@@ -378,75 +417,52 @@ class SleepScore:
         post = self._obj.epochs.post
         lfpSrate = self._obj.recinfo.lfpSrate
         lfp = self._obj.spindle.best_chan_lfp()[0]
-        spec = spectrogramBands(lfp, window=5 * lfpSrate)
+        spec = spectrogramBands(lfp, window=5)
 
-        fig = plt.figure(1, figsize=(6, 10))
-        gs = GridSpec(4, 5, figure=fig)
+        fig = plt.figure(num=None, figsize=(6, 10))
+        gs = GridSpec(4, 4, figure=fig)
         fig.subplots_adjust(hspace=0.4)
 
-        ax = fig.add_subplot(gs[0, :4])
+        axhypno = fig.add_subplot(gs[0, :])
         x = np.asarray(states.start)
         y = np.zeros(len(x)) + np.asarray(states.state)
         width = np.asarray(states.duration)
         height = np.ones(len(x))
         colors = ["#6b90d1", "#eb9494", "#b6afaf", "#474343"]
         col = [colors[int(state) - 1] for state in states.state]
-        make_boxes(ax, x, y, width, height, facecolor=col)
-        ax.set_xlim(0, post[1])
-        ax.set_ylim(1, 5)
+        make_boxes(axhypno, x, y, width, height, facecolor=col)
+        axhypno.set_xlim(0, post[1])
+        axhypno.set_ylim(1, 5)
 
-        ax = fig.add_subplot(gs[1, :4], sharex=ax)
+        axspec = fig.add_subplot(gs[1, :], sharex=axhypno)
         sxx = spec.sxx / np.max(spec.sxx)
         sxx = gaussian_filter(sxx, sigma=1)
-        print(np.max(sxx), np.min(sxx))
         vmax = np.max(sxx) / 60
-        specplot = ax.pcolorfast(spec.time, spec.freq, sxx, cmap="YlGn", vmax=vmax)
-        ax.set_ylim([0, 60])
-        ax.set_xlim([np.min(spec.time), np.max(spec.time)])
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Frequency (s)")
+        specplot = axspec.pcolorfast(
+            spec.time, spec.freq, sxx, cmap="Spectral_r", vmax=vmax
+        )
+        axspec.set_ylim([0, 30])
+        axspec.set_xlim([np.min(spec.time), np.max(spec.time)])
+        axspec.set_xlabel("Time (s)")
+        axspec.set_ylabel("Frequency (s)")
+
+        axemg = fig.add_subplot(gs[2, :], sharex=axhypno)
+        axemg.plot(params.time, params.emg)
+
+        axthdel = fig.add_subplot(gs[3, :], sharex=axhypno)
+        axthdel.plot(params.time, params.theta_deltaplus_ratio)
 
         # ==== change spectrogram visual properties ========
-        ax = fig.add_subplot(gs[1, 4])
-        loc = list(ax.get_position().bounds)
-        loc[3] = 0.03
-        axcolor = "lightgoldenrodyellow"
-        axfreq = plt.axes(loc, facecolor=axcolor)
 
-        sfreq = Slider(axfreq, "Freq", np.min(sxx), vmax, valinit=vmax, valstep=0.00005)
+        # @widgets.interact(time=(maze[0], maze[1], 10))
+        # def update(time=0.5):
+        #     # tnow = timetoPlot.val
+        #     allplts(time - 5, time + 5)
+        #     specplot.set_clim([0, freq])
 
-        def update(val):
-            freq = sfreq.val
-            specplot.set_clim([0, freq])
-            fig.canvas.draw_idle()
+        @widgets.interact(norm=(np.min(sxx), np.max(sxx), 0.001))
+        def update(norm=0.5):
+            # tnow = timetoPlot.val
+            # allplts(time - 5, time + 5)
+            specplot.set_clim([0, norm])
 
-        sfreq.on_changed(update)
-
-        resetax = plt.axes([0.8, 0.025, 0.1, 0.04])
-        button = Button(resetax, "Reset", color=axcolor, hovercolor="0.975")
-
-        def reset(event):
-            sfreq.reset()
-
-        button.on_clicked(reset)
-
-        radioloc = loc
-        radioloc[1] = radioloc[1] + 0.1
-        radioloc[3] = radioloc[3] + 0.05
-        rax = plt.axes(radioloc, facecolor=axcolor)
-        radio = RadioButtons(rax, ("copper", "YlGn", "jet"), active=0)
-
-        def colorfunc(label):
-            specplot.set_cmap("copper")
-            fig.canvas.draw_idle()
-
-        radio.on_clicked(colorfunc)
-        plt.show()
-
-        ax.axis("off")
-
-        ax = fig.add_subplot(gs[2, :4], sharex=ax)
-        plt.plot(params.time, params.emg)
-
-        ax = fig.add_subplot(gs[3, :4], sharex=ax)
-        plt.plot(params.time, params.theta_delta_ratio)

@@ -7,6 +7,10 @@ import seaborn as sns
 import matplotlib
 from collections import namedtuple
 from pathlib import Path
+import matplotlib.gridspec as gridspec
+import signal_process
+import matplotlib as mpl
+from plotUtil import Colormap
 
 cmap = matplotlib.cm.get_cmap("hot_r")
 
@@ -73,3 +77,4 @@ for sub, sess in enumerate(sessions):
     sess.swa.detect()
     sess.swa.plot()
 # endregion
+
