@@ -3,7 +3,7 @@ from pathlib import Path
 
 from parsePath import path2files
 
-from lfpEvent import Ripple, Hswa, Spindle
+from lfpEvent import Ripple, Hswa, Spindle, Theta
 import numpy as np
 
 from makeChanMap import recinfo
@@ -46,6 +46,7 @@ class processData:
     def trange(self, period):
         self._trange = period
         self.spikes = spikes(self)
+        self.theta = Theta(self)
         self.brainstates = SleepScore(self)
         self.ripple = Ripple(self)
         self.swa = Hswa(self)
