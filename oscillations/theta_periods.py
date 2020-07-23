@@ -1003,14 +1003,108 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
-#%% theta phase specific extraction of lfp
+#%% theta phase specific extraction of lfp during strong theta MAZE
 # region
 plt.clf()
 fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(1, 1, figure=fig)
+gs = gridspec.GridSpec(2, 3, figure=fig)
 fig.subplots_adjust(hspace=0.3)
-ax = fig.add_subplot(gs[0])
-axins = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
+
+all_theta = []
+cmap = mpl.cm.get_cmap("Set2")
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+
+    lfp, _, _ = sess.ripple.best_chan_lfp()
+    lfp = lfp[0, :]
+    t = np.linspace(0, len(lfp) / 1250, len(lfp))
+
+    tstart = maze[0]
+    tend = maze[1]
+
+    lfpmaze = lfp[(t > tstart) & (t < tend)]
+    tmaze = np.linspace(tstart, tend, len(lfpmaze))
+
+    frtheta = np.arange(5, 12, 0.5)
+    # wavdec = signal_process.wavelet_decomp(lfpmaze, freqs=frtheta)
+    # wav = wavdec.cohen()
+    # frgamma = np.arange(25, 50, 1)
+    # wavdec = wavelet_decomp(lfpmaze, freqs=frgamma)
+    # wav = wavdec.colgin2009()
+    # wavtheta = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
+
+    sum_theta = gaussian_filter1d(np.sum(wav, axis=0), sigma=10)
+    zsc_theta = stats.zscore(sum_theta)
+    thetaevents = threshPeriods(
+        zsc_theta, lowthresh=0, highthresh=0.5, minDistance=300, minDuration=1250
+    )
+
+    strong_theta = []
+    theta_indices = []
+    for (beg, end) in thetaevents:
+        strong_theta.extend(lfpmaze[beg:end])
+        theta_indices.extend(np.arange(beg, end))
+    strong_theta = np.asarray(strong_theta)
+    theta_indices = np.asarray(theta_indices)
+    non_theta = np.delete(lfpmaze, theta_indices)
+
+    theta_lfp = stats.zscore(signal_process.filter_sig.filter_theta(strong_theta))
+    # filt_theta = signal_process.filter_sig.filter_cust(theta_lfp, lf=20, hf=60)
+    hil_theta = signal_process.hilbertfast(theta_lfp)
+    theta_amp = np.abs(hil_theta)
+    theta_angle = np.angle(hil_theta, deg=True) + 180
+    angle_bin = np.linspace(0, 360, 6)  # divide into 5 bins so each bin=25ms
+    bin_ind = np.digitize(theta_angle, bins=angle_bin)
+
+    ax = fig.add_subplot(gs[sub])
+    axins = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
+    for phase in range(1, len(angle_bin)):
+        strong_theta_atphase = theta_lfp[np.where(bin_ind == phase)[0]]
+        strong_theta_atphase = signal_process.filter_sig.filter_cust(
+            strong_theta_atphase, lf=20, hf=100
+        )
+
+        # ax = fig.add_subplot(gs[phase - 1])
+        f, t, sxx = sg.spectrogram(
+            strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250
+        )
+        # ax.pcolorfast(t, f, stats.zscore(sxx, axis=1), cmap="YlGn")
+
+        ax.plot(
+            f,
+            np.mean(sxx, axis=1),
+            color=cmap(phase),
+            label=f"{int(angle_bin[phase-1])}-{int(angle_bin[phase])}",
+        )
+        ax.set_xlabel("Frequency (Hz)")
+        ax.set_ylabel("Mean amplitude across time")
+        # plt.pcolormesh(bispec_freq, bispec_freq, bispec, vmin=0, vmax=0.1, cmap="YlGn")
+        ax.set_xlim([2, 100])
+
+        axins.plot(
+            [angle_bin[phase - 1], angle_bin[phase]], [1, 1], color=cmap(phase), lw=2
+        )
+
+    axins.axis("off")
+    # ax.legend(title="Theta Phase")
+    ax.set_title("Mean power spectrum by breaking \n down theta signal by phase")
+
+
+# fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
+
+
+# endregion
+
+#%% theta phase specific extraction of lfp during REM sleep
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(2, 3, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+
 
 cmap = mpl.cm.get_cmap("Set2")
 for sub, sess in enumerate(sessions):
@@ -1053,12 +1147,15 @@ for sub, sess in enumerate(sessions):
     non_theta = np.delete(lfpmaze, theta_indices)
 
     theta_lfp = stats.zscore(signal_process.filter_sig.filter_theta(strong_theta))
+    filt_theta = signal_process.filter_sig.filter_cust(theta_lfp, lf=20, hf=60)
     hil_theta = signal_process.hilbertfast(theta_lfp)
     theta_amp = np.abs(hil_theta)
     theta_angle = np.angle(hil_theta, deg=True) + 180
     angle_bin = np.linspace(0, 360, 6)  # divide into 5 bins so each bin=25ms
     bin_ind = np.digitize(theta_angle, bins=angle_bin)
 
+    ax = fig.add_subplot(gs[sub])
+    axins = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
     for phase in range(1, len(angle_bin)):
         strong_theta_atphase = strong_theta[np.where(bin_ind == phase)[0]]
 
@@ -1083,15 +1180,9 @@ for sub, sess in enumerate(sessions):
         )
 
     axins.axis("off")
-    ax.legend(title="Theta Phase")
-    ax.set_title("Mean power spectrum by breaking down theta signal by phase")
-
-
-# fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
-
-
+    # ax.legend(title="Theta Phase")
+    ax.set_title("Mean power spectrum by breaking \n down theta signal by phase")
 # endregion
-
 
 #%% Theta periods and velocity power spectrum with channels at different depths
 # region
@@ -1405,14 +1496,16 @@ for sub, sess in enumerate(sessions):
     states = sess.brainstates.states
     rems = states.loc[states["name"] == "rem"]
 
-    lfp, _, _ = sess.ripple.best_chan_lfp()
-    lfp = lfp[0, :]
-    t = np.linspace(0, len(lfp) / 1250, len(lfp))
+    lfp = sess.theta.getBestChanlfp()
+    if sub in [1, 4]:
+        lfp = sess.utils.geteeg(chans=50)
 
-    rem_indx = []
+    rem_frames = []
     for rem in rems.itertuples():
-        rem_indx.extend(lfp[int(rem.start * eegSrate) : int(rem.end * eegSrate)])
-    rem_theta = lfp[rem_indx]
+        rem_frames.extend(
+            list(range(int(rem.start * eegSrate), int(rem.end * eegSrate)))
+        )
+    rem_theta = lfp[rem_frames]
 
     # -----wavelet computation -------
     frgamma = np.arange(25, 150, 1)

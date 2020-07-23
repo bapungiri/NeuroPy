@@ -19,12 +19,12 @@ from callfunc import processData
 
 #%% Subjects
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 
@@ -76,5 +76,13 @@ for sub, sess in enumerate(sessions):
 
     sess.swa.detect()
     sess.swa.plot()
+# endregion
+
+#%% Best Theta channel based on
+# region
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    # sess.theta.detectBestThetaChan()
 # endregion
 

@@ -23,12 +23,13 @@ class SessionUtil:
     def __init__(self, obj):
         self._obj = obj
 
-    def geteeg(self, chans, timeRange=None):
-        """Returns eeg signal for given channels and timeperiod
+    def geteeg(self, chans, timeRange=None, frames=None):
+        """Returns eeg signal for given channels and timeperiod or selected frames
 
         Args:
             chans (list): list of channels required index should in order of binary file
             timeRange (list, optional): In seconds and must have length 2.
+            frames (list, optional): Required frames from the eeg data.
 
         Returns:
             eeg: [array of channels x timepoints]
@@ -37,28 +38,18 @@ class SessionUtil:
         eegSrate = self._obj.recinfo.lfpSrate
         nChans = self._obj.recinfo.nChans
 
-        if timeRange is None:
-            eeg = np.memmap(eegfile, dtype="int16", mode="r")
-            eeg = np.memmap.reshape(eeg, (int(len(eeg) / nChans), nChans))
-            eeg = eeg[:, chans].T
+        eeg = np.memmap(eegfile, dtype="int16", mode="r")
+        eeg = np.memmap.reshape(eeg, (nChans, len(eeg) // nChans), order="F")
 
-        else:
-
+        if timeRange is not None:
             assert len(timeRange) == 2
-
             frameStart = int(timeRange[0] * eegSrate)
             frameEnd = int(timeRange[1] * eegSrate)
+            eeg = eeg[:, frameStart:frameEnd]
+        elif frames is not None:
+            eeg = eeg[:, frames]
 
-            eeg = np.memmap(
-                eegfile,
-                dtype="int16",
-                offset=2 * frameStart * nChans,
-                shape=((frameEnd - frameStart), nChans),
-                mode="r",
-            )
-
-            eeg = np.asarray(eeg[:, chans].T)
-
+        eeg = eeg[chans, :]
         return eeg
 
     def plotChanPos(self, chans=None, ax=None, colors=None):

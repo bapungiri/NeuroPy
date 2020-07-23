@@ -30,7 +30,7 @@ class filter_sig:
     @staticmethod
     def filter_ripple(signal, sampleRate=1250, ax=0):
         lowpass_freq = 150
-        highpass_freq = 250
+        highpass_freq = 240
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
@@ -315,7 +315,7 @@ class wavelet_decomp:
         return wave_spec ** 2
 
 
-def hilbertfast(signal):
+def hilbertfast(signal, ax=-1):
 
     """inputs a signal does padding to next power of 2 for faster computation of hilbert transform
 
@@ -325,9 +325,15 @@ def hilbertfast(signal):
     Returns:
         [type] -- [description]
     """
-    hilbertsig = sg.hilbert(signal, fftpack.next_fast_len(len(signal)))
+    signal_length = signal.shape[-1]
+    hilbertsig = sg.hilbert(signal, fftpack.next_fast_len(signal_length), axis=ax)
 
-    return hilbertsig[: len(signal)]
+    if np.ndim(signal) > 1:
+        hilbertsig = hilbertsig[:, :signal_length]
+    else:
+        hilbertsig = hilbertsig[:signal_length]
+
+    return hilbertsig
 
 
 def fftnormalized(signal, fs=1250):
@@ -406,4 +412,19 @@ def csdClassic(lfp, coords):
 
 def icsd(lfp, coords):
     pass
+
+
+def mtspect(signal, nperseg, noverlap, fs=1250):
+    window = nperseg
+    overlap = noverlap
+
+    tapers = sg.windows.dpss(M=window, NW=5, Kmax=6)
+
+    psd_taper = []
+    for taper in tapers:
+        f, psd = sg.welch(signal, window=taper, fs=fs, noverlap=overlap)
+        psd_taper.append(psd)
+    psd = np.asarray(psd_taper).mean(axis=0)
+
+    return f, psd
 

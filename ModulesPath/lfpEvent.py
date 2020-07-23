@@ -15,6 +15,8 @@ from matplotlib.gridspec import GridSpec
 from scipy import fftpack
 from lfpDetect import swr as spwrs
 from signal_process import filter_sig as filt
+from collections import namedtuple
+from dataclasses import dataclass
 
 
 class Hswa:
@@ -205,6 +207,7 @@ class Ripple:
             self.time = ripple_evt["times"]
             self.peakpower = ripple_evt["peakPower"]
             self.peaktime = ripple_evt["peaktime"]
+            # self.peakSharpWave = ripple_evt["peakSharpwave"]
 
             if obj.trange.any():
                 start, end = obj.trange
@@ -349,8 +352,11 @@ class Ripple:
         signal = np.asarray(ripplelfps, dtype=np.float)[0, :]
 
         zscsignal = self._zscbestchannel(fromfile=0)
+        sharpWv_sig = np.abs(filt.filter_cust(zscsignal, lf=2, hf=50, ax=1)).sum(axis=0)
 
-        # delete ripples in noisy period
+        # sharp_wave_sig = sharp_wave_sig - np.mean(sharp_wave_sig)
+
+        # ---------delete ripples in noisy period--------
         deadfile = (self._obj.sessinfo.files.filePrefix).with_suffix(".dead")
         if deadfile.is_file():
             with deadfile.open("r") as f:
@@ -368,7 +374,7 @@ class Ripple:
                 numnoisy = en - st
                 zscsignal[:, st:en] = np.zeros((zscsignal.shape[0], numnoisy))
 
-        # hilbert transform --> binarize by > than lowthreshold
+        # ------hilbert transform --> binarize by > than lowthreshold
         maxPower = np.max(zscsignal, axis=0)
         ThreshSignal = np.where(zscsignal > self.lowthresholdFactor, 1, 0).sum(axis=0)
         ThreshSignal = np.diff(np.where(ThreshSignal > 0, 1, 0))
@@ -383,7 +389,7 @@ class Ripple:
         firstPass = np.vstack((start_ripple, stop_ripple)).T
         print(f"{len(firstPass)} ripples detected initially")
 
-        # ===== merging close ripples
+        # --------merging close ripples------------
         minInterRippleSamples = self.mergeDistance / 1000 * SampFreq
         secondPass = []
         ripple = firstPass[0]
@@ -399,9 +405,9 @@ class Ripple:
         secondPass = np.asarray(secondPass)
         print(f"{len(secondPass)} ripples reamining after merging")
 
-        # =======delete ripples with less than threshold power
+        # ------delete ripples with less than threshold power--------
         thirdPass = []
-        peakNormalizedPower, peaktime = [], []
+        peakNormalizedPower, peaktime, peakSharpWave = [], [], []
 
         for i in range(0, len(secondPass)):
             maxValue = max(maxPower[secondPass[i, 0] : secondPass[i, 1]])
@@ -414,33 +420,41 @@ class Ripple:
                         + np.argmax(maxPower[secondPass[i, 0] : secondPass[i, 1]])
                     ]
                 )
+                peakSharpWave.append(
+                    [
+                        secondPass[i, 0]
+                        + np.argmax(sharpWv_sig[secondPass[i, 0] : secondPass[i, 1]])
+                    ]
+                )
         thirdPass = np.asarray(thirdPass)
         print(f"{len(thirdPass)} ripples reamining after deleting weak ripples")
 
         ripple_duration = np.diff(thirdPass, axis=1) / SampFreq * 1000
 
-        # delete very short ripples
+        # ---------delete very short ripples--------
         shortRipples = np.where(ripple_duration < self.minRippleDuration)[0]
         fourthPass = np.delete(thirdPass, shortRipples, 0)
         peakNormalizedPower = np.delete(peakNormalizedPower, shortRipples)
+        peakSharpWave = np.delete(peakSharpWave, shortRipples)
         peaktime = np.delete(peaktime, shortRipples)
         ripple_duration = np.delete(ripple_duration, shortRipples)
         print(f"{len(fourthPass)} ripples reamining after deleting short ripples")
 
-        # delete ripples with unrealistic high power
+        # ----- delete ripples with unrealistic high power
         # artifactRipples = np.where(peakNormalizedPower > maxRipplePower)[0]
         # fourthPass = np.delete(thirdPass, artifactRipples, 0)
         # peakNormalizedPower = np.delete(peakNormalizedPower, artifactRipples)
 
-        # delete very long ripples
+        # ---------delete very long ripples---------
         veryLongRipples = np.where(ripple_duration > self.maxRippleDuration)[0]
         fifthPass = np.delete(fourthPass, veryLongRipples, 0)
         peakNormalizedPower = np.delete(peakNormalizedPower, veryLongRipples)
+        peakSharpWave = np.delete(peakSharpWave, veryLongRipples)
         peaktime = np.delete(peaktime, veryLongRipples)
         ripple_duration = np.delete(ripple_duration, veryLongRipples)
         print(f"{len(fifthPass)} ripples reamining after deleting very long ripples")
 
-        # delete ripples which have unusually high amp in raw signal (takes care of disconnection)
+        # -----delete ripples with unusually high amp in raw signal (takes care of disconnection)---------
         highRawInd = []
         for i in range(0, len(fifthPass)):
             maxValue = max(signal[fifthPass[i, 0] : fifthPass[i, 1]])
@@ -450,6 +464,7 @@ class Ripple:
         sixthPass = np.delete(fifthPass, highRawInd, 0)
         peakNormalizedPower = np.delete(peakNormalizedPower, highRawInd)
         peaktime = np.delete(peaktime, highRawInd)
+        peakSharpWave = np.delete(peakSharpWave, highRawInd)
         print(f"{len(sixthPass)} ripples kept after deleting unrealistic ripples")
 
         now = datetime.now()
@@ -459,6 +474,7 @@ class Ripple:
             "times": sixthPass / SampFreq,
             "peaktime": peaktime / SampFreq,
             "peakPower": peakNormalizedPower,
+            "peakSharpwave": peakSharpWave,
             "Info": {"Date": dt_string},
             "DetectionParams": {
                 "lowThres": self.lowthresholdFactor,
@@ -897,3 +913,75 @@ class Spindle:
         with file_neuroscope.open("w") as a:
             for beg, stop in times:
                 a.write(f"{beg} start\n{stop} end\n")
+
+
+class Theta:
+    def __init__(self, obj):
+
+        self._obj = obj
+
+        # ----- defining file names ---------
+        filePrefix = self._obj.sessinfo.files.filePrefix
+        # self.files = namedtuple("files", [])
+        # self.files.bestThetachan = Path(str(filePrefix) + "_bestThetaChan.npy")
+        @dataclass
+        class files:
+            bestThetachan: str = Path(str(filePrefix) + "_bestThetaChan.npy")
+
+        self.files = files()
+
+        if Path(self.files.bestThetachan).is_file():
+            data = self._load()
+            self.bestchan = data["chanorder"][0]
+            self.chansOrder = data["chanorder"]
+
+    # @property
+    # def bestchan(self):
+    #     return self._load()["chanorder"][0]
+
+    # @property
+    # def chansOrder(self):
+    #     return self._load()["chanorder"]
+
+    def _load(self):
+        data = np.load(self.files.bestThetachan, allow_pickle=True).item()
+        return data
+
+    def getBestChanlfp(self):
+        return self._obj.utils.geteeg(chans=self.bestchan)
+
+    def detectBestThetaChan(self):
+        """Selects the best channel by computing area under the curve of spectral density
+
+        """
+        channels = self._obj.recinfo.goodchans
+        maze = self._obj.epochs.maze
+        eeg = self._obj.utils.geteeg(chans=channels, timeRange=maze)
+        eegSrate = self._obj.recinfo.lfpSrate
+        f, pxx = sg.welch(
+            eeg, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate
+        )
+        f_theta = np.where((f > 5) & (f < 20))[0]
+        area_chan = np.trapz(y=pxx[:, f_theta], x=f[f_theta], axis=1)
+        sorted_thetapow = np.argsort(area_chan)[::-1]
+        chans_thetapow = channels[sorted_thetapow]
+
+        filename = self.files.bestThetachan
+        best_theta_chans = {
+            "chanorder": chans_thetapow,
+            "freq": f,
+            "Pxx": pxx[sorted_thetapow, :],
+        }
+        np.save(filename, best_theta_chans)
+
+        # auc.append(area_chan)
+
+    def strongThetaPeriods(self):
+        pass
+
+    def plot(self):
+        """Gives a comprehensive view of the detection process with some statistics and examples
+        """
+        data = self._load()
+        pxx = data["Pxx"]
+
