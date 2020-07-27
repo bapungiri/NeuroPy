@@ -10,6 +10,8 @@ import seaborn as sns
 import signal_process
 import matplotlib as mpl
 import warnings
+import os
+from plotUtil import savefig
 
 warnings.simplefilter(action="default")
 
@@ -236,7 +238,8 @@ panel_label(ax, "e")
 
 #%% PSD first hour vs last hour and plotting the difference
 # region
-
+"""We want to understand the changes in spectral power across sleep deprivation, one interesting way to look at that is plotting the difference of power across frequencies.
+"""
 psd1st_all, psd5th_all, psd_diff = [], [], []
 for sub, sess in enumerate(sessions[:3]):
     sess.trange = np.array([])
@@ -277,6 +280,8 @@ ax.set_xlim([1, 300])
 ax.set_title("PSDZT1-PSDZT5", fontsize=titlesize)
 ax.set_xlabel("Frequency (Hz)")
 ax.set_ylabel("Zscore of difference")
+
+# TODO add distributions of emg changes across the SD period
 # ax.legend()
 panel_label(ax, "f")
 
@@ -354,4 +359,8 @@ fig.show()
 panel_label(ax, "g")
 
 # endregion
+
+scriptname = os.path.basename(__file__)
+filename = "Test"
+savefig(fig, filename, scriptname)
 
