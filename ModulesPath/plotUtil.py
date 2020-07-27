@@ -10,6 +10,10 @@ from scipy import fftpack
 from scipy.fft import fft
 import matplotlib as mpl
 from matplotlib.colors import ListedColormap
+from datetime import date
+import os
+from pathlib import Path
+import matplotlib.pyplot as plt
 
 
 class Colormap:
@@ -36,3 +40,26 @@ class Colormap:
         colmap = ListedColormap(colmap)
 
         return colmap
+
+
+def savefig(fig, fname, scriptname, folder=None):
+
+    if folder is None:
+        folder = "/home/bapung/Documents/MATLAB/figures/"
+
+    filename = folder + fname + ".pdf"
+
+    today = date.today().strftime("%m/%d/%y")
+
+    fig.text(
+        0.95,
+        0.01,
+        f"{scriptname}\n Date: {today}",
+        fontsize=6,
+        color="gray",
+        ha="right",
+        va="bottom",
+        alpha=0.5,
+    )
+    fig.savefig(filename)
+
