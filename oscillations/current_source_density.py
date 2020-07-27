@@ -13,6 +13,7 @@ from callfunc import processData
 from neo.core import AnalogSignal
 import quantities as pq
 from kcsd.KCSD import KCSD
+from mathutil import threshPeriods
 import warnings
 
 warnings.simplefilter(action="default")
@@ -199,3 +200,96 @@ for sub, sess in enumerate(sessions):
         fig.colorbar(im, ax=ax, orientation="horizontal")
     fig.suptitle("Neptune Day1 - CSD (around ripple peaktime)")
 # endregion
+
+#%% CSD locked to epsilon band peak (Fast gamma band > 100 Hz)
+# region
+"""
+rationale : fast gamma captures spiking activity which should be localized around pyramidal layer as seen in the paper below.
+
+Reference: belluscio et al. 2012
+"""
+plt.close("all")
+
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    changrp = np.concatenate(sess.recinfo.channelgroups[:8])
+    gammachan = 16
+    eeg = sess.utils.geteeg(chans=gammachan, timeRange=maze)
+    filteeg = signal_process.filter_sig.filter_cust(eeg, lf=100, hf=150)
+    hilberteeg = signal_process.hilbertfast(filteeg)
+    amp_envlp_zsc = stats.zscore(np.abs(hilberteeg))
+
+    events = threshPeriods(
+        amp_envlp_zsc, lowthresh=1, highthresh=2, minDistance=30, minDuration=50
+    )
+
+    filteeg = stats.zscore(filteeg)
+    maxpos = [start + np.argmax(filteeg[start:end]) for (start, end) in events]
+
+    eegall = sess.utils.geteeg(chans=changrp, timeRange=maze)
+    filteegall = signal_process.filter_sig.filter_cust(eegall, lf=100, hf=150, ax=-1)
+
+    #     # ------selecting time points around a subset of ripples ---------
+
+    gamma_peak = [filteegall[:, frm - 25 : frm + 25] for frm in maxpos]
+    gamma_avg = np.dstack(gamma_peak).mean(axis=2)
+
+    nshanks = sess.recinfo.nShanks
+    changrp = np.concatenate(sess.recinfo.channelgroups[:8])
+    sess.csd = []
+    for sh_id, shank in enumerate(sess.recinfo.channelgroups[:8]):
+
+        chan_where = np.argwhere(np.isin(changrp, shank)).squeeze()
+        rpl_lfp = gamma_avg[chan_where, :]
+        badchans = sess.recinfo.badchans
+        badchan_indx = np.argwhere(np.isin(shank, badchans))
+        ycoord = np.arange(16 * 20, 0, -20)
+        if badchan_indx.shape[0]:
+            rpl_lfp = np.delete(rpl_lfp, badchan_indx, axis=0)
+            ycoord = np.delete(ycoord, badchan_indx)
+        ycoord = 
+        .reshape(-1, 1) * pq.um
+
+        sigarr = AnalogSignal(rpl_lfp.T, units="uV", sampling_rate=1250 * pq.Hz)
+        sess.csd.append(csd2d.estimate_csd(sigarr, coords=ycoord, method="KCSD1D"))
+
+# -----Plotting---------
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(1, 8, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+for sub, sess in enumerate(sessions):
+
+    for sh_id, shank in enumerate(sess.recinfo.channelgroups[:8]):
+        csd_data = sess.csd[sh_id]
+        ypos = csd_data.annotations["x_coords"]
+        t = np.linspace(-25 / eegSrate, 25 / eegSrate, 50) * 1000
+        chan_where = np.argwhere(np.isin(changrp, shank)).squeeze()
+        rpl_lfp = gamma_avg[chan_where, :]
+        # rpl_lfp = np.flipud(rpl_lfp)
+
+        ax = fig.add_subplot(gs[sh_id])
+        im = ax.pcolormesh(
+            t, ypos, np.asarray(csd_data).T, cmap="jet", zorder=1, shading="nearest"
+        )
+        ax2 = ax.twinx()
+        ax2.plot(
+            t,
+            rpl_lfp.T / 10000 + np.linspace(ypos[0], ypos[-1], rpl_lfp.shape[0]),
+            zorder=2,
+            color="#616161",
+        )
+
+        ax.set_ylim([0, 0.35])
+        ax2.axes.get_yaxis().set_visible(False)
+        ax.axes.get_yaxis().set_visible(False)
+        ax.set_xlabel("Time (ms)")
+        ax.set_title(f"Shank{sh_id+1}")
+
+        fig.colorbar(im, ax=ax, orientation="horizontal")
+    fig.suptitle("RatKDay2 - CSD (around peak fast gamma (100-150 Hz))")
+# endregion
+
