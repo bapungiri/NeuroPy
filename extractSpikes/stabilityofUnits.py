@@ -3,8 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-from matplotlib.gridspec import gridspec
+import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter
+from ccg import correlograms
 
 from callfunc import processData
 
@@ -149,3 +150,39 @@ for sub, sess in enumerate(sessions):
     # ax.axis("equal")
 # endregion
 
+#%% Plotting CCG of each identified unit
+# region
+plt.clf()
+for sub, sess in enumerate(sessions):
+    print(sub)
+    sess.trange = np.array([])
+    spikes = sess.spikes.times
+    spkinfo = sess.spikes.info
+    spkid = np.arange(1, len(spikes) + 1).astype(int)
+    spk_map = [[spkid[i]] * len(spikes[i]) for i in range(len(spikes))]
+
+    spikes = np.concatenate(spikes)
+    spk_map = np.concatenate(spk_map).astype(int)
+    sort_ind = np.argsort(spikes)
+    spikes = spikes[sort_ind]
+    spk_map = spk_map[sort_ind]
+    ccgmap = correlograms(
+        spikes, spk_map, sample_rate=1250, bin_size=0.001, window_size=0.2
+    )
+
+    nCells = len(spkinfo)
+    nrows = int(np.ceil(np.sqrt(nCells)))
+
+    fig = plt.figure(sub + 1, figsize=(10, 15))
+    gs = gridspec.GridSpec(nrows, nrows, figure=fig)
+    fig.subplots_adjust(hspace=0.3, wspace=0.2)
+
+    for i in range(nCells):
+        ax = fig.add_subplot(gs[i])
+        ax.fill_between(
+            np.linspace(-0.1, 0.1, ccgmap.shape[2]), ccgmap[i, i, :].squeeze()
+        )
+        ax.axis("off")
+
+
+# endregion
