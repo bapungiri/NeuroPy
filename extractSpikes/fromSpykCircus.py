@@ -10,8 +10,8 @@ from callfunc import processData
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/"
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/"
@@ -26,7 +26,8 @@ for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
 
-    sess.spikes.fromCircus(fileformat="diff_folder")
+    sess.spikes.fromCircus(fileformat="same_folder")
+    # print(len(sess.spikes.times))
     # sess.placefield.pf2d.compute()
     # sess.placefield.pf2d.plot()
 
