@@ -1029,8 +1029,8 @@ for sub, sess in enumerate(sessions):
     tmaze = np.linspace(tstart, tend, len(lfpmaze))
 
     frtheta = np.arange(5, 12, 0.5)
-    # wavdec = signal_process.wavelet_decomp(lfpmaze, freqs=frtheta)
-    # wav = wavdec.cohen()
+    wavdec = signal_process.wavelet_decomp(lfpmaze, freqs=frtheta)
+    wav = wavdec.cohen()
     # frgamma = np.arange(25, 50, 1)
     # wavdec = wavelet_decomp(lfpmaze, freqs=frgamma)
     # wav = wavdec.colgin2009()
@@ -1056,7 +1056,7 @@ for sub, sess in enumerate(sessions):
     hil_theta = signal_process.hilbertfast(theta_lfp)
     theta_amp = np.abs(hil_theta)
     theta_angle = np.angle(hil_theta, deg=True) + 180
-    angle_bin = np.linspace(0, 360, 6)  # divide into 5 bins so each bin=25ms
+    angle_bin = np.linspace(0, 360, 10)  # divide into 5 bins so each bin=25ms
     bin_ind = np.digitize(theta_angle, bins=angle_bin)
 
     ax = fig.add_subplot(gs[sub])

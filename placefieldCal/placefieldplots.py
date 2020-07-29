@@ -45,6 +45,8 @@ for sub, sess in enumerate(sessions):
 
 #%% Theta phase precession Open field
 # region
+"""Calculating theta precession in open field experiments, but abondoned for now
+"""
 plt.clf()
 fig = plt.figure(1, figsize=(10, 15))
 gs = gridspec.GridSpec(8, 5, figure=fig)
