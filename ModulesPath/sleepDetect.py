@@ -466,3 +466,33 @@ class SleepScore:
             # allplts(time - 5, time + 5)
             specplot.set_clim([0, norm])
 
+    def hypnogram(self, ax1=None, tstart=0.0, unit="s"):
+        """Plots hypnogram in the given axis
+
+        Args:
+            ax1 (axis, optional): axis for plotting. Defaults to None.
+            tstart (float, optional): Start time of hypnogram. Defaults to 0.
+            unit (str, optional): Unit of time in seconds or hour. Defaults to "s".
+        """
+        states = self._obj.brainstates.states
+
+        if ax1 is None:
+            fig = plt.figure(1, figsize=(6, 10))
+            gs = GridSpec(9, 1, figure=fig)
+            fig.subplots_adjust(hspace=0.4)
+            ax1 = fig.add_subplot(gs[0, 0])
+
+        x = np.asarray(states.start) - tstart
+        y = np.zeros(len(x)) + np.asarray(states.state)
+        width = np.asarray(states.duration)
+        height = np.ones(len(x))
+
+        colors = ["#6b90d1", "#eb9494", "#b6afaf", "#474343"]
+        col = [colors[int(state) - 1] for state in states.state]
+
+        if unit == "s":
+            make_boxes(ax1, x, y, width, height, facecolor=col)
+        if unit == "h":
+            make_boxes(ax1, x / 3600, y, width / 3600, height, facecolor=col)
+        ax1.set_ylim(1, 5)
+        ax1.axis("off")
