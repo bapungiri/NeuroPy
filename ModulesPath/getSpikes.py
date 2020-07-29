@@ -129,9 +129,9 @@ class stability:
         post = self._obj.epochs.post
         total_dur = self._obj.epochs.totalduration
 
-        pre_bin = np.linspace(pre[0], pre[1], 4)
+        pre_bin = np.linspace(pre[0], pre[1], 3)
         maze_bin = maze
-        post_bin = np.linspace(post[0], post[1], 11)
+        post_bin = np.linspace(post[0], post[1], 4)
 
         spks = self._obj.spikes.times
 
@@ -145,9 +145,9 @@ class stability:
         maze_spikecount = np.array([np.histogram(x, bins=maze_bin)[0] for x in spks])
         post_spikecount = np.array([np.histogram(x, bins=post_bin)[0] for x in spks])
 
-        frate_pre = pre_spikecount / 3600
+        frate_pre = pre_spikecount / (np.mean(np.diff(pre_bin)))
         frate_maze = maze_spikecount / np.diff(maze)
-        frate_post = post_spikecount / 3600
+        frate_post = post_spikecount / (np.mean(np.diff(post_bin)))
 
         frate = np.concatenate((frate_pre, frate_post), axis=1)
 
