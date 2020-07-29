@@ -14,7 +14,7 @@ import scipy.stats as stats
 import seaborn as sns
 from matplotlib.widgets import Button, RadioButtons, Slider
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
-
+from ccg import correlograms
 from callfunc import processData
 from mathutil import threshPeriods
 import signal_process
@@ -61,9 +61,9 @@ basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 sessions = [processData(_) for _ in basePath]
@@ -73,10 +73,10 @@ sessions = [processData(_) for _ in basePath]
 # region
 plt.clf()
 fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(1, 2, figure=fig)
+gs = gridspec.GridSpec(3, 2, figure=fig)
 fig.subplots_adjust(hspace=0.3)
 fig.suptitle("Cross-coherence first hour vs last hour of SD furthest channels")
-for sub, sess in enumerate(sessions):
+for sub, sess in enumerate(sessions[:3]):
     sess.trange = np.array([])
     post = sess.epochs.post
     eegSrate = sess.recinfo.lfpSrate
@@ -89,20 +89,77 @@ for sub, sess in enumerate(sessions):
     corr_5h = getspkCorr(spikes, fifthhr_time)
 
     subname = sess.sessinfo.session.sessionName
-    ax = fig.add_subplot(gs[0])
-    ax.imshow(corr_1h, aspect="auto", vmax=0.5)
+    ax = fig.add_subplot(gs[sub, 0])
+    ax.imshow(corr_1h, aspect="auto", vmax=0.1, vmin=-0.1)
     ax.set_ylabel("Coherence")
     ax.set_xlabel("Frequency (Hz)")
     ax.set_title(subname)
 
-    ax = fig.add_subplot(gs[1])
-    ax.imshow(corr_5h, aspect="auto", vmax=0.5)
+    ax = fig.add_subplot(gs[sub, 1])
+    ax.imshow(corr_5h, aspect="auto", vmax=0.1, vmin=-0.1)
     ax.set_ylabel("Coherence")
     ax.set_xlabel("Frequency (Hz)")
     ax.set_title(subname)
 
 # endregion
 
+#%% Mean pairwise correlation across Sleep Deprivation
+# region
+
+plt.clf()
+fig = plt.figure(1, figsize=(15, 5))
+gs = gridspec.GridSpec(1, 3, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+fig.suptitle("Mean pairwise correlation")
+for sub, sess in enumerate(sessions[:3]):
+    sess.trange = np.array([])
+    post = sess.epochs.post
+    eegSrate = sess.recinfo.lfpSrate
+    spikes = sess.spikes.times
+    spkinfo = sess.spikes.info
+    nCells = len(spkinfo)
+
+    good_pyr = np.where(spkinfo.q < 4)[0]
+    mua = np.where(spkinfo.q == 6)[0]
+    intneur = np.where(spkinfo.q == 8)[0]
+
+    indx_pyr = np.ix_(good_pyr, good_pyr)
+    indx_mua = np.ix_(mua, mua)
+    indx_intr = np.ix_(intneur, intneur)
+
+    sd_period = [post[0], post[0] + 5 * 3600]
+    sd_period_bin = np.arange(post[0], post[0] + 5 * 3600, 300)
+
+    corr = [
+        getspkCorr(spikes, [sd_period_bin[i], sd_period_bin[i + 1]])
+        for i in range(len(sd_period_bin) - 1)
+    ]
+
+    lower_tr = np.tril_indices(nCells, k=-1)
+    lower_pyr = np.tril_indices(len(good_pyr), k=-1)
+    lower_mua = np.tril_indices(len(mua), k=-1)
+    lower_intr = np.tril_indices(len(intneur), k=-1)
+
+    mean_corr = np.asarray([np.nanmean(mat[lower_tr]) for mat in corr])
+    mean_corr_pyr = np.asarray([np.nanmean(mat[indx_pyr][lower_pyr]) for mat in corr])
+    mean_corr_mua = np.asarray([np.nanmean(mat[indx_mua][lower_mua]) for mat in corr])
+    mean_corr_intr = np.asarray(
+        [np.nanmean(mat[indx_intr][lower_intr]) for mat in corr]
+    )
+
+    subname = sess.sessinfo.session.sessionName
+    t = np.linspace(0, 5, len(mean_corr) + 1)
+    ax = fig.add_subplot(gs[sub])
+    ax.plot(t[:-1], mean_corr, "k")
+    ax.plot(t[:-1], mean_corr_pyr, "r")
+    ax.plot(t[:-1], mean_corr_mua, "gray")
+    ax.plot(t[:-1], mean_corr_intr, "g")
+    ax.set_ylabel("Mean correlation")
+    ax.set_xlabel("Time (h)")
+    ax.set_title(subname)
+
+
+# endregion
 
 #%% Change in interspike interval during Sleep Deprivaton
 # region
@@ -181,12 +238,12 @@ for sub, sess in enumerate(sessions):
 # endregion
 
 
-#%% participation rate during ripples
+#%% Number of spike during ripples over the course of sleep deprivation
 # region
 
 plt.clf()
 fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(1, 1, figure=fig)
+gs = gridspec.GridSpec(3, 1, figure=fig)
 fig.subplots_adjust(hspace=0.3)
 fig.suptitle("Change in interspike interval during Sleep Deprivaton")
 for sub, sess in enumerate(sessions):
@@ -195,25 +252,166 @@ for sub, sess in enumerate(sessions):
     eegSrate = sess.recinfo.lfpSrate
     spikes = sess.spikes.times
     sd_period = [post[0], post[0] + 5 * 3600]
-    firsthr_time = [post[0], post[0] + 3600]
-    fifthhr_time = [post[0] + 4 * 3600, post[0] + 5 * 3600]
-    spkinfo = sess.spikes.info
-    reqcells_id = np.where(spkinfo["q"] < 4)[0]
-    spikes = [spikes[cell] for cell in reqcells_id]
+    ripples = sess.ripple.time
+    ripples_sd = ripples[
+        (ripples[:, 0] > sd_period[0]) & (ripples[:, 0] < sd_period[1])
+    ].ravel()
 
-    stable_cells = stability(spikes, sd_period)
-    spikes = [spikes[cell] for cell in stable_cells]
+    spkcnt = np.asarray([np.histogram(cell, ripples_sd)[0] for cell in spikes])[:, ::2]
 
-    corr_1h = getspkCorr(spikes, firsthr_time)
-    corr_5h = getspkCorr(spikes, fifthhr_time)
+    ax = fig.add_subplot(gs[sub])
+    ax.plot(np.sum(spkcnt, axis=0))
+    ax.set_ylabel("Spike counts")
+    ax.set_xlabel("time")
+    # ax.set_title(subname)
 
-    meancorr_1h = np.mean(corr_1h[np.tril_indices_from(corr_1h,)])
-    meancorr_5h = np.mean(corr_5h[np.tril_indices_from(corr_5h,)])
 
-    subname = sess.sessinfo.session.sessionName
-    ax = fig.add_subplot(gs[0])
-    ax.plot([1, 2], [meancorr_1h, meancorr_5h])
-    ax.set_ylabel("Coherence")
-    ax.set_xlabel("Frequency (Hz)")
-    ax.set_title(subname)
 # endregion
+
+#%% CCG temporal shift from first hour of SD to 5th hour of SD
+# region
+
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(3, 1, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+fig.suptitle("Change in interspike interval during Sleep Deprivaton")
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    post = sess.epochs.post
+    eegSrate = sess.recinfo.lfpSrate
+    spikes = sess.spikes.times
+    spkid = np.arange(1, len(spikes) + 1).astype(int)
+
+    sd_period = [post[0], post[0] + 1 * 3600]
+    spikes_sd = [cell[(cell > sd_period[0]) & (cell < sd_period[1])] for cell in spikes]
+    clu_map = [[spkid[i]] * len(spikes_sd[i]) for i in range(len(spikes))]
+    spikes_sd = np.concatenate(spikes_sd)
+    clu_map = np.concatenate(clu_map).astype(int)
+    a = np.unique(clu_map)
+    sort_ind = np.argsort(spikes_sd)
+    spikes_sd = spikes_sd[sort_ind]
+    clu_map = clu_map[sort_ind]
+    ccgmap = correlograms(
+        spikes_sd, clu_map, sample_rate=1250, bin_size=0.01, window_size=0.5
+    )
+    ccg_lag = ccgmap[:, :, 0:25].sum(axis=2)
+    ccg_lead = ccgmap[:, :, 26:51].sum(axis=2)
+    diff_ccg_1st = ccg_lead - ccg_lag
+
+    sd_period = [post[0] + 4 * 3600, post[0] + 5 * 3600]
+    spikes_sd = [cell[(cell > sd_period[0]) & (cell < sd_period[1])] for cell in spikes]
+    clu_map = [[spkid[i]] * len(spikes_sd[i]) for i in range(len(spikes))]
+    spikes_sd = np.concatenate(spikes_sd)
+    clu_map = np.concatenate(clu_map).astype(int)
+    b = np.unique(clu_map)
+    sort_ind = np.argsort(spikes_sd)
+    spikes_sd = spikes_sd[sort_ind]
+    clu_map = clu_map[sort_ind]
+    ccgmap = correlograms(
+        spikes_sd, clu_map, sample_rate=1250, bin_size=0.01, window_size=0.5
+    )
+    ccg_lag = ccgmap[:, :, 0:25].sum(axis=2)
+    ccg_lead = ccgmap[:, :, 26:51].sum(axis=2)
+    diff_ccg_5th = ccg_lead - ccg_lag
+
+    if len(a) > len(b):
+        indx = np.argwhere(np.isin(a, b)).squeeze()
+        indx = np.ix_(indx, indx)
+        diff_ccg_1st = diff_ccg_1st[indx]
+    if len(b) > len(a):
+        indx = np.argwhere(np.isin(b, a)).squeeze()
+
+        indx = np.ix_(indx, indx)
+        diff_ccg_5th = diff_ccg_5th[indx]
+
+    low_indices = np.tril_indices(np.min([len(a), len(b)]), k=-1)
+    first_hour = diff_ccg_1st[low_indices]
+    fifth_hour = diff_ccg_5th[low_indices]
+
+    linfit = np.polyfit(first_hour, fifth_hour, 1)
+    print(linfit)
+
+    ax = fig.add_subplot(gs[sub])
+    ax.plot(first_hour, fifth_hour, ".")
+    ax.set_ylabel("Spike counts")
+    ax.set_xlabel("time")
+    # ax.set_title(subname)
+
+
+# endregion
+
+#%% CCG temporal shift NREM recovery vs NREM control session
+# region
+
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(3, 1, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+fig.suptitle("Change in interspike interval during Sleep Deprivaton")
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    maze = sess.epochs.maze
+    post = sess.epochs.post
+    eegSrate = sess.recinfo.lfpSrate
+    spikes = sess.spikes.times
+    spkid = np.arange(1, len(spikes) + 1).astype(int)
+
+    sd_period = [post[0], post[0] + 1 * 3600]
+    spikes_sd = [cell[(cell > sd_period[0]) & (cell < sd_period[1])] for cell in spikes]
+    clu_map = [[spkid[i]] * len(spikes_sd[i]) for i in range(len(spikes))]
+    spikes_sd = np.concatenate(spikes_sd)
+    clu_map = np.concatenate(clu_map).astype(int)
+    a = np.unique(clu_map)
+    sort_ind = np.argsort(spikes_sd)
+    spikes_sd = spikes_sd[sort_ind]
+    clu_map = clu_map[sort_ind]
+    ccgmap = correlograms(
+        spikes_sd, clu_map, sample_rate=1250, bin_size=0.01, window_size=0.5
+    )
+    ccg_lag = ccgmap[:, :, 0:25].sum(axis=2)
+    ccg_lead = ccgmap[:, :, 26:51].sum(axis=2)
+    diff_ccg_1st = ccg_lead - ccg_lag
+
+    sd_period = [post[0] + 4 * 3600, post[0] + 5 * 3600]
+    spikes_sd = [cell[(cell > sd_period[0]) & (cell < sd_period[1])] for cell in spikes]
+    clu_map = [[spkid[i]] * len(spikes_sd[i]) for i in range(len(spikes))]
+    spikes_sd = np.concatenate(spikes_sd)
+    clu_map = np.concatenate(clu_map).astype(int)
+    b = np.unique(clu_map)
+    sort_ind = np.argsort(spikes_sd)
+    spikes_sd = spikes_sd[sort_ind]
+    clu_map = clu_map[sort_ind]
+    ccgmap = correlograms(
+        spikes_sd, clu_map, sample_rate=1250, bin_size=0.01, window_size=0.5
+    )
+    ccg_lag = ccgmap[:, :, 0:25].sum(axis=2)
+    ccg_lead = ccgmap[:, :, 26:51].sum(axis=2)
+    diff_ccg_5th = ccg_lead - ccg_lag
+
+    if len(a) > len(b):
+        indx = np.argwhere(np.isin(a, b)).squeeze()
+        indx = np.ix_(indx, indx)
+        diff_ccg_1st = diff_ccg_1st[indx]
+    if len(b) > len(a):
+        indx = np.argwhere(np.isin(b, a)).squeeze()
+
+        indx = np.ix_(indx, indx)
+        diff_ccg_5th = diff_ccg_5th[indx]
+
+    low_indices = np.tril_indices(np.min([len(a), len(b)]), k=-1)
+    first_hour = diff_ccg_1st[low_indices]
+    fifth_hour = diff_ccg_5th[low_indices]
+
+    linfit = np.polyfit(first_hour, fifth_hour, 1)
+    print(linfit)
+
+    ax = fig.add_subplot(gs[sub])
+    ax.plot(first_hour, fifth_hour, ".")
+    ax.set_ylabel("Spike counts")
+    ax.set_xlabel("time")
+    # ax.set_title(subname)
+
+
+# endregion
+
