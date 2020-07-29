@@ -17,8 +17,10 @@ class Replay:
         self._obj = obj
 
     def expvar(self):
-        """
-            This code implements Russo2017 elife paper for replay detection.
+        """ Calucate explained variance (EV) and reverse EV
+        References:
+        1) Kudrimoti 1999
+        2) Tastsuno et al. 2007
         """
 
         pre = self._obj.epochs.pre  # in seconds
@@ -26,12 +28,18 @@ class Replay:
         post = self._obj.epochs.post  # in seconds
         # print(self._obj.spikes.epochs.pre)
         recording_dur = post[1]
-        spks = self._obj.spikes.spks
+        spks = self._obj.spikes.times
+        info = self._obj.spikes.info
         unstable_units = self._obj.spikes.stability.unstable
         # stable_units = self._obj.spikes.stability.stable
-        stable_units = list(range(len(spks)))
+        # stable_units = list(range(len(spks)))
+        stable_units = self._obj.spikes.stability.stable
+        quality = np.asarray(self._obj.spikes.info.q)
+        pyr = np.where(quality < 5)[0]
+        stable_pyr = stable_units[np.isin(stable_units, pyr)]
+        print(len(stable_pyr))
 
-        spks = [spks[x] for x in stable_units]
+        # spks = [spks[x] for x in stable_units]
 
         nUnits = len(spks)
         windowSize = self.timeWindow
@@ -66,9 +74,9 @@ class Replay:
             np.corrcoef(post_spikecount[x]) for x in range(len(post_spikecount))
         ]
 
-        # selecting only pairwise correlations from different shanks
-        shnkId = self._obj.spikes.shankID
-        shnkId = shnkId[stable_units]
+        # --- selecting only pairwise correlations from different shanks
+        shnkId = np.asarray(self._obj.spikes.info.shank)
+        shnkId = shnkId[stable_pyr]
         cross_shnks = np.nonzero(np.tril(shnkId.reshape(-1, 1) - shnkId.reshape(1, -1)))
         # pre_corr = pre_corr[cross_shnks]
         pre_corr = [pre_corr[x][cross_shnks] for x in range(len(pre_spikecount))]
