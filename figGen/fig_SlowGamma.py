@@ -32,7 +32,7 @@ fig.suptitle("Slow gamma related")
 titlesize = 8
 
 
-# %% Detects strong theta within maze and averages spectrogram around theta cycles using Wavelets
+# %% Detects strong theta within maze and averages spectrogram around theta cycles using Wavelets with bicoherence plot
 # region
 inner = gridspec.GridSpecFromSubplotSpec(
     2, 1, subplot_spec=gs[0, 0], wspace=0.1, hspace=0.1
@@ -119,6 +119,7 @@ wav_phase = np.asarray(wav_phase).T
 ax = fig.add_subplot(inner[:, :])
 ax.pcolorfast(bin_angle[:-1], frgamma[:-1], wav_phase, cmap="Spectral_r")
 ax.set_xlabel(r"$\theta$ phase")
+
 ax.set_ylabel("frequency (Hz)")
 
 bicoh, freq, bispec = signal_process.bicoherence(strong_theta, fhigh=100)
@@ -163,5 +164,15 @@ fig.colorbar(im, ax=ax, orientation="horizontal")
 # ax.plot(t_thetacycle, avg_theta / len(theta_troughs), "k")
 # ax.set_xlabel("Time from theta trough (ms)")
 # ax.set_ylabel("Amplitude")
+
+# endregion
+
+#%% Average wavelet spectrogram around theta cycle during REM sleep
+# region
+
+# endregion
+
+#%% Spectrogram for phase binned theta lfp
+# region
 
 # endregion
