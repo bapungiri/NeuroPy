@@ -141,8 +141,8 @@ class ExtractPosition:
         posfile = self._obj.sessinfo.files.position
         if os.path.exists(posfile):
             posInfo = self._load(posfile).item()
-            self.x = posInfo["x"]  # in seconds
-            self.y = posInfo["y"]  # in seconds
+            self.x = posInfo["x"] / 4  # in seconds
+            self.y = posInfo["y"] / 4  # in seconds
             self.t = posInfo["time"]  # in seconds
             self.datetime = posInfo["datetime"]  # in seconds
             self.speed = np.sqrt(np.diff(self.x) ** 2 + np.diff(self.y) ** 2) / (
