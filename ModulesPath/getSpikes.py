@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from pathlib import Path
+from dataclasses import dataclass
 
 
 class spikes:
@@ -13,9 +14,9 @@ class spikes:
         if filename.is_file():
             spikes = np.load(filename, allow_pickle=True).item()
             self.times = spikes["times"]
-            self.info = spikes["info"]
+            self.info = spikes["info"].reset_index()
 
-        self.stability = stability(obj)
+        self.stability = Stability(obj)
         self.dynamics = firingDynamics(obj)
 
     def removeDoubleSpikes(self):
@@ -72,7 +73,7 @@ class spikes:
                     clu_spike_location = spktime[np.where(cluID == goodCellsID[i])[0]]
                     spkall.append(clu_spike_location / sRate)
 
-            spkinfo = pd.concat(info)
+            spkinfo = pd.concat(info, ignore_index=True)
             spkinfo["shank"] = shankID
             spktimes = spkall
 
@@ -119,44 +120,75 @@ class spikes:
         pass
 
 
-class stability:
+class Stability:
     def __init__(self, obj):
         self._obj = obj
+        filePrefix = self._obj.sessinfo.files.filePrefix
 
-    def firingRate(self):
-        pre = self._obj.epochs.pre
-        maze = self._obj.epochs.maze
-        post = self._obj.epochs.post
-        total_dur = self._obj.epochs.totalduration
+        @dataclass
+        class files:
+            stability: str = Path(str(filePrefix) + "_stability.npy")
 
-        pre_bin = np.linspace(pre[0], pre[1], 3)
-        maze_bin = maze
-        post_bin = np.linspace(post[0], post[1], 4)
+        self.files = files()
+
+        if self.files.stability.is_file():
+            self._load()
+
+    def _load(self):
+        data = np.load(self.files.stability, allow_pickle=True).item()
+        self.info = data["stableinfo"]
+        self.isStable = data["isStable"]
+        self.bins = data["bins"]
+        self.thresh = data["thresh"]
+
+    def firingRate(self, bins=None, thresh=0.3):
 
         spks = self._obj.spikes.times
+        nCells = len(spks)
 
-        bin_all = np.concatenate((pre, maze, post))
-        total_spks = np.array(
-            [np.histogram(x, bins=bin_all)[0][::2].sum() for x in spks]
+        # ---- goes to default mode of PRE-POST stability --------
+        if bins is None:
+            pre = self._obj.epochs.pre
+            pre = self._obj.utils.getinterval(period=pre, nbins=3)
+
+            post = self._obj.epochs.post
+            post = self._obj.utils.getinterval(period=post, nbins=5)
+            total_dur = self._obj.epochs.totalduration
+            mean_frate = self._obj.spikes.info.fr
+            bins = pre + post
+            nbins = len(bins)
+
+        # --- number of spikes in each bin ------
+        bin_dur = np.asarray([np.diff(window) for window in bins]).squeeze()
+        total_dur = np.sum(bin_dur)
+        nspks_bin = np.asarray(
+            [np.histogram(cell, bins=np.concatenate(bins))[0][::2] for cell in spks]
         )
-        mean_frate = total_spks / total_dur
+        assert nspks_bin.shape[0] == nCells
 
-        pre_spikecount = np.array([np.histogram(x, bins=pre_bin)[0] for x in spks])
-        maze_spikecount = np.array([np.histogram(x, bins=maze_bin)[0] for x in spks])
-        post_spikecount = np.array([np.histogram(x, bins=post_bin)[0] for x in spks])
+        total_spks = np.sum(nspks_bin, axis=1)
 
-        frate_pre = pre_spikecount / (np.mean(np.diff(pre_bin)))
-        frate_maze = maze_spikecount / np.diff(maze)
-        frate_post = post_spikecount / (np.mean(np.diff(post_bin)))
+        if bins is not None:
+            nbins = len(bins)
+            mean_frate = total_spks / total_dur
 
-        frate = np.concatenate((frate_pre, frate_post), axis=1)
+        # --- calculate meanfr in each bin and the fraction of meanfr over all bins
+        frate_bin = nspks_bin / np.tile(bin_dur, (nCells, 1))
+        fraction = frate_bin / mean_frate.reshape(-1, 1)
+        assert frate_bin.shape == fraction.shape
 
-        fraction = frate / mean_frate.reshape(-1, 1)
+        isStable = np.where(fraction >= thresh, 1, 0)
+        spkinfo = self._obj.spikes.info[["q", "shank"]].copy()
+        spkinfo["stable"] = isStable.all(axis=1).astype(int)
 
-        self.isStable = np.where(fraction > 0.3, 1, 0)
-        self.unstable = np.unique(np.argwhere(fraction < 0.3)[:, 0])
-        self.stable = np.setdiff1d(range(len(spks)), self.unstable)
-        self.mean_frate = mean_frate
+        stbl = {
+            "stableinfo": spkinfo,
+            "isStable": isStable,
+            "bins": bins,
+            "thresh": thresh,
+        }
+        np.save(self.files.stability, stbl)
+        self._load()
 
     def refPeriodViolation(self):
 
