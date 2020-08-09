@@ -162,7 +162,7 @@ class ExtractPosition:
 
         nfiles = metadata.count()["StartTime"]
 
-        # collecting timepoints related to .dat file
+        # ------- collecting timepoints related to .dat file  --------
         data_time = []
         for i, file_time in enumerate(metadata["StartTime"][:nfiles]):
             tbegin = datetime.strptime(file_time, "%Y-%m-%d_%H-%M-%S")
@@ -178,7 +178,7 @@ class ExtractPosition:
 
         data_time = pd.to_datetime(data_time)
 
-        # deleting intervals that were deleted from .dat file after concatenating
+        # ------- deleting intervals that were deleted from .dat file after concatenating
         ndeletedintervals = metadata.count()["deletedStart (minutes)"]
         for i in range(ndeletedintervals):
             tnoisy_begin = data_time[0] + pd.Timedelta(
@@ -197,16 +197,25 @@ class ExtractPosition:
             #     pd.Timestamp(tnoisy_end), pd.Timestamp(tnoisy_begin)
             # )
 
-        # ===== collecting timepoints related to position tracking =====
+        # ------- collecting timepoints related to position tracking ------
         posFolder = basePath / "position"
-        posfiles = sorted(posFolder.glob("*.csv"))
+        posfiles = np.asarray(sorted(posFolder.glob("*.csv")))
+        posfilestimes = np.asarray(
+            [
+                datetime.strptime(file.stem, "Take %Y-%m-%d %I.%M.%S %p")
+                for file in posfiles
+            ]
+        )
+        filesort_ind = np.argsort(posfilestimes).astype(int)
+        posfiles = posfiles[filesort_ind]
+
         postime, posx, posy, posz = [], [], [], []
         for file in posfiles:
             print(file)
 
             fileinfo = pd.read_csv(file, header=None, nrows=1)
             # required values are in column 11 and 13 of .csv file
-            tbegin = datetime.strptime(fileinfo.iloc[0][11], "%Y-%m-%d %H.%M.%S.%f %p")
+            tbegin = datetime.strptime(fileinfo.iloc[0][11], "%Y-%m-%d %I.%M.%S.%f %p")
             nframes = fileinfo.iloc[0][13]
             duration = pd.Timedelta(nframes / self.tracking_sRate, unit="sec")
             tend = tbegin + duration
@@ -224,7 +233,7 @@ class ExtractPosition:
         posy = np.asarray(posy)
         posz = np.asarray(posz)
 
-        # ======= interpolating positions for recorded data======
+        # -------- interpolating positions for recorded data ------------
         xdata = np.interp(data_time, postime, posx)
         ydata = np.interp(data_time, postime, posy)
         zdata = np.interp(data_time, postime, posz)
