@@ -225,7 +225,7 @@ class makePrmPrb:
                         else:
                             f1.write(line)
 
-    def makePrbCircus(self, probetype, shanksCombine=1):
+    def makePrbCircus(self, probetype, shanksCombine=0):
         nShanks = self._obj.recinfo.nShanks
         nChans = self._obj.recinfo.nChans
         channelgroups = self._obj.recinfo.channelgroups
@@ -241,20 +241,39 @@ class makePrmPrb:
             f.write(f"radius = 120\n")
             f.write("channel_groups = {\n")
 
-            for shank in range(1, nShanks + 1):
-                chan_list = channelgroups[shank - 1]
+            if shanksCombine:
 
-                f.write(f"{shank}: {{\n")
-                f.write(f"'channels' : {chan_list},\n")
+                chan_list = np.concatenate(channelgroups[:nShanks])
+                f.write(f"1: {{\n")
+                f.write(f"'channels' : {list(chan_list)},\n")
                 f.write("'graph' : [],\n")
                 f.write("'geometry' : {\n")
 
-                for chan, x, y in zip(chan_list, xpos, ypos):
-                    f.write(f"{chan}: [{x+(shank-1)*300},{y+(shank-1)*400}],\n")
+                for shank in range(1, nShanks + 1):
+                    for chan, x, y in zip(channelgroups[shank - 1], xpos, ypos):
+                        f.write(f"{chan}: [{x+(shank-1)*300},{y+(shank-1)*400}],\n")
 
+                    f.write("\n")
                 f.write("}\n")
                 f.write("},\n")
 
-            f.write("}\n")
+                f.write("}\n")
+
+            else:
+                for shank in range(1, nShanks + 1):
+                    chan_list = channelgroups[shank - 1]
+
+                    f.write(f"{shank}: {{\n")
+                    f.write(f"'channels' : {chan_list},\n")
+                    f.write("'graph' : [],\n")
+                    f.write("'geometry' : {\n")
+
+                    for chan, x, y in zip(chan_list, xpos, ypos):
+                        f.write(f"{chan}: [{x+(shank-1)*300},{y+(shank-1)*400}],\n")
+
+                    f.write("}\n")
+                    f.write("},\n")
+
+                f.write("}\n")
 
         print(".prb file created for Spyking Circus")
