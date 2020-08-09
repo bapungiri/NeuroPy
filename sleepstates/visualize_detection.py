@@ -18,10 +18,11 @@ plt.clf()
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day4/",
 ]
 
 
@@ -33,6 +34,7 @@ for sub, sess in enumerate(sessions):
 
     # sess.recinfo.makerecinfo()
     sess.trange = np.array([])
+    # sess.theta.detectBestChan()
     sess.brainstates.detect()
     # sess.brainstates.plot()
 

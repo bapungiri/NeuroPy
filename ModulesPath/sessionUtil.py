@@ -123,3 +123,9 @@ class SessionUtil:
         lfp_theta = chanlfp[:, lfp_ind]
 
         return lfp_theta
+
+    def getinterval(self, period, nbins):
+
+        interval = np.linspace(period[0], period[1], nbins + 1)
+        interval = [[interval[i], interval[i + 1]] for i in range(nbins)]
+        return interval

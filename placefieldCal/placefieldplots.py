@@ -16,7 +16,7 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/"
-    "/data/Clustering/SleepDeprivation/RatK/Day4/"
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 
 

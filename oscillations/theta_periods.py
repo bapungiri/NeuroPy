@@ -1544,3 +1544,136 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
+#%% Theta-Gamma band correlation during SD
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(3, 1, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+
+for sub, sess in enumerate(sessions[:3]):
+    sess.trange = np.array([])
+    specpower = sess.brainstates.params
+
+    sd_period = sess.epochs.post
+    specpower_sd = specpower.loc[
+        (specpower.time > sd_period[0]) & (specpower.time < sd_period[0] + 5 * 3600)
+    ]
+    specpower_sd1st = specpower.loc[
+        (specpower.time > sd_period[0]) & (specpower.time < sd_period[0] + 3600)
+    ]
+    specpower_sd5th = specpower.loc[
+        (specpower.time > sd_period[0] + 4 * 3600)
+        & (specpower.time < sd_period[0] + 5 * 3600)
+    ]
+
+    corr_1st = np.corrcoef(
+        specpower_sd1st.theta_deltaplus_ratio, specpower_sd1st.gamma
+    )[0, 1]
+    corr_5th = np.corrcoef(
+        specpower_sd5th.theta_deltaplus_ratio, specpower_sd5th.gamma
+    )[0, 1]
+
+    print(corr_1st, corr_5th)
+    # thdel_ratio = np.asarray(specpower_sd.theta_deltaplus_ratio)
+    # gamma = np.asarray(specpower_sd.gamma)
+    # ax = fig.add_subplot(gs[sub])
+    # ax.plot(
+    #     gamma / np.nansum(gamma),
+    #     thdel_ratio / np.nansum(thdel_ratio),
+    #     ".",
+    #     markersize=0.5,
+    # )
+
+
+# endregion
+
+#%% Strong theta periods during SD wavlet spectrogram around in gamma band
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(8, 11))
+gs = gridspec.GridSpec(3, 1, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+
+chans = [13, 25, 39]
+for sub, sess in enumerate(sessions[:3]):
+    sess.trange = np.array([])
+    post = sess.epochs.post
+    sd_period = [post[0] + 3 * 3600, post[0] + 5 * 3600]
+    eeg = sess.utils.geteeg(chans=chans[sub], timeRange=sd_period)
+
+    specgram = signal_process.spectrogramBands(eeg, window=1, overlap=0.5, smooth=10)
+    zsc_theta = stats.zscore(specgram.theta)
+
+    thetaevents = threshPeriods(
+        zsc_theta, lowthresh=0, highthresh=1, minDistance=300, minDuration=1250
+    )
+
+    strong_theta = []
+    theta_indices = []
+    for (beg, end) in thetaevents:
+        strong_theta.extend(eeg[beg:end])
+        theta_indices.extend(np.arange(beg, end))
+    strong_theta = np.asarray(strong_theta)
+    theta_indices = np.asarray(theta_indices)
+
+    # non_theta = np.delete(lfpSD, theta_indices)
+    frgamma = np.arange(25, 150, 1)
+    # frgamma = np.linspace(25, 150, 1)
+    strong_theta = np.asarray(strong_theta)
+    wavdec = signal_process.wavelet_decomp(strong_theta, freqs=frgamma)
+    wav = wavdec.colgin2009()
+    # wav = wavdec.cohen(ncycles=7)
+
+    wav = stats.zscore(wav, axis=1)
+
+    theta_filter = stats.zscore(
+        signal_process.filter_sig.filter_cust(strong_theta, lf=4, hf=11)
+    )
+
+    hil_theta = signal_process.hilbertfast(theta_filter)
+    theta_amp = np.abs(hil_theta)
+    theta_angle = np.angle(hil_theta, deg=True) + 180
+    theta_troughs = sg.find_peaks(-theta_filter)[0]
+
+    bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+    bin_ind = np.digitize(theta_angle, bin_angle)
+
+    wav_phase = []
+    for i in np.unique(bin_ind):
+        find_where = np.where(bin_ind == i)[0]
+        wav_at_angle = np.mean(wav[:, find_where], axis=1)
+        wav_phase.append(wav_at_angle)
+
+    wav_phase = np.asarray(wav_phase).T
+
+    ax = fig.add_subplot(gs[sub])
+    ax.pcolorfast(bin_angle[:-1], frgamma[:-1], wav_phase, cmap="Spectral_r")
+    ax.set_xlabel(r"$\theta$ phase")
+
+    ax.set_ylabel("frequency (Hz)")
+
+    # bicoh, freq, bispec = signal_process.bicoherence(strong_theta, fhigh=100)
+
+    # # bicoh = gaussian_filter(bicoh, sigma=2)
+    # # bicoh = np.where(bicoh > 0.05, bicoh, 0)
+    # bispec_real = gaussian_filter(np.real(bispec), sigma=2)
+    # bispec_imag = gaussian_filter(np.imag(bispec), sigma=2)
+    # bispec_angle = gaussian_filter(np.angle(bispec, deg=True), sigma=2)
+
+    # ax = fig.add_subplot(gs[0, 1])
+    # ax.clear()
+    # im = ax.pcolorfast(freq, freq, bicoh, cmap="Spectral_r", vmax=0.05, vmin=0)
+    # # ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
+    # ax.set_ylim([1, max(freq) / 2])
+    # ax.set_xlabel("Frequency (Hz)")
+    # ax.set_ylabel("Frequency (Hz)")
+
+    # # cax = fig.add_axes([0.3, 0.8, 0.5, 0.05])
+    # # cax.clear()
+    # # ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
+    # fig.colorbar(im, ax=ax, orientation="horizontal")
+
+
+# endregion
+

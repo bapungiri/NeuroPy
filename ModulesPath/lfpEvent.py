@@ -935,14 +935,6 @@ class Theta:
             self.bestchan = data["chanorder"][0]
             self.chansOrder = data["chanorder"]
 
-    # @property
-    # def bestchan(self):
-    #     return self._load()["chanorder"][0]
-
-    # @property
-    # def chansOrder(self):
-    #     return self._load()["chanorder"]
-
     def _load(self):
         data = np.load(self.files.bestThetachan, allow_pickle=True).item()
         return data
@@ -950,7 +942,7 @@ class Theta:
     def getBestChanlfp(self):
         return self._obj.utils.geteeg(chans=self.bestchan)
 
-    def detectBestThetaChan(self):
+    def detectBestChan(self):
         """Selects the best channel by computing area under the curve of spectral density
 
         """
