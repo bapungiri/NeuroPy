@@ -11,7 +11,7 @@ from callfunc import processData
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
@@ -36,36 +36,16 @@ for sub, sess in enumerate(sessions):
     # sess.spikes.extract()
     sess.spikes.stability.firingRate()
     # sess.spikes.stability.refPeriodViolation()
-    ev1, rev1 = sess.replay.expvar()
+    sess.replay.expvar.compute()
     # sess.brainstates.detect()
     # violations = sess.spikes.stability.violations
     axstate = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[sub], hspace=0.2)
 
     ax1 = fig.add_subplot(axstate[1:])
-    t = (np.linspace(0, 40, 41) * 0.25)[1:] - 0.125
-    # sessions[0].brainstates.addBackgroundtoPlots(ax1)
-    ax1.fill_between(
-        t,
-        np.mean(ev1.squeeze(), axis=0) - np.std(ev1.squeeze(), axis=0),
-        np.mean(ev1.squeeze(), axis=0) + np.std(ev1.squeeze(), axis=0),
-        color="#7c7979",
-    )
-    ax1.fill_between(
-        t,
-        np.mean(rev1.squeeze(), axis=0) - np.std(rev1.squeeze(), axis=0),
-        np.mean(rev1.squeeze(), axis=0) + np.std(rev1.squeeze(), axis=0),
-        color="#87d498",
-    )
-    ax1.plot(t, np.mean(ev1.squeeze(), axis=0), "k")
-    ax1.plot(t, np.mean(rev1.squeeze(), axis=0), "#02c59b")
-    ax1.set_xlabel("Time (h)")
-    ax1.set_ylabel("Explained variance")
-    ax1.legend(["EV", "REV"])
-    ax1.text(0.2, 0.28, "POST SD", fontweight="bold")
-    ax1.set_xlim([0, 10])
+    sess.replay.expvar.plot(ax=ax1)
 
     axhypno = fig.add_subplot(axstate[0], sharex=ax1)
-    sess.viewdata.hypnogram(ax1=axhypno)
+    sess.brainstates.hypnogram(ax1=axhypno, tstart=sess.epochs.post[0], unit="h")
     # panel_label(axhypno, "a")
     # ax1.set_ylim([0, 0.3])
 
