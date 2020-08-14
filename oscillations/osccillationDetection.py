@@ -1,32 +1,30 @@
 #%%
+from collections import namedtuple
+from pathlib import Path
+
+import matplotlib as mpl
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
 import seaborn as sns
-import matplotlib
-from collections import namedtuple
-from pathlib import Path
-import matplotlib.gridspec as gridspec
+
 import signal_process
-import matplotlib as mpl
+from callfunc import processData
 from plotUtil import Colormap
 
-cmap = matplotlib.cm.get_cmap("hot_r")
-
-
-from callfunc import processData
 
 #%% Subjects
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-    "/data/Clustering/SleepDeprivation/RatN/Day4/"
+    # "/data/Clustering/SleepDeprivation/RatN/Day4/"
 ]
 
 
@@ -76,7 +74,7 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
 
     sess.swa.detect()
-    sess.swa.plot()
+    # sess.swa.plot()
 # endregion
 
 #%% Best Theta channel based on
@@ -86,4 +84,3 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     # sess.theta.detectBestThetaChan()
 # endregion
-
