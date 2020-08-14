@@ -17,10 +17,24 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/"
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
+    "/data/Clustering/SleepDeprivation/RatN/Day4/"
 ]
 
 
 sessions = [processData(_) for _ in basePath]
+
+
+#%% 1D place field in openfield arena
+# region
+plt.close("all")
+for sub, sess in enumerate(sessions):
+
+    sess.trange = np.array([])
+
+    sess.placefield.pf1d.compute()
+    sess.placefield.pf1d.plot(pad=0.5, normalize=True)
+    # sess.placefield.pf1d.plotRaw()
+
 
 #%% 2D place field in openfield arena
 # region
@@ -30,9 +44,9 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
 
     # sess.spikes.fromCircus(fileformat="same_folder")
-    sess.placefield.pf2d.compute()
+    sess.placefield.pf2d.compute(gridbin=10)
     sess.placefield.pf2d.plotMap()
-    sess.placefield.pf2d.plotRaw()
+    # sess.placefield.pf2d.plotRaw()
     # sess.position.export2Neuroscope()
 #     sess.spikes.stability.firingRate()
 

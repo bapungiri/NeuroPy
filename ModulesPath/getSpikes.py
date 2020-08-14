@@ -10,14 +10,20 @@ class spikes:
     def __init__(self, obj):
         self._obj = obj
 
+        self.stability = Stability(obj)
+        self.dynamics = firingDynamics(obj)
+
         filename = self._obj.sessinfo.files.spikes
         if filename.is_file():
             spikes = np.load(filename, allow_pickle=True).item()
             self.times = spikes["times"]
             self.info = spikes["info"].reset_index()
-
-        self.stability = Stability(obj)
-        self.dynamics = firingDynamics(obj)
+            self.pyrid = np.where(self.info.q < 4)[0]
+            self.pyr = [self.times[_] for _ in self.pyrid]
+            self.intneurid = np.where(self.info.q == 8)[0]
+            self.intneur = [self.times[_] for _ in self.intneurid]
+            self.muaid = np.where(self.info.q == 6)[0]
+            self.mua = [self.times[_] for _ in self.muaid]
 
     def removeDoubleSpikes(self):
         nShanks = self._obj.recinfo.nShanks

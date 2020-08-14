@@ -11,11 +11,12 @@ from callfunc import processData
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/",
+    "/data/Clustering/SleepDeprivation/RatN/Day4/",
 ]
 
 
@@ -33,19 +34,18 @@ fig.subplots_adjust(hspace=0.4)
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    # sess.spikes.extract()
-    sess.spikes.stability.firingRate()
+    # sess.spikes.stability.firingRate()
     # sess.spikes.stability.refPeriodViolation()
-    sess.replay.expvar.compute()
-    # sess.brainstates.detect()
     # violations = sess.spikes.stability.violations
+    sess.replay.expvar.compute()
+
     axstate = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[sub], hspace=0.2)
 
     ax1 = fig.add_subplot(axstate[1:])
-    sess.replay.expvar.plot(ax=ax1)
+    sess.replay.expvar.plot(ax=ax1, tstart=sess.epochs.post[0])
 
-    axhypno = fig.add_subplot(axstate[0], sharex=ax1)
-    sess.brainstates.hypnogram(ax1=axhypno, tstart=sess.epochs.post[0], unit="h")
+    # axhypno = fig.add_subplot(axstate[0], sharex=ax1)
+    # sess.brainstates.hypnogram(ax1=axhypno, tstart=sess.epochs.post[0], unit="h")
     # panel_label(axhypno, "a")
     # ax1.set_ylim([0, 0.3])
 
