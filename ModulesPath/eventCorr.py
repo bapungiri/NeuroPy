@@ -4,12 +4,12 @@ import pandas as pd
 import scipy.ndimage as filtSig
 
 import scipy.stats as stat
-from matplotlib.gridspec import GridSpec
+import matplotlib.gridspec as gridspec
 from numpy.fft import fft
 import matplotlib as mpl
 import time
 import scipy.signal as sg
-
+from ccg import correlograms
 
 # mpl.interactive(True)
 
@@ -48,106 +48,74 @@ class event_event:
 
 class hswa_ripple:
 
-    nQuantiles = 10
+    nQuantiles = 5
 
     def __init__(self, obj):
         self._obj = obj
 
-    def compute(self):
+    def compute(self, period=None, binsize=0.01, window=1):
         """
         calculating the psth for ripple and slow wave oscillation and making n quantiles for plotting 
         """
 
-        # parameters
-        swa_amp_thresh = 0.1
-        tbefore = 0.5  # seconds before delta trough
-        tafter = 1  # seconds after delta trough
+        # --- parameters----------
 
-        ripplesTime = self._obj.ripple.time
-        rippleStart = ripplesTime[:, 0]
-        swa_amp = self._obj.swa.amp
-        swa_amp_t = self._obj.swa.time
+        ripple = self._obj.ripple.time[:, 0]
+        swa = self._obj.swa.time
 
-        ind_above_thresh = np.where(swa_amp > swa_amp_thresh)[0]
-        swa_amp = swa_amp[ind_above_thresh]
-        swa_amp_t = swa_amp_t[ind_above_thresh]
+        if period is not None:
+            ripple = ripple[(ripple > period[0]) & (ripple < period[1])]
+            swa = swa[(swa > period[0]) & (swa < period[1])]
 
-        lfp, _ = self._obj.ripple.best_chan_lfp
-        lfp_ripple = filt.filter_ripple(lfp)
-        # lfp_delta = filt.filter_delta(lfp)
+        quantiles = pd.qcut(swa, self.nQuantiles, labels=False)
 
-        analytic_signal = sg.hilbert(lfp_ripple)
-        amplitude_envelope = np.abs(analytic_signal)
-
-        # binning with tbefore and tafter delta trough
-        _, ripple_co, t_hist = psth(swa_amp_t, rippleStart, [tbefore, tafter])
-
-        quantiles = pd.qcut(swa_amp, self.nQuantiles, labels=False)
-
-        ripple_psth = pd.DataFrame(t_hist[:-1], columns=["time"])
-        ripple_power = pd.DataFrame(
-            np.linspace(-tbefore, tafter, (tafter + tbefore) * 1250), columns=["time"]
-        )
-
+        swa_quants, eventid = [], []
         for category in range(self.nQuantiles):
             indx = np.where(quantiles == category)[0]
-            ripple_hist = np.sum(ripple_co[indx], axis=0)
-            # av_ripple_power = np.sum(ripple_co[indx], axis=0)
-            # ripple_hist = filtSig.gaussian_filter1d(ripple_hist, 2)
-            # ripple_psth.append(ripple_hist)
-            ripple_psth[category] = ripple_hist
+            swa_quants.append(swa[indx])
+            eventid.append(category * np.ones(len(indx)).astype(int))
+            print(category)
 
-            ripple_power_arr = []
-            for i, ind in enumerate(indx):
+        swa_quants.append(ripple)
+        eventid.append(((category + 1) * np.ones(len(ripple))).astype(int))
 
-                if self._obj.trange.any():
-                    frame = int(self._obj.trange[0] * 1250)
-                    swa_frame = int(swa_amp_t[ind] * 1250) - frame
-                else:
-                    swa_frame = int(swa_amp_t[ind] * 1250)
+        swa_quants = np.concatenate(swa_quants)
+        eventid = np.concatenate(eventid)
 
-                # making sure swa_frame are inside array indices of trange lfp
-                if swa_frame > 625 and swa_frame + 1250 < len(lfp):
-                    ripp_pow = amplitude_envelope[swa_frame - 625 : swa_frame + 1250]
-                    ripple_power_arr.append(ripp_pow)
+        sort_ind = np.argsort(swa_quants)
 
-            nMember_grp = len(indx)
-            ripple_power_arr = np.asarray(ripple_power_arr)
-            mean_ripple_power_grp = np.mean(ripple_power_arr, axis=0)
-            ripple_std = np.std(ripple_power_arr, axis=0) / np.sqrt(nMember_grp)
+        ccg = correlograms(
+            swa_quants[sort_ind],
+            eventid[sort_ind],
+            sample_rate=1250,
+            bin_size=binsize,
+            window_size=window,
+        )
 
-            ripple_power[category] = mean_ripple_power_grp
-            ripple_power["std" + str(category)] = ripple_std
-        self.ripple_psth = ripple_psth
-        self.ripple_power = ripple_power
+        self.psth = ccg[:-1, -1, :]
+
+        return self.psth
 
     # plotting methods
 
-    def plot_ripplePower(self, ax=None):
+    def plot(self, ax=None):
         cmap = mpl.cm.get_cmap("viridis")
         colmap = [cmap(x) for x in np.linspace(0, 1, self.nQuantiles)]
-        self.ripple_power.plot(
-            x="time",
-            y=[_ for _ in range(self.nQuantiles)],
-            ax=ax,
-            legend=False,
-            colormap=cmap,
-        )
-        for _ in range(self.nQuantiles):
 
-            ax.fill_between(
-                self.ripple_power["time"],
-                self.ripple_power[_] + self.ripple_power["std" + str(_)],
-                self.ripple_power[_] - self.ripple_power["std" + str(_)],
-                color=colmap[_],
-                alpha=0.4,
-            )
+        if ax is None:
+            plt.clf()
+            fig = plt.figure(num=None, figsize=(10, 15))
+            gs = gridspec.GridSpec(1, 1, figure=fig)
+            fig.subplots_adjust(hspace=0.3)
+            ax = fig.add_subplot(gs[0])
+
+        for quant in range(self.nQuantiles):
+            ax.plot(self.psth[quant, :], color=colmap[quant])
+        ax.set_xlabel("Time from hswa (s)")
+        ax.set_ylabel("Counts")
 
     def plot_raster(self, ax=None):
         pass
 
     def plot_rippleProb(self, ax=None):
-
-        self.ripple_psth.plot(
-            x="time", y=[_ for _ in range(self.nQuantiles)], ax=ax, legend=False
-        )
+        pass
