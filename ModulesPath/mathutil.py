@@ -45,6 +45,28 @@ def parcorr_mult(x, y, z):
     return parcorr, revcorr
 
 
+# TODO improve the partial correlation calucalation maybe use arrays instead of list
+def parcorr_muglt(x, y, z):
+    """
+    correlation between multidimensional x and y , with controlling for multidimensional z
+
+    """
+
+    parcorr = np.zeros(z.shape[0], y.shape[0], x.shape[0])
+    for i, x_ in enumerate(x):
+        for j, y_ in enumerate(y):
+            for k, z_ in enumerate(z):
+                parcorr[k, j, i] = partialcorr(x_, y_, z_)
+
+    revcorr = np.zeros((len(z), len(y), len(x)))
+    for i, x_ in enumerate(x):
+        for j, y_ in enumerate(y):
+            for k, z_ in enumerate(z):
+                revcorr[k, j, i] = partialcorr(x_, z_, y_)
+
+    return parcorr, revcorr
+
+
 def getICA_Assembly(x):
     """function for extracting statisticaly independent components from significant eigenvectors as detected using Marcenko-Pasteur distributionvinput = Matrix  (m x n) where 'm' are the number of cells and 'n' time bins ICA weights thus extracted have highiest weight positive (as done in Gido M. van de Ven et al. 2016) V = ICA weights for each neuron in the coactivation (weight having the highiest value is kept positive) M1 =  originally extracted neuron weights
 
