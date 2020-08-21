@@ -129,3 +129,18 @@ class SessionUtil:
         interval = np.linspace(period[0], period[1], nbins + 1)
         interval = [[interval[i], interval[i + 1]] for i in range(nbins)]
         return interval
+
+    def spectrogram(self, period=None, freqRange=None):
+
+        eegSrate = self._obj.recinfo.lfpSrate
+        if freqRange is None:
+            freqRange = [0, eegSrate / 2]
+        if period is None:
+            lfp = self.geteeg(chans=self._obj.theta.bestchan)
+
+        specgram = signal_process.spectrogramBands(
+            lfp, sampfreq=eegSrate, window=4, overlap=2
+        )
+
+        return specgram
+
