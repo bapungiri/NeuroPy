@@ -63,69 +63,36 @@ class Hswa:
         delta = stats.zscore(delta_sig)  # normalization w.r.t session
         delta = -delta  # flipping as this is in sync with cortical slow wave
 
-        # --- collecting only nrem states --------
-        allstates = myinfo.brainstates.states
-        states = allstates[allstates["name"] == "nrem"]
-
         # ---- finding peaks and trough for delta oscillations
+
+        up = sg.find_peaks(delta)[0]
+        down = sg.find_peaks(-delta)[0]
+
+        if up[0] < down[0]:
+            up = up[1:]
+        if up[-1] > down[-1]:
+            up = up[:-1]
+
         sigdelta = []
-        for epoch in states.itertuples():
-            idx = np.where((t > epoch.start) & (t < epoch.end))[0]
-            delta_st = delta[idx]
-            t_st = t[idx]
-
-            up = sg.find_peaks(delta_st)[0]
-            down = sg.find_peaks(-delta_st)[0]
-
-            # grad = np.gradient(delta_st)
-            # zero_crossings = np.where(np.diff(np.sign(grad)))[0]
-            # cross_sign = np.zeros(len(zero_crossings))
-
-            # for i, ind in enumerate(zero_crossings):
-            #     if grad[ind - 1] < grad[ind + 1]:
-            #         cross_sign[i] = 1
-
-            # up = zero_crossings[np.where(cross_sign == 1)[0]]
-            # down = zero_crossings[np.where(cross_sign == 0)[0]]
-
-            # check_alternation = np.histogram(up, bins=down)[0]
-            # # print(up[:2], down[:2], up[-2:], down[-2:])
-            # cg = np.where(check_alternation > 1)[0]
-
-            # if cg.any():
-            #     plt.plot(grad)
-            #     plt.plot(delta_st / 1000)
-            #     plt.plot(up, np.zeros(len(up)), "r.")
-            #     plt.plot(down, np.zeros(len(down)), "g.")
-
-            #     peaks = sg.find_peaks(delta_st)[0]
-            #     plt.plot(peaks, np.zeros(len(peaks)), "k.")
-            #     print(down[cg], len(peaks), len(down), len(up))
-
-            if down[0] < up[0]:
-                down = down[1:]
-            if down[-1] > up[-1]:
-                down = down[:-1]
-
-            for i in range(len(up) - 1):
-                tbeg = t_st[up[i]]
-                tpeak = t_st[down[i]]
-                tend = t_st[up[i + 1]]
-                peakamp = delta_st[down[i]]
-                endamp = delta_st[up[i + 1]]
-                # ------ thresholds for selecting delta --------
-                # if (peakamp > 2 and endamp < 0) or (peakamp > 1 and endamp < -1.5):
-                sigdelta.append([peakamp, endamp, tpeak, tbeg, tend])
+        for i in range(len(down) - 1):
+            tbeg = t[down[i]]
+            tpeak = t[up[i]]
+            tend = t[down[i + 1]]
+            peakamp = delta[up[i]]
+            endamp = delta[down[i + 1]]
+            # ------ thresholds for selecting delta --------
+            # if (peakamp > 2 and endamp < 0) or (peakamp > 1 and endamp < -1.5):
+            sigdelta.append([peakamp, endamp, tpeak, tbeg, tend])
 
         sigdelta = np.asarray(sigdelta)
         print(f"{len(sigdelta)} delta detected")
 
         hipp_slow_wave = {
+            "peakamp": sigdelta[:, 0],
+            "endamp": sigdelta[:, 1],
             "time": sigdelta[:, 2],
             "tbeg": sigdelta[:, 3],
             "tend": sigdelta[:, 4],
-            "peakamp": sigdelta[:, 0],
-            "endamp": sigdelta[:, 1],
         }
 
         np.save(self._obj.sessinfo.files.slow_wave, hipp_slow_wave)
