@@ -36,10 +36,6 @@ def make_boxes(
 
 
 class SessView:
-
-    binSize = 0.001  # in seconds
-    gauss_std = 0.025  # in seconds
-
     def __init__(self, obj):
         self._obj = obj
 
@@ -219,4 +215,4 @@ class SessView:
         channels = [1, 2]
 
         hypno = None
-        Sleep(data=lfp, hypno=hypno, channels=channels, sf=1250).show()
+        # Sleep(data=lfp, hypno=hypno, channels=channels, sf=1250).show()
