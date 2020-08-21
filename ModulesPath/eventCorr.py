@@ -44,40 +44,39 @@ class event_event:
     def __init__(self, obj):
 
         self.hswa_ripple = hswa_ripple(obj)
+        self.hswa_spindle = Hswa_spindle(obj)
 
 
-class hswa_ripple:
-
-    nQuantiles = 5
-
+class Hswa_spindle:
     def __init__(self, obj):
         self._obj = obj
 
-    def compute(self, period=None, binsize=0.01, window=1):
+    def compute(self, period=None, binsize=0.01, window=1, nQuantiles=10):
         """
         calculating the psth for ripple and slow wave oscillation and making n quantiles for plotting 
         """
 
         # --- parameters----------
 
-        ripple = self._obj.ripple.time[:, 0]
-        swa = self._obj.swa.time
+        spindle = self._obj.spindle.time[:, 0]
+        swa_amp = self._obj.swa.peakamp
+        swa_time = self._obj.swa.time
 
         if period is not None:
-            ripple = ripple[(ripple > period[0]) & (ripple < period[1])]
-            swa = swa[(swa > period[0]) & (swa < period[1])]
+            spindle = spindle[(spindle > period[0]) & (spindle < period[1])]
+            swa_amp = swa_amp[(swa_time > period[0]) & (swa_time < period[1])]
+            swa_time = swa_time[(swa_time > period[0]) & (swa_time < period[1])]
 
-        quantiles = pd.qcut(swa, self.nQuantiles, labels=False)
+        quantiles = pd.qcut(swa_amp, nQuantiles, labels=False)
 
         swa_quants, eventid = [], []
-        for category in range(self.nQuantiles):
+        for category in range(nQuantiles):
             indx = np.where(quantiles == category)[0]
-            swa_quants.append(swa[indx])
+            swa_quants.append(swa_time[indx])
             eventid.append(category * np.ones(len(indx)).astype(int))
-            print(category)
 
-        swa_quants.append(ripple)
-        eventid.append(((category + 1) * np.ones(len(ripple))).astype(int))
+        swa_quants.append(spindle)
+        eventid.append(((nQuantiles + 1) * np.ones(len(spindle))).astype(int))
 
         swa_quants = np.concatenate(swa_quants)
         eventid = np.concatenate(eventid)
@@ -96,11 +95,65 @@ class hswa_ripple:
 
         return self.psth
 
-    # plotting methods
+
+class hswa_ripple:
+    def __init__(self, obj):
+        self._obj = obj
+
+    def compute(self, period=None, binsize=0.01, window=1, nQuantiles=10):
+        """
+        calculating the psth for ripple and slow wave oscillation and making n quantiles for plotting 
+        """
+
+        # --- parameters----------
+
+        ripple = self._obj.ripple.time[:, 0]
+        swa_amp = self._obj.swa.peakamp
+        swa_time = self._obj.swa.time
+
+        if period is not None:
+            ripple = ripple[(ripple > period[0]) & (ripple < period[1])]
+            swa_amp = swa_amp[(swa_time > period[0]) & (swa_time < period[1])]
+            swa_time = swa_time[(swa_time > period[0]) & (swa_time < period[1])]
+
+        quantiles = pd.qcut(swa_amp, nQuantiles, labels=False)
+
+        swa_quants, eventid = [], []
+        for category in range(nQuantiles):
+            indx = np.where(quantiles == category)[0]
+            swa_quants.append(swa_time[indx])
+            eventid.append(category * np.ones(len(indx)).astype(int))
+
+        swa_quants.append(ripple)
+        eventid.append(((nQuantiles + 1) * np.ones(len(ripple))).astype(int))
+
+        swa_quants = np.concatenate(swa_quants)
+        eventid = np.concatenate(eventid)
+
+        sort_ind = np.argsort(swa_quants)
+
+        ccg = correlograms(
+            swa_quants[sort_ind],
+            eventid[sort_ind],
+            sample_rate=1250,
+            bin_size=binsize,
+            window_size=window,
+        )
+
+        self.psth = ccg[:-1, -1, :]
+
+        return self.psth
 
     def plot(self, ax=None):
+
+        if self.psth.ndim == 1:
+            psth = self.psth[np.newaxis, :]
+        else:
+            psth = self.psth
+
+        nQuantiles = self.psth.shape[0]
         cmap = mpl.cm.get_cmap("viridis")
-        colmap = [cmap(x) for x in np.linspace(0, 1, self.nQuantiles)]
+        colmap = [cmap(x) for x in np.linspace(0, 1, nQuantiles)]
 
         if ax is None:
             plt.clf()
@@ -109,8 +162,8 @@ class hswa_ripple:
             fig.subplots_adjust(hspace=0.3)
             ax = fig.add_subplot(gs[0])
 
-        for quant in range(self.nQuantiles):
-            ax.plot(self.psth[quant, :], color=colmap[quant])
+        for quant in range(nQuantiles):
+            ax.plot(psth[quant, :], color=colmap[quant])
         ax.set_xlabel("Time from hswa (s)")
         ax.set_ylabel("Counts")
 
