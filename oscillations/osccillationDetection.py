@@ -59,9 +59,9 @@ plt.clf()
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    # sess.spindle.channels()
-    # sess.spindle.detect()
-    sess.spindle.plot()
+    sess.spindle.channels()
+    sess.spindle.detect()
+    # sess.spindle.plot()
 
 # ax.set_xlim([-5, 10])
 # endregion
