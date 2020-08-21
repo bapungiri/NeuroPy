@@ -1,4 +1,6 @@
 import numpy as np
+
+from sklearn.decomposition import FastICA, PCA
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
@@ -11,7 +13,7 @@ class Replay:
     def __init__(self, obj):
         self.expvar = ExplainedVariance(obj)
         self.bayesian = Bayesian(obj)
-        self.assembly = CellAssembly(obj)
+        self.assemblyICA = CellAssemblyICA(obj)
 
 
 class Bayesian:
@@ -140,8 +142,8 @@ class ExplainedVariance:
 
             if windowing:
                 dur = np.diff(period)
-                nwindow = dur / window
-                t = np.arange(period[0], period[1], window)[:-1] + window / 2
+                nwindow = (dur / window)[0]
+                t = np.arange(period[0], period[1], window)[: int(nwindow)] + window / 2
 
                 window_spkcnt = [
                     spkcnt[:, i : i + nbins_window]
@@ -220,16 +222,58 @@ class ExplainedVariance:
         # ax.set_xlim([0, 4])
 
 
-class CellAssembly:
+class CellAssemblyICA:
     def __init__(self, obj):
-        pass
+        self._obj = obj
 
-    def detect(self):
-        pass
+    def getICA_Assembly(self, x):
+        """extracting statisticaly independent components from significant eigenvectors as detected using Marcenko-Pasteur distributionvinput = Matrix  (m x n) where 'm' are the number of cells and 'n' time bins ICA weights thus extracted have highiest weight positive (as done in Gido M. van de Ven et al. 2016) V = ICA weights for each neuron in the coactivation (weight having the highiest value is kept positive) M1 =  originally extracted neuron weights
 
-    def assemblyRusso(self):
+        Arguments:
+            x {[ndarray]} -- [an array of size n * m]
+
+        Returns:
+            [type] -- [Independent assemblies]
         """
-            This code implements Russo2017 elife paper for replay detection.
-        """
 
-        pass
+        zsc_x = stats.zscore(x, axis=1)
+
+        # corrmat = (zsc_x @ zsc_x.T) / x.shape[1]
+        corrmat = np.corrcoef(zsc_x)
+
+        lambda_max = (1 + np.sqrt(1 / (x.shape[1] / x.shape[0]))) ** 2
+        eig_val, eig_mat = np.linalg.eigh(corrmat)
+        get_sigeigval = np.where(eig_val > lambda_max)[0]
+        n_sigComp = len(get_sigeigval)
+        pca_fit = PCA(n_components=n_sigComp, whiten=False).fit_transform(x)
+
+        ica_decomp = FastICA(n_components=None, whiten=False).fit(pca_fit)
+        W = ica_decomp.components_
+        V = eig_mat[:, get_sigeigval] @ W.T
+
+        return V
+
+    def detect(self, template, match, binsize=0.250):
+
+        pyr = self._obj.spikes.pyr
+        template_bin = np.arange(template[0], template[1], binsize)
+        template = np.asarray(
+            [np.histogram(cell, bins=template_bin)[0] for cell in pyr]
+        )
+
+        V = self.getICA_Assembly(template)
+
+        match_bin = np.arange(match[0], match[1], binsize)
+        match = np.asarray([np.histogram(cell, bins=match_bin)[0] for cell in pyr])
+
+        activation = []
+        for i in range(V.shape[1]):
+            projMat = np.outer(V[:, i], V[:, i])
+            activation.append(
+                np.asarray(
+                    [match[:, t] @ projMat @ match[:, t] for t in range(match.shape[1])]
+                )
+            )
+
+        return activation, match_bin
+
