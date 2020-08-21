@@ -2,6 +2,7 @@ import numpy as np
 import scipy.signal as sg
 from dataclasses import dataclass
 from typing import Any
+from scipy.ndimage import gaussian_filter
 import scipy.ndimage as filtSig
 from collections import namedtuple
 import scipy.stats as stats
@@ -13,6 +14,7 @@ from waveletFunctions import wavelet
 import scipy.interpolate as interp
 from scipy.fftpack import next_fast_len
 import time
+import matplotlib.pyplot as plt
 
 
 class filter_sig:
@@ -167,6 +169,29 @@ class spectrogramBands:
         self.sxx = sxx
         self.theta_delta_ratio = self.theta / self.delta
         self.theta_deltaplus_ratio = self.theta / self.deltaplus
+
+    def plotSpect(self, ax=None, freqRange=None):
+
+        if ax is None:
+            fig, ax = plt.subplots(1, 1)
+        sxx = self.sxx / np.max(self.sxx)
+        sxx = gaussian_filter(sxx, sigma=1)
+        vmax = np.max(sxx) / 4
+        if freqRange is None:
+            freq_indx = np.arange(len(self.freq))
+        else:
+            freq_indx = np.where(
+                (self.freq > freqRange[0]) & (self.freq < freqRange[1])
+            )[0]
+        ax.pcolormesh(
+            self.time,
+            self.freq[freq_indx],
+            sxx[freq_indx, :],
+            cmap="Spectral_r",
+            vmax=vmax,
+        )
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Frequency (Hz)")
 
 
 @dataclass
