@@ -26,27 +26,7 @@ class spikes:
             self.mua = [self.times[_] for _ in self.muaid]
 
     def removeDoubleSpikes(self):
-        nShanks = self._obj.recinfo.nShanks
-        name = self._obj.sessinfo.session.name
-        day = self._obj.sessinfo.session.day
-        sRate = self._obj.recinfo.sampfreq
-        basePath = self._obj.sessinfo.basePath
-        clubasePath = Path(basePath, "/spykcirc")
-        spkall, info, templates = [], []
-        for shank in range(1, nShanks + 1):
-
-            clufolder = Path(
-                clubasePath,
-                name + day + "Shank" + str(shank),
-                name + day + "Shank" + str(shank) + ".GUI",
-            )
-
-            spktime = np.load(clufolder / "spike_times.npy")
-            cluID = np.load(clufolder / "spike_clusters.npy")
-            templates = np.loadc(clufolder / "amplitudes.npy")
-
-        self.info = pd.concat(info)
-        self.spks = spkall
+        pass
 
     def fromCircus(self, fileformat="diff_folder"):
 
