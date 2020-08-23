@@ -1,4 +1,5 @@
 import os
+from matplotlib.pyplot import axis
 import numpy as np
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -116,15 +117,13 @@ class bayes2d:
         self._obj = obj
 
     def fit(self):
-        spkAll = self._obj.spikes.times
+        spkAll = self._obj.spikes.pyr
         x = self._obj.position.x
         y = self._obj.position.y
         t = self._obj.position.t
         maze = self._obj.epochs.maze  # in seconds
-        maze[0] = maze[0] + 60
-        maze[1] = maze[1] - 90
 
-        # we require only maze portion
+        # --- we require only maze portion -----
         ind_maze = np.where((t > maze[0]) & (t < maze[1]))
         x = x[ind_maze]
         y = y[ind_maze]
@@ -133,8 +132,8 @@ class bayes2d:
         x = x + abs(min(x))
         y = y + abs(min(y))
 
-        x_grid = np.arange(min(x), max(x), 10)
-        y_grid = np.arange(min(y), max(y), 10)
+        x_grid = np.linspace(min(x), max(x), 10)
+        y_grid = np.linspace(min(y), max(y), 10)
         x_, y_ = np.meshgrid(x_grid, y_grid)
 
         diff_posx = np.diff(x)
@@ -143,10 +142,6 @@ class bayes2d:
         speed = np.sqrt(diff_posx ** 2 + diff_posy ** 2)
         dt = t[1] - t[0]
         speed_thresh = np.where(speed / dt > 0)[0]
-
-        x_thresh = x[speed_thresh]
-        y_thresh = y[speed_thresh]
-        t_thresh = t[speed_thresh]
 
         occupancy = np.histogram2d(x, y, bins=(x_grid, y_grid))[0]
         shape_occ = occupancy.shape
@@ -164,12 +159,14 @@ class bayes2d:
         x_bin = np.interp(bin_t, t, x)
         y_bin = np.interp(bin_t, t, y)
 
-        _, _, _, bin_number_t = binned_statistic_2d(
+        bin_number_t = binned_statistic_2d(
             x_bin, y_bin, x_bin, "count", bins=[x_grid, y_grid], expand_binnumbers=True,
-        )
+        )[3]
 
+        print(len(x_grid), len(y_grid))
+        print("shape of occupancy matrix = ", shape_occ)
         print(np.min(bin_number_t - 1, axis=1))
-        print(shape_occ)
+        print(np.max(bin_number_t - 1, axis=1))
 
         bin_number_t = np.ravel_multi_index(bin_number_t - 1, shape_occ)
 
@@ -216,7 +213,7 @@ class bayes2d:
         )
 
         pos_decode = []
-        for timebin in range(100):
+        for timebin in range(spkcount.shape[1]):
             spk_bin = spkcount[:, timebin]
 
             prob_allbin = []
