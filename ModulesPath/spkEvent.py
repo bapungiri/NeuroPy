@@ -1,3 +1,5 @@
+from matplotlib.pyplot import axis
+from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -8,6 +10,7 @@ import scipy.signal as sg
 from pathlib import Path
 import matplotlib.gridspec as gridspec
 import matplotlib as mpl
+from mathutil import threshPeriods
 
 
 class LocalSleep:
@@ -260,3 +263,41 @@ class LocalSleep:
         for cell, spk in enumerate(spikes):
             spk = spk[(spk > tstart) & (spk < tend)]
             plt.plot(spk, cell * np.ones(len(spk)), "|")
+
+
+class PBE:
+    """Populations burst events 
+    """
+
+    def __init__(self, obj):
+        self._obj = obj
+        filePrefix = self._obj.sessinfo.files.filePrefix
+
+        @dataclass
+        class files:
+            pbe: str = Path(str(filePrefix) + "_pbe.pkl")
+
+        self.files = files()
+
+        if self.files.pbe.is_file():
+            self.events = pd.read_pickle(self.files.pbe)
+
+    def detect(self):
+        instfiring = self._obj.spikes.instfiring
+        events = threshPeriods(
+            stats.zscore(instfiring.frate), lowthresh=0, highthresh=3, minDuration=100
+        )
+
+        time = np.asarray(instfiring.time)
+        pbe_times = time[events]
+
+        data = pd.DataFrame(
+            {
+                "start": pbe_times[:, 0],
+                "end": pbe_times[:, 1],
+                "duration": np.diff(pbe_times, axis=1).squeeze(),
+            }
+        )
+
+        data.to_pickle(self.files.pbe)
+

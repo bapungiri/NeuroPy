@@ -18,7 +18,7 @@ from getSpikes import spikes
 from replay import Replay
 from pfPlot import pf
 from decoders import DecodeBehav
-from spkEvent import LocalSleep
+from spkEvent import LocalSleep, PBE
 from viewerData import SessView
 from sessionUtil import SessionUtil
 
@@ -57,3 +57,4 @@ class processData:
         self.decode = DecodeBehav(self)
         self.localsleep = LocalSleep(self)
         self.viewdata = SessView(self)
+        self.pbe = PBE(self)
