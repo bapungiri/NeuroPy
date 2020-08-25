@@ -4,6 +4,7 @@ import pandas as pd
 import os
 from pathlib import Path
 from dataclasses import dataclass
+import scipy.signal as sg
 
 
 class spikes:
@@ -12,6 +13,15 @@ class spikes:
 
         self.stability = Stability(obj)
         self.dynamics = firingDynamics(obj)
+
+        filePrefix = self._obj.sessinfo.files.filePrefix
+
+        @dataclass
+        class files:
+            spikes: str = Path(str(filePrefix) + "_spikes.npy")
+            instfiring: str = Path(str(filePrefix) + "_instfiring.pkl")
+
+        self.files = files()
 
         filename = self._obj.sessinfo.files.spikes
         if filename.is_file():
@@ -24,6 +34,39 @@ class spikes:
             self.intneur = [self.times[_] for _ in self.intneurid]
             self.muaid = np.where(self.info.q == 6)[0]
             self.mua = [self.times[_] for _ in self.muaid]
+
+        if self.files.instfiring.is_file():
+            self.instfiring = pd.read_pickle(self.files.instfiring)
+
+    def gen_instfiring(self):
+        spkall = np.concatenate(self.times)
+
+        pre = self._obj.epochs.pre
+        post = self._obj.epochs.post
+        bins = np.arange(pre[0], post[1], 0.001)
+
+        spkcnt = np.histogram(spkall, bins=bins)[0]
+        gaussKernel = self._gaussian()
+        instfiring = sg.convolve(spkcnt, gaussKernel, mode="same", method="direct")
+
+        data = pd.DataFrame({"time": bins[1:], "frate": instfiring})
+        data.to_pickle(self.files.instfiring)
+        return data
+
+    def _gaussian(self):
+        """Gaussian function for generating instantenous firing rate
+
+        Returns:
+            [array] -- [gaussian kernel centered at zero and spans from -1 to 1 seconds]
+        """
+
+        sigma = 0.020
+        binSize = 0.001
+        t_gauss = np.arange(-1, 1, binSize)
+        A = 1 / np.sqrt(2 * np.pi * sigma ** 2)
+        gaussian = A * np.exp(-(t_gauss ** 2) / (2 * sigma ** 2))
+
+        return gaussian
 
     def removeDoubleSpikes(self):
         pass
