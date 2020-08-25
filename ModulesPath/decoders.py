@@ -7,11 +7,13 @@ import matplotlib.pyplot as plt
 from scipy.stats import binned_statistic_2d
 from sklearn.naive_bayes import GaussianNB
 import math
+from scipy.ndimage import gaussian_filter1d
+from scipy.special import factorial
+import matplotlib.gridspec as gridspec
+import seaborn as sns
 
 
 class DecodeBehav:
-    nShanks = 8
-
     def __init__(self, obj):
 
         # self._obj = obj
@@ -21,7 +23,6 @@ class DecodeBehav:
 
 class bayes1d:
     def __init__(self, obj):
-
         self._obj = obj
 
     def fit(self):
@@ -117,6 +118,7 @@ class bayes2d:
         self._obj = obj
 
     def fit(self):
+        trackingSrate = self._obj.position.tracking_sRate
         spkAll = self._obj.spikes.pyr
         x = self._obj.position.x
         y = self._obj.position.y
@@ -129,12 +131,8 @@ class bayes2d:
         y = y[ind_maze]
         t = t[ind_maze]
 
-        x = x + abs(min(x))
-        y = y + abs(min(y))
-
-        x_grid = np.linspace(min(x), max(x), 10)
-        y_grid = np.linspace(min(y), max(y), 10)
-        x_, y_ = np.meshgrid(x_grid, y_grid)
+        x_grid = np.linspace(min(x), max(x), 15)
+        y_grid = np.linspace(min(y), max(y), 15)
 
         diff_posx = np.diff(x)
         diff_posy = np.diff(y)
@@ -144,18 +142,11 @@ class bayes2d:
         speed_thresh = np.where(speed / dt > 0)[0]
 
         occupancy = np.histogram2d(x, y, bins=(x_grid, y_grid))[0]
-        shape_occ = occupancy.shape
-        occupancy = occupancy + np.spacing(1)
-        occupancy = occupancy / 120  # converting to seconds
-        # plt.subplot(1, 2, 1)
-        # plt.imshow(occupancy.T, origin="lower")
-        # plt.subplot(1, 2, 2)
-        # plt.plot(x, y)
+        occupancy = (occupancy + np.spacing(1)) / trackingSrate
 
         linear_pos = occupancy.flatten()
-        pos_ind = np.arange(len(linear_pos))
 
-        bin_t = np.arange(t[0], t[-1], 0.1)
+        bin_t = np.arange(t[0], t[-1], 0.5)
         x_bin = np.interp(bin_t, t, x)
         y_bin = np.interp(bin_t, t, y)
 
@@ -163,23 +154,8 @@ class bayes2d:
             x_bin, y_bin, x_bin, "count", bins=[x_grid, y_grid], expand_binnumbers=True,
         )[3]
 
-        print(len(x_grid), len(y_grid))
-        print("shape of occupancy matrix = ", shape_occ)
-        print(np.min(bin_number_t - 1, axis=1))
-        print(np.max(bin_number_t - 1, axis=1))
-
-        bin_number_t = np.ravel_multi_index(bin_number_t - 1, shape_occ)
-
+        bin_number_t = np.ravel_multi_index(bin_number_t - 1, occupancy.shape)
         spkcount = np.asarray([np.histogram(x, bins=bin_t)[0] for x in spkAll])
-
-        # ======== using sklearn bayes classifier didn't work ================
-        # gnb = GaussianNB()
-        # y_pred = gnb.fit(spkcount, bin_number_t[:-1]).predict(spkcount)
-
-        # plt.plot(bin_number_t, "k")
-        # plt.plot(y_pred, "r")
-        # for x_, y_ in zip(x_bin, y_bin):
-        #     occ_bin = np.histogram2d(x, y, bins=(x_grid, y_grid))[0]
 
         ratemap, spk_pos = [], []
         for cell in spkAll:
@@ -202,36 +178,86 @@ class bayes2d:
             spk_pos.append([spk_x, spk_y])
 
         ratemap = np.asarray(ratemap)
-        print(ratemap.shape)
 
-        ntbin = len(bin_t)
-        nposbin = len(linear_pos)
-        prob = (
-            lambda nspike, rate: (1 / math.factorial(nspike))
-            * ((0.1 * rate) ** nspike)
-            * (np.exp(-0.1 * rate))
-        )
+        """ 
+        ===========================
+        Probability is calculated using this formula
+        prob = (1 / nspike!)* ((0.1 * frate)^nspike) * exp(-0.1 * frate)
+        =========================== 
+        """
 
-        pos_decode = []
-        for timebin in range(spkcount.shape[1]):
-            spk_bin = spkcount[:, timebin]
+        Ncells = len(spkAll)
+        cell_prob = np.zeros((ratemap.shape[1], spkcount.shape[1], Ncells))
+        for cell in range(Ncells):
+            cell_spkcnt = spkcount[cell, :][np.newaxis, :]
+            cell_ratemap = ratemap[cell, :][:, np.newaxis]
 
-            prob_allbin = []
-            for posbin in range(nposbin):
-                rate_bin = ratemap[:, posbin]
-                spk_prob_bin = [prob(spk, rate) for spk, rate in zip(spk_bin, rate_bin)]
-                prob_thisbin = np.prod(spk_prob_bin)
-                prob_allbin.append(prob_thisbin)
+            coeff = 1 / (factorial(cell_spkcnt))
+            # broadcasting
+            cell_prob[:, :, cell] = (((0.1 * cell_ratemap) ** cell_spkcnt) * coeff) * (
+                np.exp(-0.1 * cell_ratemap)
+            )
 
-            prob_allbin = np.asarray(prob_allbin)
+        posterior = np.prod(cell_prob, axis=2)
+        posterior /= np.sum(posterior, axis=0)
+        self.posterior = posterior
+        self.bin_number = bin_number_t
+        self.decodedPos = np.argmax(self.posterior, axis=0)
+        self.xgrid = x_grid
+        self.ygrid = y_grid
+        self.tgrid = bin_t
+        self.xpos = x
+        self.ypos = y
+        self.t = t
 
-            posterior = prob_allbin / np.sum(prob_allbin)
-            predict_bin = np.argmax(posterior)
-
-            pos_decode.append(predict_bin)
-
-        plt.plot(bin_number_t, "k")
-        plt.plot(pos_decode, "r")
-
-    def predict(self):
+    def decode(self, epochs, binsize=0.02):
         pass
+
+    def plot(self):
+
+        pos_decode = self.decodedPos
+        posterior = self.posterior
+        npos = posterior.shape[0]
+        time = posterior.shape[1]
+        pos_mat = np.arange(npos).reshape(14, 14)
+
+        plt.clf()
+        fig = plt.figure(1, figsize=(10, 15))
+        gs = gridspec.GridSpec(3, 3, figure=fig)
+        fig.subplots_adjust(hspace=0.3)
+
+        ax = fig.add_subplot(gs[0, :])
+        ax.pcolormesh(self.tgrid[1:], np.arange(npos), posterior, cmap="binary")
+        ax.plot(self.tgrid[1:], self.bin_number[1:], "gray")
+        ax.plot(self.tgrid[1:], gaussian_filter1d(pos_decode, sigma=2), "r")
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Position (bin)")
+
+        ax = fig.add_subplot(gs[1, 0])
+        rand_time = np.random.randint(self.tgrid[0], self.tgrid[-1] - 40)
+        indx = np.where((self.tgrid > rand_time) & (self.tgrid < rand_time + 30))[0]
+
+        a = self.bin_number[indx]
+        b = self.decodedPos[indx]
+        ax.plot(self.t[indx], a)
+        ax.plot(self.t[indx], b)
+
+        # sns.heatmap(pos_mat, linewidths=0.5, cbar=False, ax=ax, cmap="k")
+        a = self.decodedPos[indx]
+        pos_ = np.unravel_index(a, (14, 14))
+
+        ax = fig.add_subplot(gs[1, 1])
+        x_ = self.xpos
+        y_ = self.ypos
+        indx = np.where((self.t > rand_time) & (self.t < rand_time + 30))[0]
+
+        ax.plot(x_, y_, "gray", alpha=0.5)
+        ax.plot(x_[indx], y_[indx], "k")
+        ax.plot(self.xgrid[pos_[0]] + 7, self.ygrid[pos_[1]] + 7, "r")
+        ax.set_xticks(self.xgrid)
+        ax.set_xticklabels(np.arange(len(self.xgrid)))
+        ax.set_yticks(self.xgrid)
+        ax.set_yticklabels(np.arange(len(self.xgrid)))
+
+        ax.grid(True)
+
