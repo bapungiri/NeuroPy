@@ -23,8 +23,7 @@ import signal_process
 warnings.simplefilter(action="default")
 
 #%% ====== functions needed for some computation ============
-
-
+# region
 def getspkCorr(spikes, period, binsize=0.1):
     bins = np.arange(period[0], period[1], binsize)
     spk_cnts = np.asarray([np.histogram(cell, bins=bins)[0] for cell in spikes])
@@ -59,14 +58,17 @@ def stability(spikes, period):
     return cells_stable
 
 
+# endregion
+
+
 #%% Subjects to choose from
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 sessions = [processData(_) for _ in basePath]
@@ -637,5 +639,86 @@ for sub, sess in enumerate(sessions):
     sess.spikes.stability.firingRate()
     # corr = sess.replay.correlation()
     # plt.plot(corr)
+# endregion
+
+#%% Raster plot before and after onset of recovery sleep
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(6, 1, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+for sub, sess in enumerate(sessions[:6]):
+    sess.trange = np.array([])
+    post = sess.epochs.post
+    period = [post[0] + 4 * 3600, post[0] + 6 * 3600]
+    ax = fig.add_subplot(gs[sub])
+    sess.spikes.rasterPlot(ax=ax, period=period)
+# endregion
+
+#%% firing rate around start of REM (recovery sleep vs control sleep)
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(3, 2, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    states = sess.brainstates.states
+    post = sess.epochs.post
+    # instfiring = sess.spikes.instfiring
+    spikes = np.concatenate(sess.spikes.pyr)
+    if sub < 3:
+        rem = states[(states.start > post[0] + 5 * 3600) & (states.name == "rem")]
+    else:
+        rem = states[(states.start > post[0]) & (states.name == "rem")]
+
+    instf_rem = []
+    for epoch in rem.itertuples():
+        bins = np.linspace(epoch.start - 5, epoch.start + 5, 11)
+        spkcount = np.histogram(spikes, bins=bins)[0] / np.diff(bins)
+        instf_rem.append(spkcount)
+
+    mean_frate_rem = np.array(instf_rem).mean(axis=0)
+    ax = fig.add_subplot(gs[sub])
+    ax.plot(mean_frate_rem)
+
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Frate")
+
+# endregion
+
+#%% ratio of firing rate during NREM/REM for recovery sleep vs regular sleep
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(3, 2, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+
+ax = fig.add_subplot(gs[0])
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    states = sess.brainstates.states
+    post = sess.epochs.post
+    # instfiring = sess.spikes.instfiring
+    spikes = np.concatenate(sess.spikes.times)
+    if sub < 3:
+        rem = states[(states.start > post[0] + 5 * 3600) & (states.name == "rem")]
+        nrem = states[(states.start > post[0] + 5 * 3600) & (states.name == "nrem")]
+    else:
+        rem = states[(states.start > post[0]) & (states.name == "rem")]
+        nrem = states[(states.start > post[0]) & (states.name == "nrem")]
+
+    nrem_bins = np.concatenate([[ep.start, ep.end] for ep in nrem.itertuples()])
+    nspikes_nrem = np.histogram(spikes, bins=nrem_bins)[0][::2] / nrem.duration
+
+    rem_bins = np.concatenate([[epoch.start, epoch.end] for epoch in rem.itertuples()])
+    nspikes_rem = np.histogram(spikes, bins=rem_bins)[0][::2] / rem.duration
+
+    ax.plot(sub, np.mean(nspikes_nrem) / np.mean(nspikes_rem), "*")
+
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Frate")
+
 # endregion
 

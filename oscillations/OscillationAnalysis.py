@@ -633,3 +633,26 @@ for sub, sess in enumerate(sessions[:3]):
     # ax.plot(time, th_del_ratiocr, "k")
 # endregion
 
+
+#%% hswa vs population burst (PBE) psth
+# region
+# TODO change channel for delta detection closer to cortical electrodes
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(2, 3, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+psth_all = []
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    swa = sess.swa.time
+    swa_amp = sess.swa.peakamp
+    # sess.pbe.detect()
+
+    pbe = sess.pbe.events
+    psth = sess.eventpsth.compute(ref=swa, event=pbe.start, quantparam=swa_amp)
+
+    ax = fig.add_subplot(gs[sub])
+    sess.eventpsth.plot(ax=ax)
+
+# endregion
+
