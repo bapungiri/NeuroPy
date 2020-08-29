@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 from dataclasses import dataclass
 import scipy.signal as sg
+import matplotlib.gridspec as gridspec
+import matplotlib as mpl
 
 
 class spikes:
@@ -67,6 +69,41 @@ class spikes:
         gaussian = A * np.exp(-(t_gauss ** 2) / (2 * sigma ** 2))
 
         return gaussian
+
+    def rasterPlot(self, ax=None, period=None):
+        spikes = self.times
+        print(f"Plotting {len(spikes)} cells")
+        totalduration = self._obj.epochs.totalduration
+        frate = [len(cell) / totalduration for cell in spikes]
+
+        if ax is None:
+            fig = plt.figure(1, figsize=(6, 10))
+            gs = gridspec.GridSpec(1, 1, figure=fig)
+            fig.subplots_adjust(hspace=0.4)
+            ax = fig.add_subplot(gs[0])
+
+        if period is not None:
+            period_duration = np.diff(period)
+            spikes = [
+                cell[np.where((cell > period[0]) & (cell < period[1]))[0]]
+                for cell in spikes
+            ]
+            frate = np.asarray(
+                [len(cell) / period_duration for cell in spikes]
+            ).squeeze()
+
+        sort_frate_indices = np.argsort(frate)
+        spikes = [spikes[indx] for indx in sort_frate_indices]
+
+        cmap = mpl.cm.get_cmap("inferno_r")
+        for cell, spk in enumerate(spikes):
+            color = cmap(cell / len(spikes))
+            plt.plot(
+                spk, (cell + 1) * np.ones(len(spk)), ".", markersize=0.75, color=color
+            )
+
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Neurons")
 
     def removeDoubleSpikes(self):
         pass

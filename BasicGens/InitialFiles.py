@@ -9,15 +9,15 @@ from scipy.ndimage import gaussian_filter
 from callfunc import processData
 
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/"
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/"
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-    "/data/Clustering/SleepDeprivation/RatN/Day4/"
+    # "/data/Clustering/SleepDeprivation/RatN/Day4/",
 ]
 
 
@@ -67,4 +67,12 @@ for sub, sess in enumerate(sessions):
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     # sess.epochs.getfromCSV()
+# endregion
+
+#%% Gen instantenous firing rate
+# region
+
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    sess.spikes.gen_instfiring()
 # endregion

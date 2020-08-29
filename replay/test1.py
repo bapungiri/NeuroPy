@@ -22,3 +22,11 @@ basePath = [
 
 sessions = [processData(_) for _ in basePath]
 
+templates = "/data/Clustering/SleepDeprivation/RatK/Day1/spykcirc/RatK_Day1_2019-08-06_03-44-01/RatK_Day1_2019-08-06_03-44-01.GUI/templates.npy"
+
+template_ind = "/data/Clustering/SleepDeprivation/RatK/Day1/spykcirc/RatK_Day1_2019-08-06_03-44-01/RatK_Day1_2019-08-06_03-44-01.GUI/template_ind.npy"
+chan_positions = "/data/Clustering/SleepDeprivation/RatK/Day1/spykcirc/RatK_Day1_2019-08-06_03-44-01/RatK_Day1_2019-08-06_03-44-01.GUI/channel_positions.npy"
+
+templates = np.load(templates)
+template_ind = np.load(template_ind)
+chan_pos = np.load(chan_positions)
