@@ -85,8 +85,8 @@ for sub, sess in enumerate(sessions):
     #     ax1.legend("")
     #     ax1.set_title("")
 
-    # axhypno = fig.add_subplot(axstate[0], sharex=ax1)
-    # sess.brainstates.hypnogram(ax1=axhypno, tstart=post[0], unit="h")
+    axhypno = fig.add_subplot(axstate[0], sharex=ax1)
+    sess.brainstates.hypnogram(ax1=axhypno, tstart=post[0], unit="h")
     # axhypno.set_title(sess.sessinfo.session.sessionName)
     # panel_label(axhypno, "a")
     # ax1.set_ylim([0, 0.3])
