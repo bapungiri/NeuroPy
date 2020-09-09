@@ -1,16 +1,18 @@
 #%%
-import numpy as np
-from callfunc import processData
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import scipy.stats as stats
-import scipy.signal as sg
-import pandas as pd
-import seaborn as sns
-import signal_process
-import matplotlib as mpl
-import warnings
 import os
+import warnings
+
+import matplotlib as mpl
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import scipy.signal as sg
+import scipy.stats as stats
+import seaborn as sns
+
+import signal_process
+from callfunc import processData
 from plotUtil import savefig
 
 warnings.simplefilter(action="default")
@@ -363,4 +365,3 @@ panel_label(ax, "g")
 scriptname = os.path.basename(__file__)
 filename = "Test"
 savefig(fig, filename, scriptname)
-

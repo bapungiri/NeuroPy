@@ -722,3 +722,63 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
+#%% firing rate over SD and recovery of place cells stable from MAZE to POST
+# region
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(1, 1, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+
+spk_all = []
+for sub, sess in enumerate(sessions[:3]):
+    sess.trange = np.array([])
+    maze = sess.epochs.maze
+    pre = sess.epochs.pre
+    post = sess.epochs.post
+    spks = sess.spikes.times
+    sd_period = [maze[0], post[0] + 5 * 3600]
+    intervals = sess.utils.getinterval(period=sd_period, nwindows=5)
+    sess.spikes.stability.firingRate(bins=intervals)
+    stability = sess.spikes.stability.info
+    stable_pyr = np.where((stability.q < 4) & (stability.stable == 1))[0]
+
+    pyr = [spks[cell_id] for cell_id in stable_pyr]
+    pyr = np.concatenate(pyr)
+    instfiring = sess.spikes.instfiring
+    instfiring_sd = instfiring.loc[
+        (instfiring.time > post[0]) & (instfiring.time < post[0] + 5 * 3600)
+    ]
+
+    sd_bin = np.arange(pre[0], pre[0] + 14 * 3600, 300)
+    spkcnt = np.histogram(pyr, bins=sd_bin)[0] / 300
+    norm_spkcnt = spkcnt / np.sum(spkcnt)
+    spk_all.append(norm_spkcnt)
+    # mean_frate = stats.binned_statistic(
+    #     instfiring_sd.time, instfiring_sd.frate, bins=sd_bin
+    # )
+
+    ax = plt.subplot(gs[0])
+    # ax.plot(mean_frate[0] / np.nansum(mean_frate[0]))
+    ax.plot(
+        np.linspace(0, 10, len(sd_bin) - 1),
+        gaussian_filter1d(norm_spkcnt, sigma=1),
+        "--",
+        linewidth=2,
+        alpha=0.7,
+    )
+    ax.set_ylabel("Normalized \n spike counts")
+    ax.set_xlabel("Time (h)")
+
+
+ax.plot(
+    np.linspace(0, 10, len(sd_bin) - 1),
+    gaussian_filter1d(np.mean(np.asarray(spk_all), axis=0), sigma=1),
+    "k",
+    linewidth=3,
+    alpha=0.6,
+)
+
+ax.legend(["RatJDay1", "RatKDay1", "RatNDay1", "Mean"])
+ax.set_title("POST", loc="left", fontweight="bold")
+# endregion
+

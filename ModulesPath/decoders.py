@@ -1,13 +1,10 @@
-import os
-from matplotlib.pyplot import axis
 import numpy as np
-import xml.etree.ElementTree as ET
 from pathlib import Path
 import matplotlib.pyplot as plt
-from scipy.stats import binned_statistic_2d
+from scipy.stats import binned_statistic_2d, binned_statistic
 from sklearn.naive_bayes import GaussianNB
 import math
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d, gaussian_filter
 from scipy.special import factorial
 import matplotlib.gridspec as gridspec
 import seaborn as sns
@@ -132,33 +129,25 @@ class bayes2d:
         y = y[ind_maze]
         t = t[ind_maze]
 
-        x_grid = np.linspace(min(x), max(x), 15)
-        y_grid = np.linspace(min(y), max(y), 15)
+        x_grid, xstep = np.linspace(min(x), max(x), 50, retstep=True)
+        y_grid, ystep = np.linspace(min(y), max(y), 50, retstep=True)
+        mesh = np.meshgrid(x_grid[:-1] + xstep / 2, y_grid[:-1] + ystep / 2)
+        ngrid_centers = mesh[0].size
 
+        x_center = np.reshape(mesh[0], [ngrid_centers, 1])
+        y_center = np.reshape(mesh[1], [ngrid_centers, 1])
+        xy_center = np.hstack((x_center, y_center))
+
+        # ----- Speed calculation -------
         diff_posx = np.diff(x)
         diff_posy = np.diff(y)
-
-        speed = np.sqrt(diff_posx ** 2 + diff_posy ** 2)
-        dt = t[1] - t[0]
+        dt = 1 / trackingSrate
+        speed = np.sqrt(diff_posx ** 2 + diff_posy ** 2) / dt
         speed_thresh = np.where(speed / dt > 0)[0]
 
         occupancy = np.histogram2d(x, y, bins=(x_grid, y_grid))[0]
         occupancy = (occupancy + np.spacing(1)) / trackingSrate
-
-        linear_pos = occupancy.flatten()
-
-        bin_t = np.arange(t[0], t[-1], 0.2)
-        x_bin = np.interp(bin_t, t, x)
-        y_bin = np.interp(bin_t, t, y)
-        speed_bin = np.interp(bin_t, t[1:], speed)
-        print(len(speed_bin), len(x_bin))
-
-        bin_number_t = binned_statistic_2d(
-            x_bin, y_bin, x_bin, "count", bins=[x_grid, y_grid], expand_binnumbers=True,
-        )[3]
-
-        bin_number_t = np.ravel_multi_index(bin_number_t - 1, occupancy.shape)
-        spkcount = np.asarray([np.histogram(x, bins=bin_t)[0] for x in spkAll])
+        # occupancy = gaussian_filter(occupancy, sigma=1)
 
         ratemap, spk_pos = [], []
         for cell in spkAll:
@@ -169,18 +158,39 @@ class bayes2d:
             spk_x = np.interp(spk_maze, t, x)
 
             # speed threshold
-            # spd_ind = np.where(spk_speed > 2)
-            # spk_spd = spk_speed[spd_ind]
-            # spk_x = spk_x[spd_ind]
-            # spk_y = spk_y[spd_ind]
-            # spk_t = spk_maze[spd_ind]
+            spd_ind = np.where(spk_speed > 5)
+            spk_spd = spk_speed[spd_ind]
+            spk_x = spk_x[spd_ind]
+            spk_y = spk_y[spd_ind]
+            spk_t = spk_maze[spd_ind]
 
             spk_map = np.histogram2d(spk_x, spk_y, bins=(x_grid, y_grid))[0]
-            spk_map = (spk_map / occupancy).flatten()
+            spk_map = (gaussian_filter(spk_map / occupancy, sigma=1)).flatten("F")
             ratemap.append(spk_map)
             spk_pos.append([spk_x, spk_y])
 
-        ratemap = np.asarray(ratemap)
+        self.ratemap = np.asarray(ratemap)
+        self._spks = spkAll
+        self.gridcenter = xy_center.T
+        self.grid = [x_grid, y_grid]
+
+    def estimateBehav(self, binsize=0.25):
+        ratemap = self.ratemap
+        gridcntr = self.gridcenter
+        spks = self._spks
+        speed = self._obj.position.speed
+        t = self._obj.position.t
+        x = self._obj.position.x
+        y = self._obj.position.y
+
+        maze = self._obj.epochs.maze
+        tmz = np.arange(maze[0], maze[1], binsize)
+        actualposx = binned_statistic(t, values=x, bins=tmz)[0]
+        actualposy = binned_statistic(t, values=y, bins=tmz)[0]
+        meanspeed = binned_statistic(t[1:], speed, bins=tmz)[0]
+        actualpos = np.vstack((actualposx, actualposy))
+
+        spkcount = np.asarray([np.histogram(cell, bins=tmz)[0] for cell in spks])
 
         """ 
         ===========================
@@ -189,7 +199,7 @@ class bayes2d:
         =========================== 
         """
 
-        Ncells = len(spkAll)
+        Ncells = len(spks)
         cell_prob = np.zeros((ratemap.shape[1], spkcount.shape[1], Ncells))
         for cell in range(Ncells):
             cell_spkcnt = spkcount[cell, :][np.newaxis, :]
@@ -204,38 +214,35 @@ class bayes2d:
         posterior = np.prod(cell_prob, axis=2)
         posterior /= np.sum(posterior, axis=0)
         self.posterior = posterior
-        self.bin_number = bin_number_t
-        self.decodedPos = np.argmax(self.posterior, axis=0)
-        self.xgrid = x_grid
-        self.ygrid = y_grid
-        self.tgrid = bin_t
-        self.xpos = x
-        self.ypos = y
-        self.t = t
-        self.ratemap = ratemap
-        self.speed_bin = speed_bin
+        self.decodedPos = gridcntr[:, np.argmax(self.posterior, axis=0)]
+        self.decodingtime = tmz
+        self.actualPos = actualpos
+        self.speed = meanspeed
 
-    def decode(self, epochs, binsize=0.02):
+    def decode(self, epochs, binsize=0.02, slideby=0.005):
 
         assert isinstance(epochs, pd.DataFrame)
-        # TODO plot only running epochs
 
-        running_bins = self.speed_bin > 5
-        bin_number = self.bin_number.astype(float)
-        bin_number[running_bins] = np.nan
-
-        spkAll = self._obj.spikes.pyr
-        self.fit()
+        spks = self._spks
+        Ncells = len(spks)
+        # self.fit()
         ratemap = self.ratemap
+        gridcntr = self.gridcenter
 
         nbins = np.zeros(len(epochs))
         spkcount = []
         for i, epoch in enumerate(epochs.itertuples()):
-            bins = np.arange(epoch.start, epoch.end, binsize)
-            nbins[i] = len(bins) - 1
-            spkcount.append(np.asarray([np.histogram(_, bins=bins)[0] for _ in spkAll]))
+            bins = np.arange(epoch.start, epoch.end - binsize, slideby)
+            nbins[i] = len(bins)
+            for j in bins:
+                spkcount.append(
+                    np.asarray(
+                        [np.histogram(_, bins=[j, j + binsize])[0] for _ in spks]
+                    )
+                )
 
         spkcount = np.hstack(spkcount)
+        print(spkcount.shape)
 
         """ 
         ===========================
@@ -244,7 +251,6 @@ class bayes2d:
         =========================== 
         """
 
-        Ncells = len(spkAll)
         cell_prob = np.zeros((ratemap.shape[1], spkcount.shape[1], Ncells))
         for cell in range(Ncells):
             cell_spkcnt = spkcount[cell, :][np.newaxis, :]
@@ -258,23 +264,30 @@ class bayes2d:
         posterior = np.prod(cell_prob, axis=2)
         posterior /= np.sum(posterior, axis=0)
 
-        decodedPos = np.argmax(posterior, axis=0)
+        decodedPos = gridcntr[:, np.argmax(posterior, axis=0)]
         cum_nbins = np.append(0, np.cumsum(nbins)).astype(int)
 
-        decodedPos = [
-            decodedPos[cum_nbins[i] : cum_nbins[i + 1]]
+        posterior = [
+            posterior[:, cum_nbins[i] : cum_nbins[i + 1]]
             for i in range(len(cum_nbins) - 1)
         ]
 
-        return decodedPos
+        decodedPos = [
+            decodedPos[:, cum_nbins[i] : cum_nbins[i + 1]]
+            for i in range(len(cum_nbins) - 1)
+        ]
+
+        return decodedPos, posterior
 
     def plot(self):
 
-        pos_decode = gaussian_filter1d(self.decodedPos, sigma=1)
+        # decodedPos = gaussian_filter1d(self.decodedPos, sigma=1, axis=1)
+        decodedPos = self.decodedPos
         posterior = self.posterior
-        npos = posterior.shape[0]
-        time = posterior.shape[1]
-        pos_mat = np.arange(npos).reshape(14, 14)
+        decodingtime = self.decodingtime[1:]
+        actualPos = self.actualPos
+        speed = self.speed
+        error = np.sqrt(np.sum((decodedPos - actualPos) ** 2, axis=0))
 
         plt.clf()
         fig = plt.figure(1, figsize=(10, 15))
@@ -282,89 +295,29 @@ class bayes2d:
         fig.subplots_adjust(hspace=0.3)
 
         ax = fig.add_subplot(gs[0, :])
-        ax.pcolormesh(self.tgrid[1:], np.arange(npos), posterior, cmap="binary")
-        ax.plot(self.tgrid[1:], self.bin_number[1:], "#4FC3F7")
-        ax.plot(self.tgrid[1:], pos_decode, "#F48FB1")
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Position (bin)")
+        # ax.pcolormesh(decodingtime, np.arange(npos), posterior, cmap="binary")
+        ax.plot(decodingtime, actualPos[0, :], "#4FC3F7")
+        ax.plot(decodingtime, decodedPos[0, :], "#F48FB1")
+        ax.set_ylabel("X coord")
         ax.set_title("Bayesian position estimation (only pyr cells)")
 
         ax = fig.add_subplot(gs[1, :], sharex=ax)
-        ax.plot(self.tgrid, self.speed_bin, "k")
-        ax.set_ylabel("Speed")
+        # ax.pcolormesh(decodingtime, np.arange(npos), posterior, cmap="binary")
+        ax.plot(decodingtime, actualPos[1, :], "#4FC3F7")
+        ax.plot(decodingtime, decodedPos[1, :], "#F48FB1")
+        ax.set_ylabel("Y coord")
+        ax.set_title("Bayesian position estimation (only pyr cells)")
+
+        ax = fig.add_subplot(gs[2, :], sharex=ax)
+        # ax.pcolormesh(decodingtime, np.arange(npos), posterior, cmap="binary")
+        ax.plot(decodingtime, speed, "k")
         ax.set_xlabel("Time (s)")
+        ax.set_ylabel("speed (cm/s)")
+        # ax.set_title("Bayesian position estimation (only pyr cells)")
+        ax.set_ylim([0, 120])
+        ax.spines["right"].set_visible(True)
 
-        ax = fig.add_subplot(gs[2, 0])
-        rand_time = np.random.randint(self.tgrid[0], self.tgrid[-1] - 40)
-        rand_time = 8797
-        indx = np.where((self.tgrid > rand_time) & (self.tgrid < rand_time + 10))[0]
-
-        a = self.bin_number[indx]
-        b = pos_decode[indx]
-
-        ax.pcolormesh(
-            self.tgrid[1:][indx], np.arange(npos), posterior[:, indx], cmap="binary"
-        )
-        ax.plot(self.tgrid[indx], a, "#4FC3F7")
-        ax.plot(self.tgrid[indx], b, "#F48FB1")
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Position")
-
-        # sns.heatmap(pos_mat, linewidths=0.5, cbar=False, ax=ax, cmap="k")
-        a = self.decodedPos[indx]
-        pos_ = np.unravel_index(a, (14, 14))
-
-        ax = fig.add_subplot(gs[2, 1])
-        x_ = self.xpos
-        y_ = self.ypos
-        indx = np.where((self.t > rand_time) & (self.t < rand_time + 10))[0]
-
-        ax.plot(x_, y_, "k", alpha=0.8)
-        ax.plot(x_[indx], y_[indx], "#4FC3F7")
-        ax.plot(self.xgrid[pos_[0]] + 7, self.ygrid[pos_[1]] + 7, "#F48FB1")
-        ax.set_xticks(self.xgrid)
-        ax.set_xticklabels(np.arange(len(self.xgrid)))
-        ax.set_yticks(self.xgrid)
-        ax.set_yticklabels(np.arange(len(self.xgrid)))
-        ax.set_xlabel("xbin")
-        ax.set_ylabel("ybin")
-
-        ax.grid(True)
-
-        ax = fig.add_subplot(gs[2, 2])
-        rand_time = np.random.randint(self.tgrid[0], self.tgrid[-1] - 40)
-        rand_time = 9790
-        indx = np.where((self.tgrid > rand_time) & (self.tgrid < rand_time + 10))[0]
-
-        a = self.bin_number[indx]
-        b = pos_decode[indx]
-
-        ax.pcolormesh(
-            self.tgrid[1:][indx], np.arange(npos), posterior[:, indx], cmap="binary"
-        )
-        ax.plot(self.tgrid[indx], a, "#4FC3F7")
-        ax.plot(self.tgrid[indx], b, "#F48FB1")
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Position")
-
-        # sns.heatmap(pos_mat, linewidths=0.5, cbar=False, ax=ax, cmap="k")
-        a = self.decodedPos[indx]
-        pos_ = np.unravel_index(a, (14, 14))
-
-        ax = fig.add_subplot(gs[2, 3])
-        x_ = self.xpos
-        y_ = self.ypos
-        indx = np.where((self.t > rand_time) & (self.t < rand_time + 10))[0]
-
-        ax.plot(x_, y_, "k", alpha=0.8)
-        ax.plot(x_[indx], y_[indx], "#4FC3F7")
-        ax.plot(self.xgrid[pos_[0]] + 7, self.ygrid[pos_[1]] + 7, "#F48FB1")
-        ax.set_xticks(self.xgrid)
-        ax.set_xticklabels(np.arange(len(self.xgrid)))
-        ax.set_yticks(self.xgrid)
-        ax.set_yticklabels(np.arange(len(self.xgrid)))
-        ax.set_xlabel("xbin")
-        ax.set_ylabel("ybin")
-
-        ax.grid(True)
+        axerror = ax.twinx()
+        axerror.plot(decodingtime, gaussian_filter1d(error, sigma=1), "#05d69e")
+        axerror.set_ylabel("error (cm)")
 

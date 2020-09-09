@@ -14,6 +14,7 @@ class Replay:
         self.expvar = ExplainedVariance(obj)
         self.bayesian = Bayesian(obj)
         self.assemblyICA = CellAssemblyICA(obj)
+        self.corr = Correlation(obj)
 
 
 class Bayesian:
@@ -207,14 +208,14 @@ class ExplainedVariance:
         t = (self.t_match - tstart) / 3600  # converting to hour
 
         ax.fill_between(
-            t, ev_mean - ev_std, ev_mean + ev_std, color="#7c7979",
+            t, rev_mean - rev_std, rev_mean + rev_std, color="#87d498", zorder=1
         )
+        ax.plot(t, rev_mean, "#02c59b", zorder=2)
         ax.fill_between(
-            t, rev_mean - rev_std, rev_mean + rev_std, color="#87d498",
+            t, ev_mean - ev_std, ev_mean + ev_std, color="#7c7979", zorder=3
         )
 
-        ax.plot(t, ev_mean, "k")
-        ax.plot(t, rev_mean, "#02c59b")
+        ax.plot(t, ev_mean, "k", zorder=4)
         ax.set_xlabel("Time (h)")
         ax.set_ylabel("Explained variance")
         ax.legend(["EV", "REV"])
@@ -226,7 +227,7 @@ class CellAssemblyICA:
     def __init__(self, obj):
         self._obj = obj
 
-    def getICA_Assembly(self, x):
+    def getAssemblies(self, x):
         """extracting statisticaly independent components from significant eigenvectors as detected using Marcenko-Pasteur distributionvinput = Matrix  (m x n) where 'm' are the number of cells and 'n' time bins ICA weights thus extracted have highiest weight positive (as done in Gido M. van de Ven et al. 2016) V = ICA weights for each neuron in the coactivation (weight having the highiest value is kept positive) M1 =  originally extracted neuron weights
 
         Arguments:
@@ -245,35 +246,104 @@ class CellAssemblyICA:
         eig_val, eig_mat = np.linalg.eigh(corrmat)
         get_sigeigval = np.where(eig_val > lambda_max)[0]
         n_sigComp = len(get_sigeigval)
-        pca_fit = PCA(n_components=n_sigComp, whiten=False).fit_transform(x)
+        pca_fit = PCA(n_components=n_sigComp, whiten=False).fit_transform(zsc_x)
 
         ica_decomp = FastICA(n_components=None, whiten=False).fit(pca_fit)
         W = ica_decomp.components_
         V = eig_mat[:, get_sigeigval] @ W.T
 
-        return V
+        # --- making highest absolute weight positive and then normalizing ----------
+        max_weight = V[np.argmax(np.abs(V), axis=0), range(V.shape[1])]
+        V[:, np.where(max_weight < 0)[0]] = (-1) * V[:, np.where(max_weight < 0)[0]]
+        V /= np.sqrt(np.sum(V ** 2, axis=0))  # making sum of squares=1
 
-    def detect(self, template, match, binsize=0.250):
+        self.vectors = V
+        return self.vectors
 
-        pyr = self._obj.spikes.pyr
+    def getActivation(self, template, match, spks=None, binsize=0.250):
+
+        if spks is None:
+            spks = self._obj.spikes.pyr
+
         template_bin = np.arange(template[0], template[1], binsize)
         template = np.asarray(
-            [np.histogram(cell, bins=template_bin)[0] for cell in pyr]
+            [np.histogram(cell, bins=template_bin)[0] for cell in spks]
         )
 
-        V = self.getICA_Assembly(template)
+        V = self.getAssemblies(template)
 
         match_bin = np.arange(match[0], match[1], binsize)
-        match = np.asarray([np.histogram(cell, bins=match_bin)[0] for cell in pyr])
+        match = np.asarray([np.histogram(cell, bins=match_bin)[0] for cell in spks])
 
         activation = []
         for i in range(V.shape[1]):
             projMat = np.outer(V[:, i], V[:, i])
+            np.fill_diagonal(projMat, 0)
             activation.append(
                 np.asarray(
                     [match[:, t] @ projMat @ match[:, t] for t in range(match.shape[1])]
                 )
             )
 
-        return activation, match_bin
+        self.activation = np.asarray(activation)
+        self.match_bin = match_bin
+
+        return self.activation, self.match_bin
+
+    def plotActivation(self, ax=None):
+        activation = self.activation
+        vectors = self.vectors
+        nvec = activation.shape[0]
+        t = self.match_bin[1:]
+
+        if ax is None:
+            plt.clf()
+            fig = plt.figure(1, figsize=(10, 15))
+            gs = gridspec.GridSpec(nvec, 6, figure=fig)
+            fig.subplots_adjust(hspace=0.3)
+
+        else:
+            gs = gridspec.GridSpecFromSubplotSpec(7, 6, ax, wspace=0.1)
+
+        for vec in range(nvec):
+            axact = plt.subplot(gs[vec, 3:])
+            axact.plot(t / 3600, activation[vec, :])
+
+            axvec = plt.subplot(gs[vec, :2])
+            axvec.stem(vectors[:, vec], markerfmt="C2o")
+            if vec == nvec - 1:
+                axact.set_xlabel("Time")
+                axact.set_ylabel("Activation \n strength")
+
+                axvec.set_xlabel("Neurons")
+                axvec.set_ylabel("Weight")
+
+            else:
+                axact.set_xticks([])
+                axact.set_xticklabels([])
+
+                axvec.set_xticks([])
+                axvec.set_xticklabels([])
+                axvec.spines["bottom"].set_visible(False)
+
+
+class Correlation:
+    def __init__(self, obj):
+        self._obj = obj
+
+    def comparePeriods(self, template, match, spks=None, window=900, bnsz=0.25):
+
+        if spks is None:
+            spks = self._obj.spikes.times
+
+        template_corr = self.getcorr(period=template)
+        match_corr = self.getcorr(period=match)
+
+    def getcorr(self):
+        bins = np.arange(period[0], period[1], binsize)
+        spk_cnts = np.asarray([np.histogram(cell, bins=bins)[0] for cell in spikes])
+        corr = np.corrcoef(spk_cnts)
+        np.fill_diagonal(corr, 0)
+
+        return corr
 

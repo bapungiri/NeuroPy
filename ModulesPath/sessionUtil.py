@@ -124,10 +124,10 @@ class SessionUtil:
 
         return lfp_theta
 
-    def getinterval(self, period, nbins):
+    def getinterval(self, period, nwindows):
 
-        interval = np.linspace(period[0], period[1], nbins + 1)
-        interval = [[interval[i], interval[i + 1]] for i in range(nbins)]
+        interval = np.linspace(period[0], period[1], nwindows + 1)
+        interval = [[interval[i], interval[i + 1]] for i in range(nwindows)]
         return interval
 
     def spectrogram(self, period=None, freqRange=None):
