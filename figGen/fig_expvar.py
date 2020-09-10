@@ -1,21 +1,24 @@
 #%% Imports
+import warnings
+
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-import matplotlib.gridspec as gridspec
+import seaborn as sns
 from scipy.ndimage import gaussian_filter
-import warnings
+
 from callfunc import processData
 
 warnings.simplefilter(action="default")
 
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/",
     # "/data/Clustering/SleepDeprivation/RatN/Day4/",
@@ -27,8 +30,8 @@ sessions = [processData(_) for _ in basePath]
 plt.clf()
 fig = plt.figure(1, figsize=(8.5, 11))
 gs = gridspec.GridSpec(5, 5, figure=fig)
-fig.subplots_adjust(hspace=0.3, wspace=0.5)
-fig.suptitle("Sleep states related analysis")
+fig.subplots_adjust(hspace=0.4, wspace=0.5)
+fig.suptitle("Assessing Replay")
 titlesize = 8
 panel_label = lambda ax, label: ax.text(
     x=-0.08,
@@ -46,8 +49,8 @@ panel_label = lambda ax, label: ax.text(
 # region
 """Only found stable units for 3 sessions
 """
-
-for sub, sess in enumerate(sessions):
+evsd = []
+for sub, sess in enumerate(sessions[1:3]):
 
     sess.trange = np.array([])
     maze = sess.epochs.maze
@@ -68,93 +71,128 @@ for sub, sess in enumerate(sessions):
         template=bins[1], match=[post[0], post[0] + 5 * 3600], control=bins[0],
     )
 
-    # axstate = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[sub], hspace=0.2)
+    ev = pd.DataFrame(
+        {
+            "time": (sess.replay.expvar.t_match - post[0]) / 3600,
+            "expvar": sess.replay.expvar.ev.squeeze().mean(axis=0),
+            "rev": sess.replay.expvar.rev.squeeze().mean(axis=0),
+        }
+    )
+    evsd.append(ev)
 
-    ax1 = plt.subplot(gs[0])
-    sess.replay.expvar.plot(ax=ax1, tstart=post[0])
-    # if sub == 0:
-    #     ax1.set_ylim([0, 0.55])
-    # else:
-    #     ax1.set_ylim([0, 0.4])
-
-    # if i > 0:
-    #     ax1.spines["left"].set_visible(False)
-    #     ax1.set_yticks([])
-    #     ax1.set_yticklabels([])
-    #     ax1.set_ylabel("")
-    #     ax1.legend("")
-    #     ax1.set_title("")
-
-    axhypno = fig.add_subplot(axstate[0], sharex=ax1)
-    sess.brainstates.hypnogram(ax1=axhypno, tstart=post[0], unit="h")
-    axhypno.set_title(sess.sessinfo.session.sessionName)
-    # panel_label(axhypno, "a")
-    # ax1.set_ylim([0, 0.3])
-
+evsd = pd.concat(evsd)
+ax = plt.subplot(gs[0, :2])
+ax.clear()
+sns.lineplot(data=evsd, x="time", y="rev", ci=68, ax=ax, legend=None, color="green")
+sns.lineplot(
+    data=evsd, x="time", y="expvar", ci=68, color="black", ax=ax, legend=None,
+)
+ax.set_ylabel("Replay")
+ax.set_xlabel("Time (s)")
+ax.set_title("Replay during sleep deprivaiton")
+ax.legend(["REV", "EV"])
 
 # endregion
 
-
-#%% Explained variance during recovery sleep while controlling for MAZE correlations
+#%% Explained variance for control sessions
 
 # region
 """Only found stable units for 3 sessions
 """
-
-for sub, sess in enumerate(sessions):
+evsd = []
+for sub, sess in enumerate(sessions[5:6]):
 
     sess.trange = np.array([])
     maze = sess.epochs.maze
     post = sess.epochs.post
     pre = sess.epochs.pre
 
-    # for i, hour in enumerate(range(5, 10)):
     bins = [
-        # [pre[1] - 1 * 3600, pre[1]],
-        # [maze[0], maze[1]],
+        [pre[1] - 1 * 3600, pre[1]],
+        [maze[0], maze[1]],
         [post[0], post[0] + 1 * 3600],
+        [post[0] + 1 * 3600, post[0] + 2 * 3600],
+        [post[0] + 2 * 3600, post[0] + 3 * 3600],
+        [post[0] + 3 * 3600, post[0] + 4 * 3600],
+        [post[0] + 4 * 3600, post[0] + 5 * 3600],
+    ]
+    sess.spikes.stability.firingRate(bins=bins)
+    sess.replay.expvar.compute(
+        template=bins[1], match=[post[0], post[0] + 5 * 3600], control=bins[0],
+    )
+
+    ev = pd.DataFrame(
+        {
+            "time": (sess.replay.expvar.t_match - post[0]) / 3600,
+            "expvar": sess.replay.expvar.ev.squeeze().mean(axis=0),
+            "rev": sess.replay.expvar.rev.squeeze().mean(axis=0),
+        }
+    )
+    evsd.append(ev)
+
+evsd = pd.concat(evsd)
+ax = plt.subplot(gs[0, 2:4])
+ax.clear()
+sns.lineplot(data=evsd, x="time", y="rev", ci=68, ax=ax, legend=None, color="green")
+sns.lineplot(
+    data=evsd, x="time", y="expvar", ci=68, color="black", ax=ax, legend=None,
+)
+ax.set_ylabel("Replay")
+ax.set_xlabel("Time (s)")
+ax.set_title("Replay during normal sleep")
+ax.legend(["REV", "EV"])
+
+# endregion
+
+#%% Replay during recovery sleep (template=ZT5, control=ZT1)
+
+# region
+"""Only found stable units for 3 sessions
+"""
+evsd = []
+for sub, sess in enumerate(sessions[1:3]):
+
+    sess.trange = np.array([])
+    maze = sess.epochs.maze
+    post = sess.epochs.post
+    pre = sess.epochs.pre
+
+    bins = [
+        [maze[0], maze[1]],
         # [post[0] + 1 * 3600, post[0] + 2 * 3600],
         # [post[0] + 2 * 3600, post[0] + 3 * 3600],
         # [post[0] + 3 * 3600, post[0] + 4 * 3600],
         [post[0] + 4 * 3600, post[0] + 5 * 3600],
         [post[0] + 5 * 3600, post[0] + 6 * 3600],
-        # [post[0] + 6 * 3600, post[0] + 7 * 3600],
-        # [post[0] + 7 * 3600, post[0] + 8 * 3600],
-        # [post[0] + 8 * 3600, post[0] + 9 * 3600],
-        # [post[0] + 9 * 3600, post[0] + 10 * 3600],
+        [post[0] + 6 * 3600, post[0] + 7 * 3600],
     ]
-    # sess.spikes.stability.refPeriodViolation()
-    # violations = sess.spikes.stability.violations
     sess.spikes.stability.firingRate(bins=bins)
     sess.replay.expvar.compute(
         template=bins[1],
-        match=[post[0] + 5 * 3600, post[0] + 6 * 3600],
+        match=[post[0] + 5 * 3600, post[0] + 7 * 3600],
         control=bins[0],
     )
 
-    axstate = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[sub], hspace=0.2)
+    ev = pd.DataFrame(
+        {
+            "time": (sess.replay.expvar.t_match - (post[0] + 5 * 3600)) / 3600,
+            "expvar": sess.replay.expvar.ev.squeeze().mean(axis=0),
+            "rev": sess.replay.expvar.rev.squeeze().mean(axis=0),
+        }
+    )
+    evsd.append(ev)
 
-    ax1 = fig.add_subplot(axstate[1:])
-    sess.replay.expvar.plot(ax=ax1, tstart=post[0])
-    # if sub == 0:
-    #     ax1.set_ylim([0, 0.55])
-    # else:
-    #     ax1.set_ylim([0, 0.4])
-
-    # if i > 0:
-    #     ax1.spines["left"].set_visible(False)
-    #     ax1.set_yticks([])
-    #     ax1.set_yticklabels([])
-    #     ax1.set_ylabel("")
-    #     ax1.legend("")
-    #     ax1.set_title("")
-
-    axhypno = fig.add_subplot(axstate[0], sharex=ax1)
-    sess.brainstates.hypnogram(ax1=axhypno, tstart=post[0], unit="h")
-    axhypno.set_title(sess.sessinfo.session.sessionName)
-    # panel_label(axhypno, "a")
-    # ax1.set_ylim([0, 0.3])
-
+evsd = pd.concat(evsd)
+ax = plt.subplot(gs[1, :2])
+ax.clear()
+sns.lineplot(data=evsd, x="time", y="rev", ci=68, ax=ax, legend=None, color="green")
+sns.lineplot(
+    data=evsd, x="time", y="expvar", ci=68, color="black", ax=ax, legend=None,
+)
+ax.set_ylabel("Replay")
+ax.set_xlabel("Time (s)")
+ax.set_title("Replay during recovery sleep", fontsize=titlesize)
+ax.legend(["REV", "EV"])
 
 # endregion
 
