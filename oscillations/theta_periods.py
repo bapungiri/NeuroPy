@@ -11,6 +11,8 @@ import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 import ipywidgets as widgets
 import random
+from sklearn import linear_model
+import statsmodels.api as sm
 
 from callfunc import processData
 import signal_process
@@ -1673,6 +1675,83 @@ for sub, sess in enumerate(sessions[:3]):
     # # cax.clear()
     # # ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
     # fig.colorbar(im, ax=ax, orientation="horizontal")
+
+
+# endregion
+
+#%% Multiple regression analysis on theta-slow gamma correlation and comparing with harmonic
+# region
+for sub, sess in enumerate(sessions[5:6]):
+    sess.trange = np.array([])
+    maze = sess.epochs.maze
+    speed = sess.position.speed
+    t_position = sess.position.t[1:]
+    # thetalfp = sess.theta.getBestChanlfp()
+    # t = np.linspace(0, len(thetalfp) / 1250, len(thetalfp))
+
+    lfpmaze = sess.utils.geteeg(sess.theta.bestchan, timeRange=maze)
+
+    # --- calculating theta parameters ---------
+    thetalfp = signal_process.filter_sig.filter_theta(lfpmaze)
+    hil_theta = signal_process.hilbertfast(thetalfp)
+    theta_angle = np.abs(np.angle(hil_theta, deg=True))
+    theta_trough = sg.find_peaks(theta_angle)[0]
+    theta_peak = sg.find_peaks(-theta_angle)[0]
+    theta_amp = np.abs(hil_theta) ** 2
+    theta_t = np.linspace(maze[0], maze[1], len(lfpmaze))
+
+    # --- calculating slow gamma parameters -------
+    gammalfp = signal_process.filter_sig.filter_cust(lfpmaze, lf=25, hf=50)
+    hil_gamma = signal_process.hilbertfast(gammalfp)
+    gamma_amp = np.abs(hil_gamma) ** 2
+
+    if theta_peak[0] < theta_trough[0]:
+        theta_peak = theta_peak[1:]
+    if theta_peak[-1] > theta_trough[-1]:
+        theta_peak = theta_peak[:-1]
+
+    rising_time = (theta_peak - theta_trough[:-1]) / 1250
+    falling_time = (theta_trough[1:] - theta_peak) / 1250
+    rise_fall = rising_time / falling_time
+
+    speed = np.interp(theta_t, t_position, speed)
+    speed_in_theta = stats.binned_statistic(
+        theta_t, speed, bins=(theta_trough) / 1250 + maze[0]
+    )[0]
+    thetapower_in_theta = stats.binned_statistic(
+        np.arange(0, len(thetalfp)), theta_amp, bins=theta_trough
+    )[0]
+    gammapower_in_theta = stats.binned_statistic(
+        np.arange(0, len(thetalfp)), gamma_amp, bins=theta_trough
+    )[0]
+
+    x = np.vstack((thetapower_in_theta, speed_in_theta, rise_fall, falling_time)).T
+    y = gammapower_in_theta[:, np.newaxis]
+    reg = linear_model.LinearRegression()
+    multifit = reg.fit(x, y)
+    coef = multifit.coef_[0]
+    y_predict = multifit.predict(x)
+
+    ss_tot = np.sum((y - np.mean(y)) ** 2)
+    ss_res = lambda predict: np.sum((y.squeeze() - predict) ** 2)
+    # exp_var = [
+    #     1 - (ss_res((x[:, _] * coef[_]) + multifit.intercept_) / ss_tot)
+    #     for _ in range(x.shape[1])
+    # ]
+    exp_var = [
+        np.corrcoef(y.squeeze(), x[:, _] * coef[_])[0, 1] ** 2
+        for _ in range(x.shape[1])
+    ]
+
+    data = pd.DataFrame(
+        {
+            "y": gammapower_in_theta,
+            "thetaPower": thetapower_in_theta,
+            "speed":speed_in_theta,
+            "asymm": rise_fall,
+            "peaktrough": falling_time,
+        }
+    )
 
 
 # endregion
