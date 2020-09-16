@@ -1,8 +1,9 @@
 #%% Imports
 import warnings
-
+import os
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import title
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -10,6 +11,7 @@ import seaborn as sns
 from scipy.ndimage import gaussian_filter
 
 from callfunc import processData
+from plotUtil import savefig
 
 warnings.simplefilter(action="default")
 
@@ -80,17 +82,37 @@ for sub, sess in enumerate(sessions[1:3]):
     )
     evsd.append(ev)
 
+conf_interval = int(68.2 / np.sqrt(len(evsd)))  # SEM, standard deviation = 68.2
 evsd = pd.concat(evsd)
 ax = plt.subplot(gs[0, :2])
 ax.clear()
-sns.lineplot(data=evsd, x="time", y="rev", ci=68, ax=ax, legend=None, color="green")
 sns.lineplot(
-    data=evsd, x="time", y="expvar", ci=68, color="black", ax=ax, legend=None,
+    data=evsd,
+    x="time",
+    y="rev",
+    ci=conf_interval,
+    ax=ax,
+    legend=None,
+    color="green",
+    n_boot=10,
+    seed=10,
+)
+sns.lineplot(
+    data=evsd,
+    x="time",
+    y="expvar",
+    ci=conf_interval,
+    color="black",
+    ax=ax,
+    legend=None,
+    n_boot=10,
+    seed=10,
 )
 ax.set_ylabel("Replay")
-ax.set_xlabel("Time (s)")
-ax.set_title("Replay during sleep deprivaiton")
+ax.set_xlabel("Time (h)")
+ax.set_title("Replay during sleep deprivaiton", fontsize=titlesize)
 ax.legend(["REV", "EV"])
+panel_label(ax, "a")
 
 # endregion
 
@@ -138,9 +160,10 @@ sns.lineplot(
     data=evsd, x="time", y="expvar", ci=68, color="black", ax=ax, legend=None,
 )
 ax.set_ylabel("Replay")
-ax.set_xlabel("Time (s)")
-ax.set_title("Replay during normal sleep")
-ax.legend(["REV", "EV"])
+ax.set_xlabel("Time (h)")
+ax.set_title("Replay during normal sleep", fontsize=titlesize)
+panel_label(ax, "b")
+# ax.legend(["REV", "EV"])
 
 # endregion
 
@@ -182,17 +205,49 @@ for sub, sess in enumerate(sessions[1:3]):
     )
     evsd.append(ev)
 
+conf_interval = int(68.2 / np.sqrt(len(evsd)))  # SEM, standard deviation = 68.2
 evsd = pd.concat(evsd)
+
 ax = plt.subplot(gs[1, :2])
 ax.clear()
-sns.lineplot(data=evsd, x="time", y="rev", ci=68, ax=ax, legend=None, color="green")
 sns.lineplot(
-    data=evsd, x="time", y="expvar", ci=68, color="black", ax=ax, legend=None,
+    data=evsd,
+    x="time",
+    y="rev",
+    ci=conf_interval,
+    ax=ax,
+    legend=None,
+    color="green",
+    n_boot=10,
+    seed=10,
+)
+sns.lineplot(
+    data=evsd,
+    x="time",
+    y="expvar",
+    ci=conf_interval,
+    color="black",
+    ax=ax,
+    legend=None,
+    n_boot=10,
+    seed=10,
 )
 ax.set_ylabel("Replay")
-ax.set_xlabel("Time (s)")
+ax.set_xlabel("Time (h)")
 ax.set_title("Replay during recovery sleep", fontsize=titlesize)
-ax.legend(["REV", "EV"])
+panel_label(ax, "c")
+# ax.legend(["REV", "EV"])
 
 # endregion
 
+
+#%% ICA reactivation during sleep deprivation
+# region
+
+# endregion
+
+
+scriptname = os.path.basename(__file__)
+folder = "/home/bapung/Documents/MATLAB/figures/compileFigures/figures"
+filename = "fig_Replay1"
+savefig(fig, filename, scriptname, folder=folder)
