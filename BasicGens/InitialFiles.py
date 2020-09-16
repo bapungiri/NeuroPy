@@ -9,11 +9,11 @@ from scipy.ndimage import gaussian_filter
 from callfunc import processData
 
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/"
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
@@ -57,8 +57,8 @@ for sub, sess in enumerate(sessions):
 # region
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
-    # sess.position.getPosition()
-    sess.position.export2Neuroscope()
+    sess.position.getPosition()
+    # sess.position.export2Neuroscope()
 
 # endregion
 

@@ -48,7 +48,9 @@ class event_event:
 
         self._obj = obj
 
-    def compute(self, ref, event, quantparam, binsize=0.01, window=1, nQuantiles=10):
+    def compute(
+        self, ref, event, quantparam=None, binsize=0.01, window=1, nQuantiles=10
+    ):
         """psth of 'event' with respect to 'ref'
 
         Args:
@@ -65,19 +67,25 @@ class event_event:
 
         # --- parameters----------
 
-        quantiles = pd.qcut(quantparam, nQuantiles, labels=False)
+        if quantparam is not None:
+            quantiles = pd.qcut(quantparam, nQuantiles, labels=False)
 
-        quants, eventid = [], []
-        for category in range(nQuantiles):
-            indx = np.where(quantiles == category)[0]
-            quants.append(ref[indx])
-            eventid.append(category * np.ones(len(indx)).astype(int))
+            quants, eventid = [], []
+            for category in range(nQuantiles):
+                indx = np.where(quantiles == category)[0]
+                quants.append(ref[indx])
+                eventid.append(category * np.ones(len(indx)).astype(int))
 
-        quants.append(event)
-        eventid.append(((nQuantiles + 1) * np.ones(len(event))).astype(int))
+            quants.append(event)
+            eventid.append(((nQuantiles + 1) * np.ones(len(event))).astype(int))
 
-        quants = np.concatenate(quants)
-        eventid = np.concatenate(eventid)
+            quants = np.concatenate(quants)
+            eventid = np.concatenate(eventid)
+        else:
+            quants = np.concatenate((ref, event))
+            eventid = np.concatenate(
+                [np.ones(len(ref)), 2 * np.ones(len(event))]
+            ).astype(int)
 
         sort_ind = np.argsort(quants)
 
