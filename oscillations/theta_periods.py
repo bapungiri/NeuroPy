@@ -54,10 +54,10 @@ def getPxx(lfp):
 
 #%% Subjects to choose from
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
@@ -590,7 +590,7 @@ for sub, sess in enumerate(sessions):
     speed = gaussian_filter1d(speed, sigma=10)
 
     frtheta = np.arange(5, 12, 0.5)
-    wavdec = wavelet_decomp(lfpSD, freqs=frtheta)
+    wavdec = signal_process.wavelet_decomp(lfpSD, freqs=frtheta)
     wav = wavdec.cohen()
     # frgamma = np.arange(25, 50, 1)
     # wavdec = wavelet_decomp(lfpSD, freqs=frgamma)
@@ -613,14 +613,16 @@ for sub, sess in enumerate(sessions):
 
     non_theta = np.delete(lfpSD, theta_indices)
     frgamma = np.arange(25, 150, 1)
-    specgram = spectrogramBands(strong_theta)
+    specgram = signal_process.spectrogramBands(strong_theta)
     fr_sxx = specgram.freq
     fr_gamma_indx = np.where((fr_sxx > 25) & (fr_sxx < 150))
     wav = specgram.sxx[fr_gamma_indx, :]
     wav = stats.zscore(wav)
 
-    theta_filter = stats.zscore(filter_sig.filter_cust(strong_theta, lf=4, hf=11))
-    hil_theta = hilbertfast(theta_filter)
+    theta_filter = stats.zscore(
+        signal_process.filter_sig.filter_cust(strong_theta, lf=4, hf=11)
+    )
+    hil_theta = signal_process.hilbertfast(theta_filter)
     theta_amp = np.abs(hil_theta)
     theta_angle = np.angle(hil_theta, deg=True) + 180
 
@@ -1021,26 +1023,14 @@ for sub, sess in enumerate(sessions):
     eegSrate = sess.recinfo.lfpSrate
     maze = sess.epochs.maze
 
-    lfp, _, _ = sess.ripple.best_chan_lfp()
-    lfp = lfp[0, :]
-    t = np.linspace(0, len(lfp) / 1250, len(lfp))
+    lfpmaze = sess.utils.geteeg(sess.theta.bestchan, timeRange=maze)
+    lfpmaze_t = np.linspace(maze[0], maze[1], len(lfpmaze))
 
-    tstart = maze[0]
-    tend = maze[1]
+    thetalfp = signal_process.filter_sig.filter_cust(lfpmaze, lf=4, hf=10)
+    hil_theta = signal_process.hilbertfast(thetalfp)
+    theta_amp = np.abs(hil_theta)
 
-    lfpmaze = lfp[(t > tstart) & (t < tend)]
-    tmaze = np.linspace(tstart, tend, len(lfpmaze))
-
-    frtheta = np.arange(5, 12, 0.5)
-    wavdec = signal_process.wavelet_decomp(lfpmaze, freqs=frtheta)
-    wav = wavdec.cohen()
-    # frgamma = np.arange(25, 50, 1)
-    # wavdec = wavelet_decomp(lfpmaze, freqs=frgamma)
-    # wav = wavdec.colgin2009()
-    # wavtheta = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
-
-    sum_theta = gaussian_filter1d(np.sum(wav, axis=0), sigma=10)
-    zsc_theta = stats.zscore(sum_theta)
+    zsc_theta = stats.zscore(theta_amp)
     thetaevents = threshPeriods(
         zsc_theta, lowthresh=0, highthresh=0.5, minDistance=300, minDuration=1250
     )
@@ -1680,7 +1670,8 @@ for sub, sess in enumerate(sessions[:3]):
 
 # endregion
 
-#%% Multiple regression analysis on theta-slow gamma correlation and comparing with harmonic
+
+#%% Multiple regression analysis on slow gamma power explained by variables such as theta-harmonic, theta-asymmetry, speed etc. Also comparing it with theta-harmonic being explained by similar variables
 # region
 plt.clf()
 fig, ax = plt.subplots(1, 2, num=1, sharey=True)
@@ -1731,9 +1722,38 @@ for sub, sess in enumerate(sessions):
 
     assert len(theta_trough) == len(theta_peak)
 
-    rising_time = (theta_peak - theta_trough[:-1]) / 1250
-    falling_time = (theta_trough[1:] - theta_peak) / 1250
-    rise_fall = rising_time / falling_time
+    rising_time = (theta_peak[1:] - theta_trough[1:]) / 1250
+    falling_time = (theta_trough[1:] - theta_peak[:-1]) / 1250
+    rise_fall = rising_time / (rising_time + falling_time)
+
+    rise_midpoints = np.array(
+        [
+            trough
+            + np.argmin(
+                np.abs(
+                    thetalfp[trough:peak]
+                    - (max(thetalfp[trough:peak]) - np.ptp(thetalfp[trough:peak]) / 2)
+                )
+            )
+            for (trough, peak) in zip(theta_trough, theta_peak)
+        ]
+    )
+
+    fall_midpoints = np.array(
+        [
+            peak
+            + np.argmin(
+                np.abs(
+                    thetalfp[peak:trough]
+                    - (max(thetalfp[peak:trough]) - np.ptp(thetalfp[peak:trough]) / 2)
+                )
+            )
+            for (peak, trough) in zip(theta_peak[:-1], theta_trough[1:])
+        ]
+    )
+    peak_width = fall_midpoints - rise_midpoints[:-1]
+    trough_width = rise_midpoints[1:] - fall_midpoints
+    peak_trough_asymm = peak_width / (peak_width + trough_width)
 
     speed_in_theta = stats.binned_statistic(
         np.arange(len(thetalfp)), speed, bins=theta_trough
@@ -1755,7 +1775,7 @@ for sub, sess in enumerate(sessions):
             "thetaPower": thetapower_in_theta,
             "speed": speed_in_theta,
             "asymm": rise_fall,
-            "peaktrough": falling_time,
+            "peaktrough": peak_trough_asymm,
         }
     )
 
