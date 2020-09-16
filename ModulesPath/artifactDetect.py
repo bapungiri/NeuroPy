@@ -6,6 +6,7 @@ import pandas as pd
 from numpy.fft import fft
 import scipy.ndimage as filtSig
 from pathlib import Path
+from dataclasses import dataclass
 
 
 class findartifact:
@@ -15,7 +16,26 @@ class findartifact:
 
     def __init__(self, obj):
         self._obj = obj
-        # self._myinfo = recinfo(basePath)
+        self.time = None
+
+        # ----- defining file names ---------
+        filePrefix = self._obj.sessinfo.files.filePrefix
+
+        @dataclass
+        class files:
+            dead: str = Path(str(filePrefix) + ".dead")
+
+        self.files = files()
+
+        if Path(self.files.dead).is_file():
+            with self.files.dead.open("r") as f:
+                noisy = []
+                for line in f:
+                    epc = line.split(" ")
+                    epc = [float(_) for _ in epc]
+                    noisy.append(epc)
+                noisy = np.asarray(noisy) / 1000
+                self.time = noisy  # in seconds
 
     def usingZscore(self):
         """
