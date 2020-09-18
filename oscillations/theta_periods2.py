@@ -1,24 +1,26 @@
 # %%
+import os
+import random
+import warnings
 
+import ipywidgets as widgets
 import matplotlib as mpl
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pingouin as pg
 import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
-import matplotlib.gridspec as gridspec
-from scipy.ndimage import gaussian_filter, gaussian_filter1d
-import ipywidgets as widgets
-import random
-from sklearn import linear_model
 import statsmodels.api as sm
-import pingouin as pg
+from scipy.ndimage import gaussian_filter, gaussian_filter1d
+from sklearn import linear_model
 
-from callfunc import processData
 import signal_process
+from callfunc import processData
 from mathutil import threshPeriods
-import warnings
+from plotUtil import Fig
 
 warnings.simplefilter(action="default")
 
@@ -54,15 +56,16 @@ def getPxx(lfp):
 
 #%% Subjects to choose from
 basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 sessions = [processData(_) for _ in basePath]
+
 
 #%% Phase-amplitude comodulogram for multiple frequencies
 # region
@@ -132,16 +135,26 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
-#%% theta phase specific extraction of lfp during strong theta MAZE
+#%% theta phase specific extraction of lfp during strong theta MAZE with different binning techiques
 # region
-plt.clf()
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(2, 3, figure=fig)
-fig.subplots_adjust(hspace=0.3)
+
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 3])
+
+axbin1 = plt.subplot(gs[1, 0])
+axbin1.clear()
+figure.panel_label(axbin1, "b")
+axbin2 = plt.subplot(gs[1, 1])
+axbin2.clear()
+axslide = plt.subplot(gs[1, 2])
+axslide.clear()
 
 all_theta = []
-cmap = mpl.cm.get_cmap("Set2")
-for sub, sess in enumerate(sessions):
+bin1Data = pd.DataFrame()
+bin2Data = pd.DataFrame()
+slideData = pd.DataFrame()
+cmap = mpl.cm.get_cmap("Set3")
+for sub, sess in enumerate(sessions[3:5]):
 
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
@@ -150,7 +163,8 @@ for sub, sess in enumerate(sessions):
     lfpmaze = sess.utils.geteeg(sess.theta.bestchan, timeRange=maze)
     lfpmaze_t = np.linspace(maze[0], maze[1], len(lfpmaze))
 
-    thetalfp = signal_process.filter_sig.filter_cust(lfpmaze, lf=4, hf=10)
+    # ---- filtering --> zscore --> threshold --> strong theta periods ----
+    thetalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=4, hf=10)
     hil_theta = signal_process.hilbertfast(thetalfp)
     theta_amp = np.abs(hil_theta)
 
@@ -159,8 +173,7 @@ for sub, sess in enumerate(sessions):
         zsc_theta, lowthresh=0, highthresh=0.5, minDistance=300, minDuration=1250
     )
 
-    strong_theta = []
-    theta_indices = []
+    strong_theta, theta_indices = [], []
     for (beg, end) in thetaevents:
         strong_theta.extend(lfpmaze[beg:end])
         theta_indices.extend(np.arange(beg, end))
@@ -168,137 +181,98 @@ for sub, sess in enumerate(sessions):
     theta_indices = np.asarray(theta_indices)
     non_theta = np.delete(lfpmaze, theta_indices)
 
-    theta_lfp = stats.zscore(signal_process.filter_sig.filter_theta(strong_theta))
+    # ---- filtering strong theta periods into theta and gamma band ------
+    theta_lfp = stats.zscore(
+        signal_process.filter_sig.bandpass(strong_theta, lf=4, hf=10)
+    )
+    gamma_lfp = stats.zscore(
+        signal_process.filter_sig.highpass(strong_theta, cutoff=25)
+    )
+
+    # ----- phase detection for theta band -----------
     # filt_theta = signal_process.filter_sig.filter_cust(theta_lfp, lf=20, hf=60)
     hil_theta = signal_process.hilbertfast(theta_lfp)
     theta_amp = np.abs(hil_theta)
-    theta_angle = np.angle(hil_theta, deg=True) + 180
-    angle_bin = np.linspace(0, 360, 10)  # divide into 5 bins so each bin=25ms
+    theta_angle = np.angle(hil_theta, deg=True) + 180  # range from 0 to 360
+
+    """
+    phase specific extraction of highpass filtered strong theta periods (>25 Hz) and concatenating similar phases across multiple theta cycles
+    """
+
+    # ----- dividing 360 degress into non-overlapping 5 bins ------------
+    angle_bin = np.linspace(0, 360, 6)  # 5 bins so each bin=25ms
+    angle_centers = angle_bin + np.diff(angle_bin).mean() / 2
     bin_ind = np.digitize(theta_angle, bins=angle_bin)
-
-    ax = fig.add_subplot(gs[sub])
-    axins = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
+    df1 = pd.DataFrame()
     for phase in range(1, len(angle_bin)):
-        strong_theta_atphase = theta_lfp[np.where(bin_ind == phase)[0]]
-        strong_theta_atphase = signal_process.filter_sig.filter_cust(
-            strong_theta_atphase, lf=20, hf=100
-        )
+        strong_theta_atphase = gamma_lfp[np.where(bin_ind == phase)[0]]
+        f_, pxx = sg.welch(strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250)
+        df1["freq"] = f_
+        df1[str(angle_centers[phase - 1])] = pxx
+    bin1Data = bin1Data.append(df1)
 
-        # ax = fig.add_subplot(gs[phase - 1])
-        f, t, sxx = sg.spectrogram(
-            strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250
-        )
-        # ax.pcolorfast(t, f, stats.zscore(sxx, axis=1), cmap="YlGn")
+    # ----- dividing 360 degress into non-overlapping 9 bins ------------
+    angle_bin = np.linspace(0, 360, 10)  # 9 bins
+    angle_centers = angle_bin + np.diff(angle_bin).mean() / 2
+    bin_ind = np.digitize(theta_angle, bins=angle_bin)
+    df2 = pd.DataFrame()
+    for phase in range(1, len(angle_bin)):
+        strong_theta_atphase = gamma_lfp[np.where(bin_ind == phase)[0]]
+        f_, pxx = sg.welch(strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250)
+        df2["freq"] = f_
+        df2[str(angle_centers[phase - 1])] = pxx
+    bin2Data = bin2Data.append(df2)
 
-        ax.plot(
-            f,
-            np.mean(sxx, axis=1),
-            color=cmap(phase),
-            label=f"{int(angle_bin[phase-1])}-{int(angle_bin[phase])}",
-        )
-        ax.set_xlabel("Frequency (Hz)")
-        ax.set_ylabel("Mean amplitude across time")
-        # plt.pcolormesh(bispec_freq, bispec_freq, bispec, vmin=0, vmax=0.1, cmap="YlGn")
-        ax.set_xlim([2, 100])
-
-        axins.plot(
-            [angle_bin[phase - 1], angle_bin[phase]], [1, 1], color=cmap(phase), lw=2
-        )
-
-    axins.axis("off")
-    # ax.legend(title="Theta Phase")
-    ax.set_title("Mean power spectrum by breaking \n down theta signal by phase")
+    # ----- dividing 360 degress into sliding windows ------------
+    window = 40  # degress
+    slideby = 5  # degress
+    angle_bin = np.arange(0, 360 - 40, slideby)  # divide into 5 bins so each bin=25ms
+    angle_centers = angle_bin + window / 2
+    bin_ind = np.digitize(theta_angle, bins=angle_bin)
+    df3 = pd.DataFrame()
+    for phase in angle_bin:
+        strong_theta_atphase = gamma_lfp[
+            np.where((theta_angle > phase) & (theta_angle < phase + window))[0]
+        ]
+        f_, pxx = sg.welch(strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250)
+        df3["freq"] = f_
+        df3[str(phase + window / 2)] = pxx
+    slideData = slideData.append(df3)
 
 
-# fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
+mean_bin1 = bin1Data.groupby(level=0).mean()
+mean_bin2 = bin2Data.groupby(level=0).mean()
+mean_slide = slideData.groupby(level=0).mean()
+
+mean_bin1.plot(x="freq", ax=axbin1, legend=False, linewidth=1)
+mean_bin2.plot(x="freq", ax=axbin2, legend=False, linewidth=1)
+mean_slide.plot(x="freq", ax=axslide, legend=False, linewidth=1)
+
+# ---- figure properties ----------
+[
+    [ax.set_xlabel("Frequency (Hz)"), ax.set_ylabel("Power"), ax.set_xlim([0, 200])]
+    for ax in [axbin1, axbin2, axslide]
+]
+[
+    ax.set_title(title)
+    for (ax, title) in zip(
+        [axbin1, axbin2, axslide], ["5 bins", "9 bins", "sliding window"]
+    )
+]
+axbin1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+axbin2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+axslide.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+
+scriptname = os.path.basename(__file__)
+filename = "phase_specific_slowgamma"
+figure.savefig(filename, scriptname)
 
 
 # endregion
 
 #%% theta phase specific extraction of lfp during REM sleep
 # region
-plt.clf()
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(2, 3, figure=fig)
-fig.subplots_adjust(hspace=0.3)
 
-
-cmap = mpl.cm.get_cmap("Set2")
-for sub, sess in enumerate(sessions):
-
-    sess.trange = np.array([])
-    eegSrate = sess.recinfo.lfpSrate
-    maze = sess.epochs.maze
-
-    lfp, _, _ = sess.ripple.best_chan_lfp()
-    lfp = lfp[0, :]
-    t = np.linspace(0, len(lfp) / 1250, len(lfp))
-
-    tstart = maze[0]
-    tend = maze[1]
-
-    lfpmaze = lfp[(t > tstart) & (t < tend)]
-    tmaze = np.linspace(tstart, tend, len(lfpmaze))
-
-    frtheta = np.arange(5, 12, 0.5)
-    wavdec = signal_process.wavelet_decomp(lfpmaze, freqs=frtheta)
-    wav = wavdec.cohen()
-    # frgamma = np.arange(25, 50, 1)
-    # wavdec = wavelet_decomp(lfpmaze, freqs=frgamma)
-    # wav = wavdec.colgin2009()
-    # wavtheta = doWavelet(lfpmaze, freqs=frtheta, ncycles=3)
-
-    sum_theta = gaussian_filter1d(np.sum(wav, axis=0), sigma=10)
-    zsc_theta = stats.zscore(sum_theta)
-    thetaevents = threshPeriods(
-        zsc_theta, lowthresh=0, highthresh=0.5, minDistance=300, minDuration=1250
-    )
-
-    strong_theta = []
-    theta_indices = []
-    for (beg, end) in thetaevents:
-        strong_theta.extend(lfpmaze[beg:end])
-        theta_indices.extend(np.arange(beg, end))
-    strong_theta = np.asarray(strong_theta)
-    theta_indices = np.asarray(theta_indices)
-    non_theta = np.delete(lfpmaze, theta_indices)
-
-    theta_lfp = stats.zscore(signal_process.filter_sig.filter_theta(strong_theta))
-    filt_theta = signal_process.filter_sig.filter_cust(theta_lfp, lf=20, hf=60)
-    hil_theta = signal_process.hilbertfast(theta_lfp)
-    theta_amp = np.abs(hil_theta)
-    theta_angle = np.angle(hil_theta, deg=True) + 180
-    angle_bin = np.linspace(0, 360, 6)  # divide into 5 bins so each bin=25ms
-    bin_ind = np.digitize(theta_angle, bins=angle_bin)
-
-    ax = fig.add_subplot(gs[sub])
-    axins = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
-    for phase in range(1, len(angle_bin)):
-        strong_theta_atphase = strong_theta[np.where(bin_ind == phase)[0]]
-
-        # ax = fig.add_subplot(gs[phase - 1])
-        f, t, sxx = sg.spectrogram(
-            strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250
-        )
-        # ax.pcolorfast(t, f, stats.zscore(sxx, axis=1), cmap="YlGn")
-        ax.plot(
-            f,
-            np.mean(sxx, axis=1),
-            color=cmap(phase),
-            label=f"{int(angle_bin[phase-1])}-{int(angle_bin[phase])}",
-        )
-        ax.set_xlabel("Frequency (Hz)")
-        ax.set_ylabel("Mean amplitude across time")
-        # plt.pcolormesh(bispec_freq, bispec_freq, bispec, vmin=0, vmax=0.1, cmap="YlGn")
-        ax.set_xlim([2, 100])
-
-        axins.plot(
-            [angle_bin[phase - 1], angle_bin[phase]], [1, 1], color=cmap(phase), lw=2
-        )
-
-    axins.axis("off")
-    # ax.legend(title="Theta Phase")
-    ax.set_title("Mean power spectrum by breaking \n down theta signal by phase")
 # endregion
 
 #%% Theta periods and velocity power spectrum with channels at different depths
@@ -600,67 +574,6 @@ for sub, sess in enumerate(sessions):
             # ax.set_ylim([2, 6])
 # endregion
 
-#%% Slow Gamma/Spectrogram for REM sleep theta oscillation
-# region
-plt.clf()
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(1, 6, figure=fig)
-fig.subplots_adjust(hspace=0.3)
-for sub, sess in enumerate(sessions):
-
-    sess.trange = np.array([])
-    eegSrate = sess.recinfo.lfpSrate
-    states = sess.brainstates.states
-    rems = states.loc[states["name"] == "rem"]
-
-    lfp = sess.theta.getBestChanlfp()
-    if sub in [1, 4]:
-        lfp = sess.utils.geteeg(chans=50)
-
-    rem_frames = []
-    for rem in rems.itertuples():
-        rem_frames.extend(
-            list(range(int(rem.start * eegSrate), int(rem.end * eegSrate)))
-        )
-    rem_theta = lfp[rem_frames]
-
-    # -----wavelet computation -------
-    frgamma = np.arange(25, 150, 1)
-    wavdec = signal_process.wavelet_decomp(rem_theta, freqs=frgamma)
-    wav = wavdec.colgin2009()
-    # wav = wavdec.cohen(ncycles=7)
-    wav = stats.zscore(wav, axis=1)
-
-    # ---phase calculation -----------
-    theta_filter = stats.zscore(
-        signal_process.filter_sig.filter_cust(rem_theta, lf=4, hf=11)
-    )
-    hil_theta = signal_process.hilbertfast(theta_filter)
-    theta_amp = np.abs(hil_theta)
-    theta_angle = np.angle(hil_theta, deg=True) + 180
-    theta_troughs = sg.find_peaks(-theta_filter)[0]
-    bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
-    bin_ind = np.digitize(theta_angle, bin_angle)
-
-    wav_phase = []
-    for i in np.unique(bin_ind):
-        find_where = np.where(bin_ind == i)[0]
-        wav_at_angle = np.mean(wav[:, find_where], axis=1)
-        wav_phase.append(wav_at_angle)
-
-    wav_phase = np.asarray(wav_phase).T
-
-    # wav_theta_all = np.dstack(wav_theta_all).mean(axis=2)
-
-    ax = fig.add_subplot(gs[sub])
-    ax.clear()
-    im = ax.pcolorfast(bin_angle[:-1], frgamma[:-1], wav_phase, cmap="Spectral_r")
-    ax.set_xlabel(r"$\theta$ phase")
-    ax.set_ylabel("frequency (Hz)")
-    fig.colorbar(im, ax=ax, orientation="horizontal")
-
-# endregion
-
 #%% Theta-Gamma band correlation during SD
 # region
 plt.clf()
@@ -798,13 +711,18 @@ for sub, sess in enumerate(sessions[:3]):
 #%% Multiple regression analysis on slow gamma power explained by variables such as theta-harmonic, theta-asymmetry, speed etc. Also comparing it with theta-harmonic being explained by similar variables
 # region
 plt.clf()
-fig, ax = plt.subplots(1, 2, num=1, sharey=True)
+plt.clf()
+fig = plt.figure(1, figsize=(10, 15))
+gs = gridspec.GridSpec(2, 2, figure=fig)
+fig.subplots_adjust(hspace=0.3)
+
 exp_var_gamma_all, exp_var_harmonic_all = [], []
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     maze = sess.epochs.maze
     speed = sess.position.speed
     t_position = sess.position.t[1:]
+
     deadtime = sess.artifact.time
 
     lfpmaze = sess.utils.geteeg(sess.theta.bestchan, timeRange=maze)
@@ -822,7 +740,7 @@ for sub, sess in enumerate(sessions):
         speed = np.delete(speed, dead_indx)
 
     # --- calculating theta parameters ---------
-    thetalfp = signal_process.filter_sig.filter_cust(lfpmaze, lf=4, hf=10)
+    thetalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=1, hf=25)
     hil_theta = signal_process.hilbertfast(thetalfp)
     theta_angle = np.abs(np.angle(hil_theta, deg=True))
     theta_trough = sg.find_peaks(theta_angle)[0]
@@ -830,12 +748,12 @@ for sub, sess in enumerate(sessions):
     theta_amp = np.abs(hil_theta) ** 2
 
     # --- calculating slow gamma parameters -------
-    gammalfp = signal_process.filter_sig.filter_cust(lfpmaze, lf=25, hf=50)
+    gammalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=25, hf=50)
     hil_gamma = signal_process.hilbertfast(gammalfp)
     gamma_amp = np.abs(hil_gamma) ** 2
 
     # --- theta harmonic ----------
-    theta_harmonic = signal_process.filter_sig.filter_cust(lfpmaze, lf=10, hf=22)
+    theta_harmonic = signal_process.filter_sig.bandpass(lfpmaze, lf=10, hf=22)
     hil_theta_harmonic = signal_process.hilbertfast(theta_harmonic)
     theta_harmonic_amp = np.abs(hil_theta_harmonic) ** 2
 
@@ -875,8 +793,8 @@ for sub, sess in enumerate(sessions):
             for (peak, trough) in zip(theta_peak[:-1], theta_trough[1:])
         ]
     )
-    peak_width = fall_midpoints - rise_midpoints[:-1]
-    trough_width = rise_midpoints[1:] - fall_midpoints
+    peak_width = (fall_midpoints - rise_midpoints[:-1]) / 1250
+    trough_width = (rise_midpoints[1:] - fall_midpoints) / 1250
     peak_trough_asymm = peak_width / (peak_width + trough_width)
 
     speed_in_theta = stats.binned_statistic(
@@ -903,18 +821,20 @@ for sub, sess in enumerate(sessions):
         }
     )
 
-    variables = data.columns.tolist()[2:]
+    variables1 = data.columns.tolist()[1:]
     par_corr_stats_gamma = [
         data.partial_corr(
-            y="gammaPower", x=var, covar=list(set(variables) - set([var]))
+            y="gammaPower", x=var, covar=list(set(variables1) - set([var]))
         )
-        for var in variables
+        for var in variables1
     ]
+
+    variables2 = data.columns.tolist()[2:]
     par_corr_stats_harmonic = [
         data.partial_corr(
-            y="thetaharmonicPower", x=var, covar=list(set(variables) - set([var]))
+            y="thetaharmonicPower", x=var, covar=list(set(variables2) - set([var]))
         )
-        for var in variables
+        for var in variables2
     ]
 
     exp_var_gamma = np.array([stat_.r2[0] * 100 for stat_ in par_corr_stats_gamma])
@@ -926,16 +846,17 @@ for sub, sess in enumerate(sessions):
     p_val_harmonic = np.array([stat_["p-val"][0] for stat_ in par_corr_stats_harmonic])
 
     exp_var_gamma_all.append(
-        pd.DataFrame(exp_var_gamma[np.newaxis, :], columns=variables)
+        pd.DataFrame(exp_var_gamma[np.newaxis, :], columns=variables1)
     )
     exp_var_harmonic_all.append(
-        pd.DataFrame(exp_var_harmonic[np.newaxis, :], columns=variables)
+        pd.DataFrame(exp_var_harmonic[np.newaxis, :], columns=variables2)
     )
 
 
 exp_var_gamma_all = pd.concat(exp_var_gamma_all)
 # sns.barplot(ax=ax[0], data=exp_var_gamma_all, ci=None)
-ax[0].bar(
+ax1 = plt.subplot(gs[1, 0])
+ax1.bar(
     exp_var_gamma_all.columns.tolist(),
     exp_var_gamma_all.mean().values,
     # fmt="None",
@@ -943,24 +864,26 @@ ax[0].bar(
     ecolor="black",
     capsize=10,
     edgecolor="k",
+    color="#ffa69e",
 )
-ax[0].tick_params(axis="x", labelrotation=90)
-ax[0].set_ylabel("Explained variance (%)")
-ax[0].set_title("Slow-gamma")
+ax1.tick_params(axis="x", labelrotation=90)
+ax1.set_ylabel("Explained variance (%)")
+ax1.set_title("Slow-gamma")
 
 exp_var_harmonic_all = pd.concat(exp_var_harmonic_all)
 # sns.barplot(ax=ax[1], data=exp_var_harmonic_all, ci=None)
-ax[1].bar(
+ax2 = plt.subplot(gs[1, 1], sharey=ax1)
+ax2.bar(
     exp_var_harmonic_all.columns.tolist(),
     exp_var_harmonic_all.mean().values,
     yerr=exp_var_harmonic_all.sem().values,
     ecolor="black",
     capsize=10,
     edgecolor="k",
+    color="#ffbf00",
 )
-ax[1].tick_params(axis="x", labelrotation=90)
-ax[1].set_title("Theta harmonic (10-22 Hz)")
+ax2.tick_params(axis="x", labelrotation=90)
+ax2.set_title("Theta harmonic (10-22 Hz)")
 
 
 # endregion
-
