@@ -17,11 +17,44 @@ import time
 import matplotlib.pyplot as plt
 
 
+# def filter_(signal, sampleRate=1250, fband=None, hf=None, lf=None, order=3, ax=-1):
+#     nyq = 0.5 * sampleRate
+#     freqbands = {
+#         "theta": [4, 10],
+#         "spindle": [8, 16],
+#         "slowgamma": [25, 50],
+#         "medgamma": [60, 90],
+#         "fastgamma": [100, 150],
+#         "ripple": [150, 240],
+#     }
+
+#     arguments = [fband, hf, lf]
+#     assert any(arguments), "please provide frequencies"
+
+#     if fband is None:
+#         if (hf is None) and (lf is not None):
+#             btype = "highpass"
+#             wn = lf / nyq
+#         elif (hf is not None) and (lf is None):
+#             btype = "lowpass"
+#             wn = hf / nyq
+#         elif (hf is not None) and (lf is not None):
+#             btype = "bandpass"
+#             wn = [lf / nyq, hf / nyq]
+#     else:
+#         assert fband in freqbands, f"fband must be from {list(freqbands.keys())}"
+#         btype = "bandpass"
+#         wn = [f / nyq for f in freqbands[fband]]
+
+#     b, a = sg.butter(order, wn, btype=btype)
+#     yf = sg.filtfilt(b, a, signal, axis=ax)
+
+#     return yf
+
+
 class filter_sig:
     @staticmethod
-    def filter_cust(
-        signal, sampleRate=1250, hf=None, lf=None, order=3, fs=1.0, ax=-1,
-    ):
+    def bandpass(signal, sampleRate=1250, hf=None, lf=None, order=3, ax=-1):
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(order, [lf / nyq, hf / nyq], btype="bandpass")
@@ -30,7 +63,25 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def filter_ripple(signal, sampleRate=1250, ax=0):
+    def highpass(signal, cutoff, sampleRate=1250, order=6, ax=-1):
+        nyq = 0.5 * sampleRate
+
+        b, a = sg.butter(order, cutoff / nyq, btype="highpass")
+        yf = sg.filtfilt(b, a, signal, axis=ax)
+
+        return yf
+
+    @staticmethod
+    def lowpass(signal, cutoff, sampleRate=1250, order=6, ax=-1):
+        nyq = 0.5 * sampleRate
+
+        b, a = sg.butter(order, cutoff / nyq, btype="lowpass")
+        yf = sg.filtfilt(b, a, signal, axis=ax)
+
+        return yf
+
+    @staticmethod
+    def ripple(signal, sampleRate=1250, ax=0):
         lowpass_freq = 150
         highpass_freq = 240
         nyq = 0.5 * sampleRate
@@ -41,7 +92,7 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def filter_theta(signal, sampleRate=1250, ax=0):
+    def theta(signal, sampleRate=1250, ax=0):
         lowpass_freq = 4
         highpass_freq = 10
         nyq = 0.5 * sampleRate
@@ -52,7 +103,7 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def filter_delta(signal, sampleRate=1250, ax=0):
+    def delta(signal, sampleRate=1250, ax=0):
         lowpass_freq = 0.5
         highpass_freq = 4
         nyq = 0.5 * sampleRate
@@ -63,7 +114,7 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def filter_spindle(signal, sampleRate=1250, ax=0):
+    def spindle(signal, sampleRate=1250, ax=0):
         lowpass_freq = 9
         highpass_freq = 18
         nyq = 0.5 * sampleRate
@@ -74,7 +125,7 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def filter_gamma(signal, sampleRate=1250, ax=0):
+    def fastgamma(signal, sampleRate=1250, ax=0):
         lowpass_freq = 100
         highpass_freq = 150
         nyq = 0.5 * sampleRate
@@ -119,6 +170,7 @@ class spectrogramBands:
         tapers = sg.windows.dpss(M=window, NW=5, Kmax=6)
 
         sxx_taper = []
+        f = None
         for taper in tapers:
             f, t, sxx = sg.spectrogram(
                 self.lfp, window=taper, fs=self.sampfreq, noverlap=overlap
@@ -217,7 +269,6 @@ class wavelet_decomp:
         n = len(self.lfp)
         fastn = next_fast_len(n)
         signal = np.pad(self.lfp, (0, fastn - n), "constant", constant_values=0)
-        print(len(signal))
         # signal = np.tile(np.expand_dims(signal, axis=0), (len(freqs), 1))
         # wavelet_at_freqs = np.zeros((len(freqs), len(t_wavelet)), dtype=complex)
         conv_val = np.zeros((len(freqs), n), dtype=complex)
