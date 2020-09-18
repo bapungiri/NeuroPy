@@ -14,6 +14,9 @@ from datetime import date
 import os
 from pathlib import Path
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
+plt.style.use("figPublish")
 
 
 class Colormap:
@@ -42,24 +45,59 @@ class Colormap:
         return colmap
 
 
-def savefig(fig, fname, scriptname, folder=None):
+class Fig:
+    labelsize = 8
 
-    if folder is None:
-        folder = "/home/bapung/Documents/MATLAB/figures/"
+    def draw(self, num=1, grid=[2, 2], size=[8.5, 11], style="figPublish"):
 
-    filename = folder + fname + ".pdf"
+        # --- plot settings --------
+        if style == "figPublish":
+            mpl.rcParams["axes.labelsize"] = 8
+            mpl.rcParams["axes.titlesize"] = 8
+            mpl.rcParams["xtick.labelsize"] = 8
+            mpl.rcParams["ytick.labelsize"] = 8
 
-    today = date.today().strftime("%m/%d/%y")
+        plt.clf()
+        fig = plt.figure(1, figsize=(8.5, 11))
+        fig.set_size_inches(size[0], size[1])
+        gs = gridspec.GridSpec(grid[0], grid[1], figure=fig)
+        fig.subplots_adjust(hspace=0.3)
 
-    fig.text(
-        0.95,
-        0.01,
-        f"{scriptname}\n Date: {today}",
-        fontsize=6,
-        color="gray",
-        ha="right",
-        va="bottom",
-        alpha=0.5,
-    )
-    fig.savefig(filename)
+        self.fig = fig
+        return self.fig, gs
+
+    def panel_label(self, ax, label):
+        ax.text(
+            x=-0.08,
+            y=1.15,
+            s=label,
+            transform=ax.transAxes,
+            fontsize=12,
+            fontweight="bold",
+            va="top",
+            ha="right",
+        )
+
+    def savefig(self, fname, scriptname, fig=None, folder=None):
+
+        if folder is None:
+            folder = "/home/bapung/Documents/MATLAB/figures/"
+        if fig is None:
+            fig = self.fig
+
+        filename = folder + fname + ".pdf"
+
+        today = date.today().strftime("%m/%d/%y")
+
+        fig.text(
+            0.95,
+            0.01,
+            f"{scriptname}\n Date: {today}",
+            fontsize=6,
+            color="gray",
+            ha="right",
+            va="bottom",
+            alpha=0.5,
+        )
+        fig.savefig(filename)
 
