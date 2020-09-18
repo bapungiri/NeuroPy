@@ -1,9 +1,13 @@
 import os
+from collections import namedtuple
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+import typing
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.core.records import array
 import numpy.random as rnd
 import pandas as pd
 import pywt
@@ -12,11 +16,12 @@ import scipy.ndimage as smth
 import scipy.signal as sg
 import scipy.stats as stats
 from matplotlib.gridspec import GridSpec
-from scipy import fftpack
+from scipy import fftpack as ft
+import mathutil
+
+import signal_process
 from lfpDetect import swr as spwrs
 from signal_process import filter_sig as filt
-from collections import namedtuple
-from dataclasses import dataclass
 
 
 class Hswa:
@@ -949,12 +954,111 @@ class Theta:
 
         # auc.append(area_chan)
 
-    def strongThetaPeriods(self):
-        pass
+    def getParams(self, lfp):
+
+        # --- calculating theta parameters from broadband theta---------
+        thetalfp = signal_process.filter_sig.bandpass(lfp, lf=1, hf=25)
+        hil_theta = signal_process.hilbertfast(thetalfp)
+        theta_angle = np.abs(np.angle(hil_theta, deg=True))
+        theta_trough = sg.find_peaks(theta_angle)[0]
+        theta_peak = sg.find_peaks(-theta_angle)[0]
+        theta_amp = np.abs(hil_theta) ** 2
+
+        if theta_peak[0] < theta_trough[0]:
+            theta_peak = theta_peak[1:]
+        if theta_trough[-1] > theta_peak[-1]:
+            theta_trough = theta_trough[:-1]
+
+        assert len(theta_trough) == len(theta_peak)
+
+        rising_time = (theta_peak[1:] - theta_trough[1:]) / 1250
+        falling_time = (theta_trough[1:] - theta_peak[:-1]) / 1250
+
+        rise_midpoints = np.array(
+            [
+                trough
+                + np.argmin(
+                    np.abs(
+                        thetalfp[trough:peak]
+                        - (
+                            max(thetalfp[trough:peak])
+                            - np.ptp(thetalfp[trough:peak]) / 2
+                        )
+                    )
+                )
+                for (trough, peak) in zip(theta_trough, theta_peak)
+            ]
+        )
+
+        fall_midpoints = np.array(
+            [
+                peak
+                + np.argmin(
+                    np.abs(
+                        thetalfp[peak:trough]
+                        - (
+                            max(thetalfp[peak:trough])
+                            - np.ptp(thetalfp[peak:trough]) / 2
+                        )
+                    )
+                )
+                for (peak, trough) in zip(theta_peak[:-1], theta_trough[1:])
+            ]
+        )
+        peak_width_ = (fall_midpoints - rise_midpoints[:-1]) / 1250
+        trough_width_ = (rise_midpoints[1:] - fall_midpoints) / 1250
+
+        # ----- nested class for keeping parameters and sanity plots ----------
+        @dataclass
+        class Params:
+            amplitude: np.array = theta_amp
+            angle: np.array = theta_angle + 180  # ranges from 0 to 360
+            peak: np.array = theta_peak
+            trough: np.array = theta_trough
+            rise_time: np.array = rising_time
+            fall_time: np.array = falling_time
+            rise_mid: typing.Any = rise_midpoints
+            fall_mid: np.array = fall_midpoints
+            peak_width: np.array = peak_width_
+            trough_width: np.array = trough_width_
+
+            @property
+            def asymmetry(self):
+                return self.rise_time / (self.rise_time + self.fall_time)
+
+            @property
+            def peaktrough(self):
+                return self.peak_width / (self.peak_width + self.trough_width)
+
+            def sanityCheck(self, rawTheta):
+                pass
+
+        return Params()
+
+    def getstrongTheta(self, lfp):
+
+        # ---- filtering --> zscore --> threshold --> strong theta periods ----
+        thetalfp = signal_process.filter_sig.bandpass(lfp, lf=4, hf=10)
+        hil_theta = signal_process.hilbertfast(thetalfp)
+        theta_amp = np.abs(hil_theta)
+
+        zsc_theta = stats.zscore(theta_amp)
+        thetaevents = mathutil.threshPeriods(
+            zsc_theta, lowthresh=0, highthresh=0.5, minDistance=300, minDuration=1250
+        )
+
+        strong_theta, theta_indices = [], []
+        for (beg, end) in thetaevents:
+            strong_theta.extend(lfp[beg:end])
+            theta_indices.extend(np.arange(beg, end))
+        strong_theta = np.asarray(strong_theta)
+        theta_indices = np.asarray(theta_indices)
+        # non_theta = np.delete(lfp, theta_indices)
+
+        return strong_theta
 
     def plot(self):
         """Gives a comprehensive view of the detection process with some statistics and examples
         """
         data = self._load()
         pxx = data["Pxx"]
-
