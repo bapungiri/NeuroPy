@@ -32,6 +32,7 @@ sessions = [processData(_) for _ in basePath]
 
 plt.clf()
 fig = plt.figure(1, figsize=(8.5, 11))
+fig.set_size_inches(8.5, 11)
 gs = gridspec.GridSpec(4, 4, figure=fig)
 fig.subplots_adjust(hspace=0.3, wspace=0.5)
 fig.suptitle("Sleep states related analysis")
