@@ -7,6 +7,7 @@ import ipywidgets as widgets
 import matplotlib as mpl
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import grid
 import numpy as np
 import pandas as pd
 import pingouin as pg
@@ -710,11 +711,11 @@ for sub, sess in enumerate(sessions[:3]):
 
 #%% Multiple regression analysis on slow gamma power explained by variables such as theta-harmonic, theta-asymmetry, speed etc. Also comparing it with theta-harmonic being explained by similar variables
 # region
-plt.clf()
-plt.clf()
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(2, 2, figure=fig)
-fig.subplots_adjust(hspace=0.3)
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 3])
+ax1 = plt.subplot(gs[2, 0])
+figure.panel_label(ax1, "c")
+ax2 = plt.subplot(gs[2, 1], sharey=ax1)
 
 exp_var_gamma_all, exp_var_harmonic_all = [], []
 for sub, sess in enumerate(sessions):
@@ -855,7 +856,6 @@ for sub, sess in enumerate(sessions):
 
 exp_var_gamma_all = pd.concat(exp_var_gamma_all)
 # sns.barplot(ax=ax[0], data=exp_var_gamma_all, ci=None)
-ax1 = plt.subplot(gs[1, 0])
 ax1.bar(
     exp_var_gamma_all.columns.tolist(),
     exp_var_gamma_all.mean().values,
@@ -872,7 +872,6 @@ ax1.set_title("Slow-gamma")
 
 exp_var_harmonic_all = pd.concat(exp_var_harmonic_all)
 # sns.barplot(ax=ax[1], data=exp_var_harmonic_all, ci=None)
-ax2 = plt.subplot(gs[1, 1], sharey=ax1)
 ax2.bar(
     exp_var_harmonic_all.columns.tolist(),
     exp_var_harmonic_all.mean().values,
@@ -885,5 +884,10 @@ ax2.bar(
 ax2.tick_params(axis="x", labelrotation=90)
 ax2.set_title("Theta harmonic (10-22 Hz)")
 
+scriptname = os.path.basename(__file__)
+filename = "multiregress_slowgamma"
+figure.savefig(filename, scriptname)
+
 
 # endregion
+

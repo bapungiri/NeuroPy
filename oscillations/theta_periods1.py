@@ -2,6 +2,7 @@
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import grid
 import numpy as np
 import pandas as pd
 import scipy.signal as sg
@@ -18,6 +19,7 @@ import pingouin as pg
 from callfunc import processData
 import signal_process
 from mathutil import threshPeriods
+from plotUtil import Fig
 import warnings
 
 warnings.simplefilter(action="default")
@@ -257,22 +259,33 @@ for sub, sess in enumerate(sessions):
     fig.suptitle("Example periods of strong theta in RatN Day1")
 # endregion
 
-# %% Detects strong theta within maze and averages spectrogram around theta cycles using Wavelets to look for gamma modulation (25-150 Hz)
+# %% Detects strong theta within MAZE and averages spectrogram around theta cycles using Wavelets to look for gamma modulation (25-150 Hz)
 # region
-inner = gridspec.GridSpecFromSubplotSpec(
-    2, 1, subplot_spec=gs[0, 0], wspace=0.1, hspace=0.1
-)
-cmap = mpl.cm.get_cmap("hot_r")
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 3])
+
+
 gamma_at_theta_all = pd.DataFrame()
+
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
+    deadtime = sess.artifact.time
     maze = sess.epochs.maze
 
     # --- get maze lfp ---------
     lfpmaze = sess.utils.geteeg(sess.theta.bestchan, timeRange=maze)
-    tmaze = np.linspace(maze[0], maze[1], len(lfpmaze))
+    lfpmaze_t = np.linspace(maze[0], maze[1], len(lfpmaze))
+
+    if deadtime is not None:
+        dead_indx = np.concatenate(
+            [
+                np.where((lfpmaze_t > start) & (lfpmaze_t < end))[0]
+                for (start, end) in deadtime
+            ]
+        )
+        lfpmaze = np.delete(lfpmaze, dead_indx)
 
     # ---- filtering --> zscore --> threshold --> strong theta periods ----
     thetalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=4, hf=10)
@@ -314,24 +327,33 @@ for sub, sess in enumerate(sessions):
     # ---- appending for all subjects ------------
     gamma_at_theta_all = gamma_at_theta_all.append(gamma_at_theta)
 
-ax = fig.add_subplot(inner[:, :])
+ax = fig.add_subplot(gs[0, 0])
+figure.panel_label(ax, "a")
 mean_gamma = (
     gamma_at_theta_all.groupby(by="freq").mean().transform(stats.zscore, axis=1)
 )
 
-sns.heatmap(mean_gamma, robust=True, cmap="Spectral_r", shading="gouraud", ax=ax)
+sns.heatmap(
+    mean_gamma,
+    xticklabels=3,
+    yticklabels=10,
+    cmap="Spectral_r",
+    shading="gouraud",
+    ax=ax,
+)
 ax.invert_yaxis()
 ax.set_xlabel(r"$\theta$ phase")
 ax.set_ylabel("Frequency (Hz)")
-
+ax.set_title("Gamma at theta phases")
+figure.savefig("gamma_at_theta", __file__)
 # endregion
 
 #%% Theta within REM sleep and averages spectrogram around theta cycles usign wavelets to look for gamma modulation (25-150 Hz)
 # region
-plt.clf()
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(1, 6, figure=fig)
-fig.subplots_adjust(hspace=0.3)
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 3])
+
+gamma_at_theta_all = pd.DataFrame()
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
@@ -372,7 +394,7 @@ for sub, sess in enumerate(sessions):
     # ---- appending for all subjects ------------
     gamma_at_theta_all = gamma_at_theta_all.append(gamma_at_theta)
 
-ax = fig.add_subplot(inner[:, :])
+ax = fig.add_subplot(gs[0, 1])
 mean_gamma = (
     gamma_at_theta_all.groupby(by="freq").mean().transform(stats.zscore, axis=1)
 )
@@ -381,6 +403,9 @@ sns.heatmap(mean_gamma, robust=True, cmap="Spectral_r", shading="gouraud", ax=ax
 ax.invert_yaxis()
 ax.set_xlabel(r"$\theta$ phase")
 ax.set_ylabel("Frequency (Hz)")
+ax.set_title("Gamma during REM")
+
+figure.savefig("gamma_at_theta_REM", __file__)
 
 
 # endregion
