@@ -18,7 +18,7 @@ from ccg import correlograms
 from callfunc import processData
 from mathutil import threshPeriods
 import signal_process
-
+from plotUtil import Fig
 
 warnings.simplefilter(action="default")
 
@@ -722,63 +722,71 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
-#%% firing rate over SD and recovery of place cells stable from MAZE to POST
+#%%* firing rate over SD and recovery of place cells stable from MAZE to POST
 # region
-plt.clf()
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(1, 1, figure=fig)
-fig.subplots_adjust(hspace=0.3)
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 3])
+axfr = plt.subplot(gs[0, 0])
+figure.panel_label(axfr, "a")
 
-spk_all = []
+spk_all = pd.DataFrame()
 for sub, sess in enumerate(sessions[:3]):
     sess.trange = np.array([])
     maze = sess.epochs.maze
     pre = sess.epochs.pre
     post = sess.epochs.post
     spks = sess.spikes.times
+
+    # --- stability (firing rate) from maze to end of sleep deprivation ------
     sd_period = [maze[0], post[0] + 5 * 3600]
     intervals = sess.utils.getinterval(period=sd_period, nwindows=5)
     sess.spikes.stability.firingRate(bins=intervals)
     stability = sess.spikes.stability.info
     stable_pyr = np.where((stability.q < 4) & (stability.stable == 1))[0]
-
     pyr = [spks[cell_id] for cell_id in stable_pyr]
     pyr = np.concatenate(pyr)
-    instfiring = sess.spikes.instfiring
-    instfiring_sd = instfiring.loc[
-        (instfiring.time > post[0]) & (instfiring.time < post[0] + 5 * 3600)
-    ]
 
-    sd_bin = np.arange(pre[0], pre[0] + 14 * 3600, 300)
-    spkcnt = np.histogram(pyr, bins=sd_bin)[0] / 300
-    norm_spkcnt = spkcnt / np.sum(spkcnt)
-    spk_all.append(norm_spkcnt)
+    # ---- firing rate calculations --------
+    # instfiring = sess.spikes.instfiring
+    # instfiring_sd = instfiring.loc[
+    #     (instfiring.time > post[0]) & (instfiring.time < post[0] + 5 * 3600)
+    # ]
     # mean_frate = stats.binned_statistic(
     #     instfiring_sd.time, instfiring_sd.frate, bins=sd_bin
     # )
 
-    ax = plt.subplot(gs[0])
-    # ax.plot(mean_frate[0] / np.nansum(mean_frate[0]))
-    ax.plot(
-        np.linspace(0, 10, len(sd_bin) - 1),
-        gaussian_filter1d(norm_spkcnt, sigma=1),
-        "--",
-        linewidth=2,
-        alpha=0.7,
+    binsize = 300  # 5 minutes
+    sd_bin = np.arange(post[0], post[0] + 10 * 3600, binsize)
+    spkcnt = np.histogram(pyr, bins=sd_bin)[0] / binsize
+    norm_spkcnt = spkcnt / np.sum(spkcnt)
+
+    spk_all = spk_all.append(
+        pd.DataFrame(
+            {
+                "time": (sd_bin[:-1] - post[0]) / 3600,
+                "spikes": gaussian_filter(norm_spkcnt, sigma=1),
+                "subject": sess.sessinfo.session.sessionName,
+            }
+        )
     )
-    ax.set_ylabel("Normalized \n spike counts")
-    ax.set_xlabel("Time (h)")
 
-
-ax.plot(
-    np.linspace(0, 10, len(sd_bin) - 1),
-    gaussian_filter1d(np.mean(np.asarray(spk_all), axis=0), sigma=1),
-    "k",
-    linewidth=3,
-    alpha=0.6,
+mean_fr = spk_all.groupby("time").mean()
+sns.lineplot(
+    x="time",
+    y="spikes",
+    hue="subject",
+    data=spk_all,
+    ax=axfr,
+    ci=None,
+    style="subject",
+    legend=None,
 )
+mean_fr.plot(ax=axfr, color="k", linewidth=2, alpha=0.7, legend=None)
+axfr.plot([0, 5], [0.005, 0.005], color="#f14646", linewidth=5)
+axfr.text(2.5, 0.0055, "SD", ha="center")
+axfr.set_ylabel("Normalized \n spike counts")
+axfr.set_xlabel("Time (h)")
 
-ax.legend(["RatJDay1", "RatKDay1", "RatNDay1", "Mean"])
-ax.set_title("POST", loc="left", fontweight="bold")
+figure.savefig("firing_maze_sd", __file__)
 # endregion
 
