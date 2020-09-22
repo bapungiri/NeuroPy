@@ -37,8 +37,12 @@ class spikes:
             self.muaid = np.where(self.info.q == 6)[0]
             self.mua = [self.times[_] for _ in self.muaid]
 
+    @property
+    def instfiring(self):
         if self.files.instfiring.is_file():
-            self.instfiring = pd.read_pickle(self.files.instfiring)
+            return pd.read_pickle(self.files.instfiring)
+        else:
+            print("instantenous file does not exist ")
 
     def gen_instfiring(self):
         spkall = np.concatenate(self.times)

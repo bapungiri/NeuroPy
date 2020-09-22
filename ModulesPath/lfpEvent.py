@@ -959,6 +959,7 @@ class Theta:
         # --- calculating theta parameters from broadband theta---------
         thetalfp = signal_process.filter_sig.bandpass(lfp, lf=1, hf=25)
         hil_theta = signal_process.hilbertfast(thetalfp)
+        theta_360 = np.angle(hil_theta, deg=True) + 180
         theta_angle = np.abs(np.angle(hil_theta, deg=True))
         theta_trough = sg.find_peaks(theta_angle)[0]
         theta_peak = sg.find_peaks(-theta_angle)[0]
@@ -1012,7 +1013,7 @@ class Theta:
         @dataclass
         class Params:
             amplitude: np.array = theta_amp
-            angle: np.array = theta_angle + 180  # ranges from 0 to 360
+            angle: np.array = theta_360  # ranges from 0 to 360
             peak: np.array = theta_peak
             trough: np.array = theta_trough
             rise_time: np.array = rising_time
