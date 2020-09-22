@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from pathlib import Path
 
 plt.style.use("figPublish")
 
@@ -56,6 +57,8 @@ class Fig:
             mpl.rcParams["axes.titlesize"] = 8
             mpl.rcParams["xtick.labelsize"] = 8
             mpl.rcParams["ytick.labelsize"] = 8
+        if style == "Pres":
+            mpl.rcParams["axes.labelsize"] = 10
 
         plt.clf()
         fig = plt.figure(1, figsize=(8.5, 11))
@@ -79,6 +82,8 @@ class Fig:
         )
 
     def savefig(self, fname, scriptname, fig=None, folder=None):
+
+        scriptname = Path(scriptname).name
 
         if folder is None:
             folder = "/home/bapung/Documents/MATLAB/figures/"
