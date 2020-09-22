@@ -136,7 +136,7 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
-#%% theta phase specific extraction of lfp during strong theta MAZE with different binning techiques
+#%%* theta phase specific extraction of lfp during strong theta MAZE with different binning techiques
 # region
 
 figure = Fig()
@@ -184,10 +184,10 @@ for sub, sess in enumerate(sessions[3:5]):
 
     # ---- filtering strong theta periods into theta and gamma band ------
     theta_lfp = stats.zscore(
-        signal_process.filter_sig.bandpass(strong_theta, lf=4, hf=10)
+        signal_process.filter_sig.bandpass(strong_theta, lf=1, hf=25)
     )
     gamma_lfp = stats.zscore(
-        signal_process.filter_sig.highpass(strong_theta, cutoff=25)
+        signal_process.filter_sig.highpass(strong_theta, cutoff=25, order=3)
     )
 
     # ----- phase detection for theta band -----------
@@ -264,9 +264,7 @@ axbin1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 axbin2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 axslide.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 
-scriptname = os.path.basename(__file__)
-filename = "phase_specific_slowgamma"
-figure.savefig(filename, scriptname)
+# figure.savefig("phase_specific_slowgamma", __file__)
 
 
 # endregion
@@ -709,7 +707,7 @@ for sub, sess in enumerate(sessions[:3]):
 # endregion
 
 
-#%% Multiple regression analysis on slow gamma power explained by variables such as theta-harmonic, theta-asymmetry, speed etc. Also comparing it with theta-harmonic being explained by similar variables
+#%%* Multiple regression analysis on slow gamma power explained by variables such as theta-harmonic, theta-asymmetry, speed etc. Also comparing it with theta-harmonic being explained by similar variables
 # region
 figure = Fig()
 fig, gs = figure.draw(grid=[4, 3])
