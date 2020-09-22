@@ -37,6 +37,30 @@ class findartifact:
                 noisy = np.asarray(noisy) / 1000
                 self.time = noisy  # in seconds
 
+    def removefrom(self, lfp, timepoints):
+        """Deletes detected artifacts from the 'lfp'
+
+        Args:
+            lfp ([array]): lfp signal
+            timepoints ([array]): seconds, corresponding time stamps of the lfp
+
+        Returns:
+            [array]: artifact deleted lfp
+        """
+        # --- if a period is given, then convert it to timepoints------
+        if len(timepoints) == 2:
+            timepoints = np.linspace(timepoints[0], timepoints[1], len(lfp))
+
+        if self.time is not None:
+            dead_indx = np.concatenate(
+                [
+                    np.where((timepoints > start) & (timepoints < end))[0]
+                    for (start, end) in self.time
+                ]
+            )
+            lfp = np.delete(lfp, dead_indx)
+        return lfp
+
     def usingZscore(self):
         """
         calculating periods to exclude for analysis using simple z-score measure 
