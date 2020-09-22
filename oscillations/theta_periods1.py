@@ -13,9 +13,7 @@ from scipy.ndimage import gaussian_filter, gaussian_filter1d
 import ipywidgets as widgets
 import random
 from sklearn import linear_model
-import statsmodels.api as sm
-import pingouin as pg
-
+from tensorpac import Pac
 from callfunc import processData
 import signal_process
 from mathutil import threshPeriods
@@ -882,23 +880,25 @@ for sub, sess in enumerate(sessions):
         ax.plot(angle_bin[:-1], phase_amp[:, i], color=colmap[i])
 # endregion
 
-#%% Compare theta-gamma-phase coupling during REM
+#%%* Compare theta-gamma-phase coupling during REM
 # region
-plt.clf()
-fig = plt.figure(1, figsize=(1, 15))
-gs = GridSpec(4, 3, figure=fig)
-fig.subplots_adjust(hspace=0.5)
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 3])
+
 
 colband = ["#CE93D8", "#1565C0", "#E65100"]
 # p = Pac(idpac=(6, 3, 0), f_pha=(4, 10, 1, 1), f_amp=(30, 100, 5, 5))
-
+chans = [26, 26, 30, 6, 12]
+gamma_modul = pd.DataFrame()
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
+    sampfreq = sess.recinfo.lfpSrate
     tstart = sess.epochs.post[0]
     tend = sess.epochs.post[0] + 5 * 3600
-    lfp, _, _ = sess.spindle.best_chan_lfp()
-    t = np.linspace(0, len(lfp) / 1250, len(lfp))
+    # lfp = sess.utils.geteeg(sess.theta.bestchan)
+    lfp = sess.utils.geteeg(chans=chans[sub])
+    t = np.linspace(0, len(lfp) / sampfreq, len(lfp))
     states = sess.brainstates.states
 
     if sub < 3:
@@ -907,80 +907,103 @@ for sub, sess in enumerate(sessions):
         # color = colband[sub]
         lnstyle = "solid"
         rem = states[(states["start"] > tend) & (states["name"] == "rem")]
+        condition = "sd"
     else:
         plt_ind = sub - 3
         # color = colband[sub - 3]
         lnstyle = "dashed"
         rem = states[(states["start"] > tstart) & (states["name"] == "rem")]
+        condition = "nsd"
 
-    binlfp = lambda x, t1, t2: x[(t > t1) & (t < t2)]
-    freqIntervals = [[30, 50], [50, 90], [100, 150]]  # in Hz
+    remframes = [
+        np.arange(int(epoch.start * sampfreq), int(epoch.end * sampfreq))
+        for epoch in rem.itertuples()
+    ]
+    lfprem = lfp[np.concatenate(remframes)]
 
-    lfprem = []
-    for epoch in rem.itertuples():
-        lfprem.extend(binlfp(lfp, epoch.start, epoch.end))
+    # ---- theta params -------------
+    thetaparams = sess.theta.getParams(lfprem)
+    angle_bin = np.linspace(0, 360, 19)
 
-    lfprem = np.asarray(lfprem)
-
-    # xpac = p.filterfit(1250.0, lfprem, n_perm=20)
-    theta_lfp = stats.zscore(filter_sig.filter_theta(lfprem))
-    hil_theta = hilbertfast(theta_lfp)
-    theta_amp = np.abs(hil_theta)
-    theta_angle = np.angle(hil_theta, deg=True) + 180
-    angle_bin = np.arange(0, 360, 20)
-    bin_ind = np.digitize(theta_angle, bins=angle_bin)
-
-    for band, (lfreq, hfreq) in enumerate(freqIntervals):
-        gamma_lfp = stats.zscore(filter_sig.filter_cust(lfprem, lf=lfreq, hf=hfreq))
-
-        hil_gamma = hilbertfast(gamma_lfp)
+    # ------- gamma mean amplitude at theta phases ----------
+    gammafreq = {"slow": [25, 50], "medium": [62, 90], "fast": [100, 150]}  # in Hz
+    gamma_freq_mod = {}
+    for key, (lfreq, hfreq) in gammafreq.items():
+        gamma_lfp = signal_process.filter_sig.bandpass(lfprem, lf=lfreq, hf=hfreq)
+        hil_gamma = signal_process.hilbertfast(gamma_lfp)
         gamma_amp = np.abs(hil_gamma)
+        mean_amp = stats.binned_statistic(thetaparams.angle, gamma_amp, bins=angle_bin)
+        gamma_freq_mod[key] = mean_amp[0] / np.sum(mean_amp[0])
+    gamma_freq_mod["condition"] = condition
+    gamma_freq_mod["phase"] = angle_bin[:-1] + 10
+    gamma_modul = gamma_modul.append(pd.DataFrame(gamma_freq_mod))
 
-        mean_amp = np.zeros(len(angle_bin) - 1)
-        for i in range(1, len(angle_bin)):
-            angle_ind = np.where(bin_ind == i)[0]
-            mean_amp[i - 1] = gamma_amp[angle_ind].mean()
+    # p.comodulogram(
+    #     xpac.mean(-1),
+    #     title="Contour plot 5 regions",
+    #     cmap="Spectral_r",
+    #     plotas="contour",
+    #     ncontours=7,
+    # )
 
-        mean_amp_norm = mean_amp / np.sum(mean_amp)
+axslow = plt.subplot(gs[0, 0])
+sns.lineplot(x="phase", y="slow", hue="condition", data=gamma_modul, ci=None, ax=axslow)
+axslow.set_xlabel("Theta phase (deg)")
+axslow.set_ylabel("Amplitude")
+axslow.set_title("Medium gamma\n(25-50 Hz)")
+figure.panel_label(axslow, "a")
 
-        ax = fig.add_subplot(gs[band + 1, plt_ind])
-        ax.plot(
-            angle_bin[:-1] + 10, mean_amp_norm, linestyle=lnstyle, color=colband[band]
-        )
-        ax.set_xlabel("Degrees (from theta trough)")
-        ax.set_ylabel("Amplitude")
-        # p.comodulogram(
-        #     xpac.mean(-1),
-        #     title="Contour plot with 5 regions",
-        #     cmap="Spectral_r",
-        #     plotas="contour",
-        #     ncontours=7,
-        # )
-
-
-# plt.clf()
-ts = 2100
-interval = np.arange(ts * 1250, (ts + 2) * 1250)
-ax = fig.add_subplot(gs[0, :])
-lfpsample = lfprem[interval]
-troughs = sg.find_peaks(theta_angle[interval])[0]
-
-for i in troughs:
-    ax.plot([i, i], [-6000, 4000], "#EF9A9A")
-ax.plot(lfpsample, "k")
-ax.plot(filter_sig.filter_cust(lfpsample, lf=30, hf=50) - 2500, "#CE93D8")
-ax.plot(filter_sig.filter_cust(lfpsample, lf=50, hf=90) - 4000, "#1565C0")
-ax.plot(filter_sig.filter_cust(lfpsample, lf=100, hf=150) - 5500, "#E65100")
-# ax.plot(filter_sig.filter_cust(lfpsample, lf=4, hf=10), "#E65100")
-# ax.plot(theta_angle[interval], "#D500F9")
-ax.text(0.02, 0.83, "Raw LFP", fontsize=10, transform=plt.gcf().transFigure)
-ax.text(0.02, 0.79, "Low gamma (30-50 Hz)", fontsize=7, transform=plt.gcf().transFigure)
-ax.text(
-    0.02, 0.77, "High gamma (50-90 Hz)", fontsize=7, transform=plt.gcf().transFigure
+axmed = plt.subplot(gs[0, 1])
+sns.lineplot(
+    x="phase", y="medium", hue="condition", data=gamma_modul, ci=None, ax=axmed
 )
-ax.text(0.02, 0.75, "100-150 Hz", fontsize=7, transform=plt.gcf().transFigure)
-ax.set_xlim([0, 2 * 1250])
-ax.axis("off")
+axmed.set_xlabel("Theta phase (deg)")
+axmed.set_ylabel("Amplitude")
+axmed.set_title("Medium gamma\n(62-90 Hz)")
 
-fig.suptitle("Theta phase - gamma amplitude modulation during REM")
+
+axfast = plt.subplot(gs[0, 2])
+sns.lineplot(x="phase", y="fast", hue="condition", data=gamma_modul, ci=None, ax=axfast)
+axfast.set_xlabel("Theta phase (deg)")
+axfast.set_ylabel("Amplitude")
+axfast.set_title("Fast gamma\n(100-150 Hz)")
+
+figure.savefig("pac_rem", __file__)
+
 # endregion
+
+#%% Phase-amplitude compdulogram theta-phase and gamma-amplitude
+# region
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 3])
+
+
+colband = ["#CE93D8", "#1565C0", "#E65100"]
+# p = Pac(idpac=(6, 3, 0), f_pha=(4, 10, 1, 1), f_amp=(30, 100, 5, 5))
+chans = [26, 26, 30, 6, 12]
+gamma_modul = pd.DataFrame()
+for sub, sess in enumerate(sessions[:3]):
+
+    sess.trange = np.array([])
+    sampfreq = sess.recinfo.lfpSrate
+    tstart = sess.epochs.post[0]
+    tend = sess.epochs.post[0] + 5 * 3600
+    lfpsd = sess.utils.geteeg(chans=chans[sub], timeRange=[tstart, tend])
+
+    p = Pac(idpac=(2, 0, 0), f_pha=[4, 10, 1, 1], f_amp=[25, 50, 5, 5])
+    xpac = p.filterfit(sf=1250, x_pha=np.array(lfpsd))
+    ax = plt.subplot(gs[sub])
+    p.comodulogram(
+        xpac.mean(-1),
+        title="Contour plot 5 regions",
+        cmap="Spectral_r",
+        plotas="contour",
+        ncontours=5,
+    )
+
+
+figure.savefig("comodulogram_sd", __file__)
+
+
+# endregion
+

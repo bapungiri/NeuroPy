@@ -158,25 +158,29 @@ class spectrogramBands:
     window: int = 1  # in seconds
     overlap: int = window / 8  # in seconds
     smooth: int = None
+    multitaper: bool = False
 
     def __post_init__(self):
 
         window = int(self.window * self.sampfreq)
         overlap = int(self.overlap * self.sampfreq)
-        # f, t, sxx = sg.spectrogram(
-        #     self.lfp, fs=self.sampfreq, nperseg=window, noverlap=overlap
-        # )
 
-        tapers = sg.windows.dpss(M=window, NW=5, Kmax=6)
-
-        sxx_taper = []
         f = None
-        for taper in tapers:
+        if self.multitaper:
+            tapers = sg.windows.dpss(M=window, NW=5, Kmax=6)
+
+            sxx_taper = []
+            for taper in tapers:
+                f, t, sxx = sg.spectrogram(
+                    self.lfp, window=taper, fs=self.sampfreq, noverlap=overlap
+                )
+                sxx_taper.append(sxx)
+            sxx = np.dstack(sxx_taper).mean(axis=2)
+
+        else:
             f, t, sxx = sg.spectrogram(
-                self.lfp, window=taper, fs=self.sampfreq, noverlap=overlap
+                self.lfp, fs=self.sampfreq, nperseg=window, noverlap=overlap
             )
-            sxx_taper.append(sxx)
-        sxx = np.dstack(sxx_taper).mean(axis=2)
 
         delta_ind = np.where((f > 0.5) & (f < 4))[0]
         delta_sxx = np.mean(sxx[delta_ind, :], axis=0)
