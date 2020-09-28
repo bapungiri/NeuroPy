@@ -1,29 +1,32 @@
 # %%
 import os
 import random
+from typing import Dict
 import warnings
 
-import ipywidgets as widgets
+# import ipywidgets as widgets
 import matplotlib as mpl
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import grid
 import numpy as np
 import pandas as pd
 import pingouin as pg
 import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
+import signal_process
 import statsmodels.api as sm
+from callfunc import processData
+from mathutil import threshPeriods
+from matplotlib.pyplot import grid, legend
+from numpy.core.defchararray import array
+from PIL.Image import NONE
+from plotUtil import Fig
+from scipy import fft
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from sklearn import linear_model
 
-import signal_process
-from callfunc import processData
-from mathutil import threshPeriods
-from plotUtil import Fig
-
-warnings.simplefilter(action="default")
+# warnings.simplefilter(action="default")
 
 #%% ====== functions needed for some computation ============
 # region
@@ -155,7 +158,8 @@ bin1Data = pd.DataFrame()
 bin2Data = pd.DataFrame()
 slideData = pd.DataFrame()
 cmap = mpl.cm.get_cmap("Set3")
-for sub, sess in enumerate(sessions[3:5]):
+
+for sub, sess in enumerate(sessions[4:5]):
 
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
@@ -268,6 +272,101 @@ axslide.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 
 
 # endregion
+
+#%% theta phase specific extraction of lfp during HIGH VELOCITY epochs on MAZE theta MAZE with different binning techiques
+# region
+
+pxx_all = pd.DataFrame()
+bicoh_all: Dict[str, np.array] = {}
+
+for sub, sess in enumerate(sessions[:1]):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    changrp = sess.recinfo.goodchangrp
+    maze = sess.epochs.maze
+    speed = sess.position.speed
+    t_position = sess.position.t[1:]
+    chans2plot = np.concatenate([shank[::3] for shank in changrp]).astype(int)
+    shank = [
+        shank
+        for shank in range(len(changrp))
+        for chan in chans2plot
+        if chan in changrp[shank]
+    ]
+
+    lfpmaze = sess.utils.geteeg(chans=chans2plot, timeRange=maze)
+    lfpmaze_t = np.linspace(maze[0], maze[1], lfpmaze.shape[-1])
+    speed = np.interp(lfpmaze_t, t_position, speed)
+    speed = gaussian_filter1d(speed, sigma=10)
+
+    frames_high_spd = np.where(speed > 25)[0]
+    lfp_highspd = lfpmaze[:, frames_high_spd]
+
+    # ---- filtering strong theta periods into theta and gamma band ------
+    theta_lfp = stats.zscore(
+        signal_process.filter_sig.bandpass(lfp_highspd, lf=1, hf=25, ax=-1)
+    )
+    gamma_lfp = stats.zscore(
+        signal_process.filter_sig.highpass(lfp_highspd, cutoff=25, order=3, ax=-1)
+    )
+
+    # ----- phase detection for theta band -----------
+    # filt_theta = signal_process.filter_sig.filter_cust(theta_lfp, lf=20, hf=60)
+    # hil_theta = signal_process.hilbertfast(theta_lfp)
+    # theta_amp = np.abs(hil_theta)
+    # theta_angle = np.angle(hil_theta, deg=True) + 180  # range from 0 to 360
+
+    # ------ psd calculation-----------
+    f_, pxx = sg.welch(lfp_highspd, fs=1250, nperseg=1250, noverlap=250)
+    pxx_sub = pd.DataFrame(pxx.T, columns=chans2plot)
+    pxx_sub.insert(0, "freq", f_)
+    pxx_sub.insert(0, "sub", sub)
+    pxx_all = pxx_all.append(pxx_sub)
+
+    # ---- bicoherence calculation ----------
+    bicoh, f, _ = signal_process.bicoherence_m(lfp_highspd, flow=1, fhigh=20)
+    bicoh_all[sub] = {"freq": f, "bicoh": bicoh}
+
+    # ----- dividing 360 degress into non-overlapping 5 bins ------------
+    # angle_bin = np.linspace(0, 360, 6)  # 5 bins so each bin=25ms
+    # angle_centers = angle_bin + np.diff(angle_bin).mean() / 2
+    # bin_ind = np.digitize(theta_angle, bins=angle_bin)
+    # df1 = pd.DataFrame()
+    # f_ = None
+    # for phase in range(1, len(angle_bin)):
+    #     strong_theta_atphase = gamma_lfp[:, np.where(bin_ind == phase)[0]]
+    #     f_, pxx = sg.welch(
+    #         strong_theta_atphase, nperseg=2 * 1250, noverlap=625, fs=1250
+    #     )
+    #     df1[str(angle_centers[phase - 1])] = pxx.flatten()
+    # df1.insert(loc=0, column="freq", value=np.tile(f_, len(chans2plot)))
+    # df1.insert(loc=0, column="chan", value=np.repeat(chans2plot, len(f_)))
+    # bin1Data = bin1Data.append(df1)
+
+pxx_all = pxx_all.groupby("sub")
+
+# ---- plotting ----------
+figure = Fig()
+fig, gs = figure.draw(grid=[2, 3])
+
+for i in range(5):
+    pxx_ = pxx_all.get_group(i).set_index("freq").drop(columns="sub")
+    ax = plt.subplot(gs[i])
+    pxx_.plot(ax=ax, legend=None)
+    ax.set_ylabel("Power")
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim([3, 200])
+    ax.set_title(sessions[i].sessinfo.session.sessionName)
+
+
+# figure.savefig("phase_specific_slowgamma", __file__)
+
+
+# endregion
+
 
 #%% theta phase specific extraction of lfp during REM sleep
 # region
@@ -709,13 +808,9 @@ for sub, sess in enumerate(sessions[:3]):
 
 #%%* Multiple regression analysis on slow gamma power explained by variables such as theta-harmonic, theta-asymmetry, speed etc. Also comparing it with theta-harmonic being explained by similar variables
 # region
-figure = Fig()
-fig, gs = figure.draw(grid=[4, 3])
-ax1 = plt.subplot(gs[2, 0])
-figure.panel_label(ax1, "c")
-ax2 = plt.subplot(gs[2, 1], sharey=ax1)
+gamma_expvar = pd.DataFrame()
+harmonic_expvar = pd.DataFrame()
 
-exp_var_gamma_all, exp_var_harmonic_all = [], []
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     maze = sess.epochs.maze
@@ -739,152 +834,180 @@ for sub, sess in enumerate(sessions):
         speed = np.delete(speed, dead_indx)
 
     # --- calculating theta parameters ---------
-    thetalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=1, hf=25)
-    hil_theta = signal_process.hilbertfast(thetalfp)
-    theta_angle = np.abs(np.angle(hil_theta, deg=True))
-    theta_trough = sg.find_peaks(theta_angle)[0]
-    theta_peak = sg.find_peaks(-theta_angle)[0]
-    theta_amp = np.abs(hil_theta) ** 2
+    thetaparams = sess.theta.getParams(lfpmaze)
+    theta_trough = thetaparams.trough
+    theta_amp = thetaparams.amplitude
 
     # --- calculating slow gamma parameters -------
-    gammalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=25, hf=50)
-    hil_gamma = signal_process.hilbertfast(gammalfp)
-    gamma_amp = np.abs(hil_gamma) ** 2
+    slowgammalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=30, hf=58)
+    hil_slowgamma = signal_process.hilbertfast(slowgammalfp)
+    slow_gamma_amp = np.abs(hil_slowgamma) ** 2
+
+    medgammalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=62, hf=100)
+    hil_medgamma = signal_process.hilbertfast(medgammalfp)
+    med_gamma_amp = np.abs(hil_medgamma) ** 2
+
+    fastgammalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=100, hf=150)
+    hil_fastgamma = signal_process.hilbertfast(fastgammalfp)
+    fast_gamma_amp = np.abs(hil_fastgamma) ** 2
 
     # --- theta harmonic ----------
     theta_harmonic = signal_process.filter_sig.bandpass(lfpmaze, lf=10, hf=22)
     hil_theta_harmonic = signal_process.hilbertfast(theta_harmonic)
     theta_harmonic_amp = np.abs(hil_theta_harmonic) ** 2
 
-    if theta_peak[0] < theta_trough[0]:
-        theta_peak = theta_peak[1:]
-    if theta_trough[-1] > theta_peak[-1]:
-        theta_trough = theta_trough[:-1]
-
-    assert len(theta_trough) == len(theta_peak)
-
-    rising_time = (theta_peak[1:] - theta_trough[1:]) / 1250
-    falling_time = (theta_trough[1:] - theta_peak[:-1]) / 1250
-    rise_fall = rising_time / (rising_time + falling_time)
-
-    rise_midpoints = np.array(
+    params = stats.binned_statistic(
+        np.arange(len(lfpmaze)),
         [
-            trough
-            + np.argmin(
-                np.abs(
-                    thetalfp[trough:peak]
-                    - (max(thetalfp[trough:peak]) - np.ptp(thetalfp[trough:peak]) / 2)
-                )
-            )
-            for (trough, peak) in zip(theta_trough, theta_peak)
-        ]
-    )
-
-    fall_midpoints = np.array(
-        [
-            peak
-            + np.argmin(
-                np.abs(
-                    thetalfp[peak:trough]
-                    - (max(thetalfp[peak:trough]) - np.ptp(thetalfp[peak:trough]) / 2)
-                )
-            )
-            for (peak, trough) in zip(theta_peak[:-1], theta_trough[1:])
-        ]
-    )
-    peak_width = (fall_midpoints - rise_midpoints[:-1]) / 1250
-    trough_width = (rise_midpoints[1:] - fall_midpoints) / 1250
-    peak_trough_asymm = peak_width / (peak_width + trough_width)
-
-    speed_in_theta = stats.binned_statistic(
-        np.arange(len(thetalfp)), speed, bins=theta_trough
-    )[0]
-    thetapower_in_theta = stats.binned_statistic(
-        np.arange(len(thetalfp)), theta_amp, bins=theta_trough
-    )[0]
-    gammapower_in_theta = stats.binned_statistic(
-        np.arange(len(thetalfp)), gamma_amp, bins=theta_trough
-    )[0]
-    thetaharmonicpower_in_theta = stats.binned_statistic(
-        np.arange(len(thetalfp)), theta_harmonic_amp, bins=theta_trough
+            slow_gamma_amp,
+            med_gamma_amp,
+            fast_gamma_amp,
+            theta_harmonic_amp,
+            theta_amp,
+            speed,
+        ],
+        bins=theta_trough,
     )[0]
 
     data = pd.DataFrame(
         {
-            "gammaPower": gammapower_in_theta,
-            "thetaharmonicPower": thetaharmonicpower_in_theta,
-            "thetaPower": thetapower_in_theta,
-            "speed": speed_in_theta,
-            "asymm": rise_fall,
-            "peaktrough": peak_trough_asymm,
+            "slowgamma": params[0],
+            "medgamma": params[1],
+            "fastgamma": params[2],
+            "thetaharmonic": params[3],
+            "thetaPower": params[4],
+            "speed": params[5],
+            "asymm": thetaparams.asymmetry,
+            "peaktrough": thetaparams.peaktrough,
         }
     )
 
-    variables1 = data.columns.tolist()[1:]
-    par_corr_stats_gamma = [
+    ind_var_gamma = data.columns.tolist()[3:]
+    par_corr_stats_slowgamma = [
         data.partial_corr(
-            y="gammaPower", x=var, covar=list(set(variables1) - set([var]))
+            y="slowgamma", x=var, covar=list(set(ind_var_gamma) - set([var]))
         )
-        for var in variables1
+        for var in ind_var_gamma
     ]
 
-    variables2 = data.columns.tolist()[2:]
+    par_corr_stats_medgamma = [
+        data.partial_corr(
+            y="medgamma", x=var, covar=list(set(ind_var_gamma) - set([var]))
+        )
+        for var in ind_var_gamma
+    ]
+
+    par_corr_stats_fastgamma = [
+        data.partial_corr(
+            y="fastgamma", x=var, covar=list(set(ind_var_gamma) - set([var]))
+        )
+        for var in ind_var_gamma
+    ]
+
+    ind_var_harmonic = data.columns.tolist()[4:]
     par_corr_stats_harmonic = [
         data.partial_corr(
-            y="thetaharmonicPower", x=var, covar=list(set(variables2) - set([var]))
+            y="thetaharmonic", x=var, covar=list(set(ind_var_harmonic) - set([var]))
         )
-        for var in variables2
+        for var in ind_var_harmonic
     ]
 
-    exp_var_gamma = np.array([stat_.r2[0] * 100 for stat_ in par_corr_stats_gamma])
-    p_val_gamma = np.array([stat_["p-val"][0] for stat_ in par_corr_stats_gamma])
-
-    exp_var_harmonic = np.array(
-        [stat_.r2[0] * 100 for stat_ in par_corr_stats_harmonic]
+    gamma_expvar = gamma_expvar.append(
+        pd.DataFrame(
+            {
+                "slowgamma": [stat_.r2[0] * 100 for stat_ in par_corr_stats_slowgamma],
+                "medgamma": [stat_.r2[0] * 100 for stat_ in par_corr_stats_medgamma],
+                "fastgamma": [stat_.r2[0] * 100 for stat_ in par_corr_stats_fastgamma],
+                "variables": ind_var_gamma,
+            }
+        )
     )
-    p_val_harmonic = np.array([stat_["p-val"][0] for stat_ in par_corr_stats_harmonic])
+    # p_val_gamma = np.array([stat_["p-val"][0] for stat_ in par_corr_stats_gamma])
 
-    exp_var_gamma_all.append(
-        pd.DataFrame(exp_var_gamma[np.newaxis, :], columns=variables1)
+    harmonic_expvar = harmonic_expvar.append(
+        pd.DataFrame(
+            {
+                "harmonic": [stat_.r2[0] * 100 for stat_ in par_corr_stats_harmonic],
+                "variables": ind_var_harmonic,
+            }
+        )
     )
-    exp_var_harmonic_all.append(
-        pd.DataFrame(exp_var_harmonic[np.newaxis, :], columns=variables2)
-    )
+    # p_val_harmonic = np.array([stat_["p-val"][0] for stat_ in par_corr_stats_harmonic])
 
 
-exp_var_gamma_all = pd.concat(exp_var_gamma_all)
-# sns.barplot(ax=ax[0], data=exp_var_gamma_all, ci=None)
-ax1.bar(
-    exp_var_gamma_all.columns.tolist(),
-    exp_var_gamma_all.mean().values,
-    # fmt="None",
-    yerr=exp_var_gamma_all.sem().values,
-    ecolor="black",
-    capsize=10,
-    edgecolor="k",
-    color="#ffa69e",
+mean_gamma_expvar = gamma_expvar.groupby("variables").mean()
+sem_gamma_expvar = gamma_expvar.groupby("variables").sem()
+mean_harmonic_expvar = harmonic_expvar.groupby("variables").mean()
+sem_harmonic_expvar = harmonic_expvar.groupby("variables").sem()
+
+# ----- plotting ----------
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 3])
+ax1 = plt.subplot(gs[0, 0])
+figure.panel_label(ax1, "c")
+ax2 = plt.subplot(gs[0, 1], sharey=ax1)
+
+mean_gamma_expvar.plot.bar(
+    yerr=sem_gamma_expvar, ax=ax1, capsize=1.2, rot=90, edgecolor="k", width=0.8
 )
-ax1.tick_params(axis="x", labelrotation=90)
+# ax1.tick_params(axis="x", labelrotation=90)
 ax1.set_ylabel("Explained variance (%)")
-ax1.set_title("Slow-gamma")
-
-exp_var_harmonic_all = pd.concat(exp_var_harmonic_all)
-# sns.barplot(ax=ax[1], data=exp_var_harmonic_all, ci=None)
-ax2.bar(
-    exp_var_harmonic_all.columns.tolist(),
-    exp_var_harmonic_all.mean().values,
-    yerr=exp_var_harmonic_all.sem().values,
-    ecolor="black",
-    capsize=10,
-    edgecolor="k",
-    color="#ffbf00",
+ax1.set_title("various gamma bands")
+labels = mean_gamma_expvar.index.to_list()
+ax1.set_xticks(range(5))
+ax1.set_xticklabels(
+    [
+        "Sym. rise-decay",
+        "Sym. peak-trough",
+        "Speed",
+        r"$\theta$ power",
+        r"$\theta$ harmonic power",
+    ]
 )
-ax2.tick_params(axis="x", labelrotation=90)
-ax2.set_title("Theta harmonic (10-22 Hz)")
 
-scriptname = os.path.basename(__file__)
-filename = "multiregress_slowgamma"
-figure.savefig(filename, scriptname)
+ax1.legend(
+    ["Slow-gamma (30-60 Hz)", "Medium-gamma (60-90 Hz)", "Fast-gamma (100-150 Hz)"]
+)
+
+mean_harmonic_expvar.plot.bar(
+    yerr=sem_harmonic_expvar,
+    ax=ax2,
+    capsize=1.2,
+    rot=90,
+    edgecolor="k",
+    width=0.4,
+    legend=None,
+)
+# ax1.tick_params(axis="x", labelrotation=90)
+ax2.set_xticks(range(4))
+ax2.set_xticklabels(
+    ["Sym. rise-decay", "Sym. peak-trough", "Speed", r"$\theta$ power",]
+)
+
+# ---- sanity plots for detection of theta params --------
+# ax3 = plt.subplot(gs[1, :])
+# theta_lfp = signal_process.filter_sig.bandpass(lfpmaze, lf=1, hf=25)
+# ax3.plot(lfpmaze, "gray", alpha=0.3)
+# ax3.plot(theta_lfp, "k")
+# ax3.plot(theta_trough, theta_lfp[theta_trough], "|", markersize=30)
+# ax3.plot(thetaparams.peak, theta_lfp[thetaparams.peak], "|", color="r", markersize=30)
+# ax3.plot(
+#     thetaparams.rise_mid,
+#     theta_lfp[thetaparams.rise_mid],
+#     "|",
+#     color="gray",
+#     markersize=30,
+# )
+# ax3.plot(
+#     thetaparams.fall_mid,
+#     theta_lfp[thetaparams.fall_mid],
+#     "|",
+#     color="magenta",
+#     markersize=30,
+# )
+# ax3.plot(theta_trough, theta_lfp[theta_trough], "|", markersize=30)
+
+# figure.savefig("gamma_bands_expvar", __file__)
 
 
 # endregion
