@@ -45,6 +45,52 @@ class Colormap:
 
         return colmap
 
+    def dynamic2(self):
+        white = 255 * np.ones(80).reshape(20, 4)
+        white = white / 255
+        red = mpl.cm.get_cmap("Reds")
+        brown = mpl.cm.get_cmap("YlOrBr")
+        green = mpl.cm.get_cmap("Greens")
+        blue = mpl.cm.get_cmap("Blues")
+        purple = mpl.cm.get_cmap("Purples")
+
+        colmap = np.vstack(
+            (
+                white,
+                ListedColormap(red(np.linspace(0.2, 0.8, 16))).colors,
+                ListedColormap(brown(np.linspace(0.2, 0.8, 16))).colors,
+                ListedColormap(green(np.linspace(0.2, 0.8, 16))).colors,
+                ListedColormap(blue(np.linspace(0.2, 0.8, 16))).colors,
+                ListedColormap(purple(np.linspace(0.2, 0.8, 16))).colors,
+            )
+        )
+
+        colmap = ListedColormap(colmap)
+
+        return colmap
+
+    def dynamic3(self):
+        white = 255 * np.ones(80).reshape(20, 4)
+        white = white / 255
+        YlOrRd = mpl.cm.get_cmap("YlOrRd")
+        RdPu = mpl.cm.get_cmap("RdPu")
+        blue = mpl.cm.get_cmap("Blues_r")
+
+        colmap = np.vstack(
+            (
+                ListedColormap(blue(np.linspace(0, 0.8, 16))).colors,
+                white,
+                ListedColormap(YlOrRd(np.linspace(0.2, 0.5, 4))).colors,
+                ListedColormap(YlOrRd(np.linspace(0.52, 0.7, 4))).colors,
+                ListedColormap(YlOrRd(np.linspace(0.72, 0.85, 4))).colors,
+                ListedColormap(RdPu(np.linspace(0.6, 1, 4))).colors,
+            )
+        )
+
+        colmap = ListedColormap(colmap)
+
+        return colmap
+
 
 class Fig:
     labelsize = 8
@@ -60,8 +106,7 @@ class Fig:
         if style == "Pres":
             mpl.rcParams["axes.labelsize"] = 10
 
-        plt.clf()
-        fig = plt.figure(1, figsize=(8.5, 11))
+        fig = plt.figure(num=num, figsize=(8.5, 11), clear=True)
         fig.set_size_inches(size[0], size[1])
         gs = gridspec.GridSpec(grid[0], grid[1], figure=fig)
         fig.subplots_adjust(hspace=0.3)
