@@ -1,20 +1,23 @@
 #%%
+import warnings
+
+import elephant.current_source_density as csd2d
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
-import scipy.signal as sg
 import numpy as np
 import pandas as pd
-import scipy.stats as stats
-import matplotlib.gridspec as gridspec
-from scipy.ndimage import gaussian_filter, gaussian_filter1d
-import scipy.interpolate as interp
-import signal_process
-import elephant.current_source_density as csd2d
-from callfunc import processData
-from neo.core import AnalogSignal
 import quantities as pq
+import scipy.interpolate as interp
+import scipy.signal as sg
+import scipy.stats as stats
 from kcsd.KCSD import KCSD
+from neo.core import AnalogSignal
+from scipy.ndimage import gaussian_filter, gaussian_filter1d
+
+import signal_process
+from callfunc import processData
 from mathutil import threshPeriods
-import warnings
+from plotUtil import Fig
 
 warnings.simplefilter(action="default")
 
@@ -34,12 +37,13 @@ sessions = [processData(_) for _ in basePath]
 
 #%% csd theta period during MAZE
 # region
-plt.close("all")
-plt.clf()
 
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(1, 8, figure=fig)
-fig.subplots_adjust(hspace=0.3)
+figure = Fig()
+fig,gs = figure.draw(grid=[3,8])
+
+# fig = plt.figure(1, figsize=(10, 15))
+# gs = gridspec.GridSpec(1, 8, figure=fig)
+# fig.subplots_adjust(hspace=0.3)
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
@@ -112,6 +116,7 @@ for sub, sess in enumerate(sessions):
         fig.colorbar(im, ax=ax, orientation="horizontal")
     fig.suptitle("Neptune Day1 - CSD (Strong theta during MAZE)")
 
+figure.savefig('csd_theta_MAZE',__file__)
 
 # endregion
 
@@ -292,4 +297,3 @@ for sub, sess in enumerate(sessions):
         fig.colorbar(im, ax=ax, orientation="horizontal")
     fig.suptitle("RatKDay2 - CSD (around peak fast gamma (100-150 Hz))")
 # endregion
-
