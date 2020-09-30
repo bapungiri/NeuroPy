@@ -1,18 +1,13 @@
+from matplotlib.pyplot import plot
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
-import os
-import scipy.stats as stats
-import scipy.signal as sg
-from pathlib import Path
 from matplotlib.gridspec import GridSpec
-from signal_process import spectrogramBands
 from scipy.ndimage import gaussian_filter
-from sklearn.preprocessing import normalize
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import matplotlib as mpl
 import random
+import ipywidgets as widgets
 
 
 def make_boxes(
@@ -39,37 +34,76 @@ class SessView:
     def __init__(self, obj):
         self._obj = obj
 
-    def specgram(self, ax=None):
-        # lfp, _, _ = self._obj.spindle.best_chan_lfp()
-        goodchans = self._obj.recinfo.goodchans
-        specChan = random.choice(goodchans)
-        lfp = self._obj.utils.geteeg(chans=specChan)
-        lfpSrate = self._obj.recinfo.lfpSrate
-        spec = spectrogramBands(lfp, window=5)
+    def specgram(self, chan=None, period=None, window=4, overlap=2, ax=None):
+        """Generating spectrogram plot for given channel
+
+        Parameters
+        ----------
+        chan : [int], optional
+            channel to plot, by default None and chooses a channel randomly
+        period : [type], optional
+            plot only for this duration in the session, by default None
+        window : [float, seconds], optional
+            window binning size for spectrogram, by default 4
+        overlap : [float, seconds], optional
+            overlap between windows, by default 2
+        ax : [obj], optional
+            if none generates a new figure, by default None
+        """
+
+        if chan is None:
+            goodchans = self._obj.recinfo.goodchans
+            chan = random.choice(goodchans)
+
+        spec = self._obj.utils.spectrogram(
+            chan=chan, period=period, window=window, overlap=overlap
+        )
         sxx = spec.sxx / np.max(spec.sxx)
-        sxx = gaussian_filter(sxx, sigma=1)
-        print(np.max(sxx), np.min(sxx))
+        sxx = gaussian_filter(sxx, sigma=2)
         vmax = np.max(sxx) / 4
 
         if ax is None:
             _, ax = plt.subplots(1, 1)
 
-        ax.pcolorfast(spec.time, spec.freq, sxx, cmap="Spectral_r", vmax=vmax)
+        # ---------- plotting ----------------
+        def plotspec(val, cmap, freq):
+            ax.pcolorfast(spec.time, spec.freq, sxx, cmap=cmap, vmax=val)
+            ax.set_ylim(freq)
+
         ax.text(
             np.max(spec.time) / 2,
             25,
-            f"Spectrogram for channel {specChan}",
+            f"Spectrogram for channel {chan}",
             ha="center",
             color="w",
         )
-        ax.set_ylim([0, 30])
         ax.set_xlim([np.min(spec.time), np.max(spec.time)])
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Frequency (Hz)")
 
         axins = ax.inset_axes([0, 0.6, 0.1, 0.25])
-        self._obj.utils.plotChanPos(chans=[specChan], ax=axins)
+        self._obj.utils.plotChanPos(chans=[chan], ax=axins)
         axins.axis("off")
+
+        # ---- updating plotting values for interaction ------------
+        widgets.interact(
+            plotspec,
+            val=widgets.FloatSlider(
+                value=vmax,
+                min=vmax / 10,
+                max=4 * vmax,
+                step=0.001,
+                description="Spec. Clim:",
+            ),
+            cmap=widgets.Dropdown(
+                options=["Spectral_r", "copper", "hot_r"],
+                value="Spectral_r",
+                description="Colormap:",
+            ),
+            freq=widgets.IntRangeSlider(
+                value=[0, 30], min=0, max=625, step=1, description="Freq. range:"
+            ),
+        )
 
     def epoch(self, ax=None):
         epochs = self._obj.epochs.times
