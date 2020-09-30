@@ -54,7 +54,7 @@ import matplotlib.pyplot as plt
 
 class filter_sig:
     @staticmethod
-    def bandpass(signal, sampleRate=1250, hf=None, lf=None, order=3, ax=-1):
+    def bandpass(signal, hf, lf, sampleRate=1250, order=3, ax=-1):
         nyq = 0.5 * sampleRate
 
         b, a = sg.butter(order, [lf / nyq, hf / nyq], btype="bandpass")
@@ -430,6 +430,51 @@ def fftnormalized(signal, fs=1250):
     return pxx, freq
 
 
+def bicoherence_m(
+    signal: np.array, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250
+):
+
+    """Generate bicoherence triangular matrix for signal
+
+    Returns:
+        bicoher (freq_req x freq_req, array): bicoherence matrix
+        freq_req {array}: frequencies at which bicoherence was calculated
+
+    References:
+    -----------------------
+    1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
+    """
+
+    signal = stats.zscore(signal, axis=-1)
+    nsig: int = signal.shape[0]
+    f, _, sxx = sg.spectrogram(
+        signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
+    )
+
+    freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
+    freq_ind = np.where((f > flow) & (f < fhigh))[0]
+    bispec = np.zeros((nsig, len(freq_ind), len(freq_ind)), dtype=complex)
+    for row, f_ind in enumerate(freq_ind):
+        numer = np.mean(
+            sxx[:, f_ind, :][:, np.newaxis, :]
+            * sxx[:, freq_ind, :]
+            * np.conjugate(sxx[:, freq_ind + f_ind, :]),
+            axis=-1,
+        )
+        denom_left = np.mean(
+            np.abs(sxx[:, f_ind, :][:, np.newaxis, :] * sxx[:, freq_ind, :]) ** 2,
+            axis=-1,
+        )
+        denom_right = np.mean(np.abs(sxx[:, freq_ind + f_ind, :]) ** 2, axis=-1)
+        bispec[:, row, :] = numer / np.sqrt(denom_left * denom_right)
+
+    bicoher = np.abs(bispec) ** 2
+    # bicoher = np.fliplr(np.triu(np.fliplr(np.triu(bicoher, k=0)), k=0))
+    # bispec = np.fliplr(np.triu(np.fliplr(np.triu(bispec, k=0)), k=0))
+
+    return bicoher, freq_req, bispec
+
+
 def bicoherence(signal, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250):
 
     """Generate bicoherence triangular matrix for signal
@@ -442,26 +487,28 @@ def bicoherence(signal, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 *
     -----------------------
     1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
     """
+
     signal = signal - np.mean(signal)
-    f, t, sxx = sg.spectrogram(
+    f, _, sxx = sg.spectrogram(
         signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
     )
 
     freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
     freq_ind = np.where((f > flow) & (f < fhigh))[0]
     bispec = np.zeros((len(freq_ind), len(freq_ind)), dtype=complex)
+    # print(len(freq_ind))
+
+    # f_sum = np.vstack([sxx[freq_ind + _, :] for _ in range(1, len(freq_ind) + 1)]).T
+    # f_self = np.tile(sxx[freq_ind, :].T, (1, len(freq_ind)))
+    # f_couple = sxx[freq_ind, :] @ (f_sum * f_self)
+    # print(sxx.shape, f_couple.shape, f_self.shape, f_sum.shape)
+    # bispec = f_couple
+
+    # numer = sxx[freq_ind, :] @ (sxx[freq_ind, :] * sxx[freq_ind])
     for row, f_ind in enumerate(freq_ind):
         numer = np.mean(
-            sxx[f_ind, :] * sxx[freq_ind, :] * np.conj(sxx[freq_ind + f_ind, :]), axis=1
-        )
-        denom_left = np.mean(np.abs(sxx[f_ind, :] * sxx[freq_ind, :]) ** 2, axis=1)
-        denom_right = np.mean(np.abs(sxx[freq_ind + f_ind, :]) ** 2, axis=1)
-        bispec[row, :] = numer / np.sqrt(denom_left * denom_right)
-
-    bispec = np.zeros((len(freq_ind), len(freq_ind)), dtype=complex)
-    for i in range(sxx.shape[1]):
-        numer = np.mean(
-            sxx[f_ind, :] * sxx[freq_ind, :] * np.conj(sxx[freq_ind + f_ind, :]), axis=1
+            sxx[f_ind, :] * (sxx[freq_ind, :] * np.conj(sxx[freq_ind + f_ind, :])),
+            axis=1,
         )
         denom_left = np.mean(np.abs(sxx[f_ind, :] * sxx[freq_ind, :]) ** 2, axis=1)
         denom_right = np.mean(np.abs(sxx[freq_ind + f_ind, :]) ** 2, axis=1)
