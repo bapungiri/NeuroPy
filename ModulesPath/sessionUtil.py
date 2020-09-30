@@ -95,7 +95,7 @@ class SessionUtil:
         t = np.linspace(0, len(lfp) / eegSrate, len(lfp))
 
         lfpperiod = lfp[(t > tstart) & (t < tend)]
-        tperiod = np.linspace(tstart, tend, len(lfpperiod))
+        # tperiod = np.linspace(tstart, tend, len(lfpperiod))
 
         frtheta = np.arange(5, 12, 0.5)
         wavdec = signal_process.wavelet_decomp(lfpperiod, freqs=frtheta)
@@ -130,16 +130,13 @@ class SessionUtil:
         interval = [[interval[i], interval[i + 1]] for i in range(nwindows)]
         return interval
 
-    def spectrogram(self, period=None, freqRange=None):
+    def spectrogram(self, chan, period=None, window=4, overlap=2):
 
         eegSrate = self._obj.recinfo.lfpSrate
-        if freqRange is None:
-            freqRange = [0, eegSrate / 2]
-        if period is None:
-            lfp = self.geteeg(chans=self._obj.theta.bestchan)
+        lfp = self.geteeg(chans=chan, timeRange=period)
 
         specgram = signal_process.spectrogramBands(
-            lfp, sampfreq=eegSrate, window=4, overlap=2
+            lfp, sampfreq=eegSrate, window=window, overlap=overlap
         )
 
         return specgram
