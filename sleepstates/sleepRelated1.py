@@ -388,90 +388,85 @@ savefig(fig, filename, scriptname)
 # endregion
 
 
-#%% Powerspectrum compare during REM
+#%%* REM Powerspectrum compare between SD and control session
 # region
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 4])
+axrem = plt.subplot(gs[3, 0])
+figure.panel_label(axrem, "d")
+
+pxx = pd.DataFrame()
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-
     sampfreq = sess.recinfo.lfpSrate
     maze = sess.epochs.maze
     tstart = sess.epochs.post[0]
+    deadtime = sess.artifact.time
 
-    lfp, _, _ = sess.spindle.best_chan_lfp()
-    t = np.linspace(0, len(lfp) / 1250, len(lfp))
-    deadfile = sess.sessinfo.files.filePrefix.with_suffix(".dead")
-    if deadfile.is_file():
-        with deadfile.open("r") as f:
-            noisy = []
-            for line in f:
-                epc = line.split(" ")
-                epc = [float(_) for _ in epc]
-                noisy.append(epc)
-            noisy = np.asarray(noisy)
-            noisy = ((noisy / 1000) * sampfreq).astype(int)
+    lfp = sess.theta.getBestChanlfp()
+    t = np.linspace(0, len(lfp) / sampfreq, len(lfp))
 
-        for noisy_ind in range(noisy.shape[0]):
-            st = noisy[noisy_ind, 0]
-            en = noisy[noisy_ind, 1]
-            numnoisy = en - st
-            lfp[st:en] = np.nan
+    # ---- getting maze lfp ----------
+    lfpmaze = sess.utils.geteeg(sess.theta.bestchan, timeRange=maze)
 
+    # --- getting rem episodes lfp --------
     states = sess.brainstates.states
     rem = states[(states["start"] > tstart) & (states["name"] == "rem")]
+    remframes = np.concatenate(
+        [
+            np.arange(int(epoch.start * sampfreq), int(epoch.end * sampfreq))
+            for epoch in rem.itertuples()
+        ]
+    )
+    lfprem = lfp[remframes]
 
-    binlfp = lambda x, t1, t2: x[(t > t1) & (t < t2)]
-    lfprem = []
-    for epoch in rem.itertuples():
-        lfprem.extend(binlfp(lfp, epoch.start, epoch.end))
-    lfprem = stats.zscore(np.asarray(lfprem))
+    # ---- deleting noisy frames ------------
+    if deadtime is not None:
+        lfpmaze = sess.artifact.removefrom(lfpmaze, timepoints=maze)
+        lfprem = sess.artifact.removefrom(lfprem, timepoints=remframes / sampfreq)
 
-    lfpmaze = stats.zscore(binlfp(lfp, maze[0], maze[1]))
-    # b, a = sg.iirnotch(60, 30, fs=1250)
-    # lfprem = sg.filtfilt(b, a, lfprem)
-
-    sess.pxx_rem, sess.f_rem = getPxx(lfprem)
-    sess.pxx_maze, sess.f_maze = getPxx(lfpmaze)
-
-
-# ====== Plotting ==========
-plt.clf()
-fig = plt.figure(1, figsize=(15, 8))
-gs = GridSpec(1, 3, figure=fig)
-# fig.subplots_adjust(hspace=0.5)
-
-for sub, sess in enumerate(sessions):
-
+    # lfprem = stats.zscore(lfprem)
+    # lfpmaze = stats.zscore(lfpmaze)
     if sub < 3:
-        plt_ind = sub
-        alpha = 1
-        shift = 0
+        condition = "sd"
     else:
-        plt_ind = sub - 3
-        alpha = 0.4
-        color = "k"
-        shift = 2
+        condition = "nsd"
 
-    subname = sess.sessinfo.session.name
-
-    todB = lambda power: 10 * np.log10(power)
-
-    ax = fig.add_subplot(gs[0, plt_ind])
-    plt.plot(sess.f_rem, todB(sess.pxx_rem) - shift, color="#ef253c", alpha=alpha)
-    plt.plot(sess.f_maze, todB(sess.pxx_maze) - shift + 6, color=color, alpha=alpha)
-    plt.xscale("log")
-    # plt.yscale("log")
-    ax.set_xlim([4, 220])
-    # ax.set_xlim([4, 220])
-    ax.set_xlabel("frequency (Hz)")
-    ax.set_ylabel("Power (dB)")
-    ax.set_title(subname)
+    pxx = pxx.append(
+        pd.DataFrame(
+            {
+                "freq": getPxx(lfprem)[1],
+                "maze": getPxx(lfpmaze)[0],
+                "rem": getPxx(lfprem)[0],
+                "condition": condition,
+            },
+        )
+    )
 
 
-ax.legend(["REM-SD", "MAZE-SD", "REM-NSD", "MAZE-NSD"])
-fig.suptitle(
-    f"Power spectrum REM and MAZE epochs between SD and NSD session. Only REM periods in POST are compared. \n Note: curves have been artificially shifted for clarity"
+# -----Plotting ---------
+pxx["diff"] = pxx.rem - pxx.maze
+pxx_mean = (
+    pxx.groupby(["condition", "freq"])
+    .mean()
+    .transform(stats.zscore, axis=0)
+    .reset_index()
 )
+
+
+sns.lineplot(
+    x="freq",
+    y="diff",
+    hue="condition",
+    data=pxx_mean,
+    ax=axrem,
+    palette="Set2",
+    legend=None,
+)
+axrem.set_xlim([0, 20])
+figure.savefig("rem_pxx_sd_vs_nsd", __file__)
+
 # endregion
 
 #%% Bicoherence plots of REM sleep

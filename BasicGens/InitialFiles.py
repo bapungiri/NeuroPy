@@ -13,11 +13,12 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/"
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
     # "/data/Clustering/SleepDeprivation/RatN/Day4/",
+    "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
 
 
@@ -30,7 +31,7 @@ sessions = [processData(_) for _ in basePath]
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    badchans = [63] + list(range(128, 134))
+    badchans = [0]
     sess.recinfo.makerecinfo(badchans=badchans)
 # endregion
 
@@ -66,7 +67,7 @@ for sub, sess in enumerate(sessions):
 # region
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
-    # sess.epochs.getfromCSV()
+    sess.epochs.getfromCSV()
 # endregion
 
 #%% Gen instantenous firing rate

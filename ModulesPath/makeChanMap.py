@@ -24,6 +24,9 @@ class recinfo:
         self.channelgroups = myinfo["channelgroups"]
         self.badchans = myinfo["badchans"]
         self.goodchans = np.setdiff1d(self.channels, self.badchans, assume_unique=True)
+        self.goodchangrp = [
+            list(np.setdiff1d(_, self.badchans).astype(int)) for _ in self.channelgroups
+        ][: self.nShanks]
 
     def makerecinfo(self, badchans=None):
 
