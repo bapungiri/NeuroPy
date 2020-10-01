@@ -15,7 +15,8 @@ import scipy.interpolate as interp
 from scipy.fftpack import next_fast_len
 import time
 import matplotlib.pyplot as plt
-
+import dask
+from joblib import Parallel, delayed
 
 # def filter_(signal, sampleRate=1250, fband=None, hf=None, lf=None, order=3, ax=-1):
 #     nyq = 0.5 * sampleRate
@@ -430,6 +431,52 @@ def fftnormalized(signal, fs=1250):
     return pxx, freq
 
 
+def bicoherence_parallel(
+    signal: np.array, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250
+):
+
+    """Generate bicoherence triangular matrix for signal
+
+    Returns:
+        bicoher (freq_req x freq_req, array): bicoherence matrix
+        freq_req {array}: frequencies at which bicoherence was calculated
+
+    References:
+    -----------------------
+    1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
+    """
+
+    signal = stats.zscore(signal, axis=-1)
+    nsig: int = signal.shape[0]
+    f, _, sxx = sg.spectrogram(
+        signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
+    )
+    sxx = np.require(sxx, dtype=complex)
+    freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
+    freq_ind = np.where((f > flow) & (f < fhigh))[0]
+
+    allfreq = sxx[:, freq_ind, :]
+    s_allfreq = np.abs(allfreq) ** 2
+
+    def bicoh_product(f_ind):
+        freq = sxx[:, f_ind, :][:, np.newaxis]
+        sumfreq = sxx[:, freq_ind + f_ind, :]
+
+        numer = np.mean(freq * allfreq * np.conjugate(sumfreq), axis=-1)
+        s_freq = np.abs(freq) ** 2
+        s_sumfreq = np.abs(sumfreq) ** 2
+        denom = np.mean(np.sqrt(s_freq * s_allfreq * s_sumfreq), axis=-1)
+
+        return numer / denom
+
+    bispec = Parallel(n_jobs=10, require="sharedmem")(
+        delayed(bicoh_product)(f_ind) for f_ind in freq_ind
+    )
+    bispec = np.dstack(bispec)
+    bicoher = np.abs(bispec)
+    return bicoher, freq_req, bispec
+
+
 def bicoherence_m(
     signal: np.array, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250
 ):
@@ -450,6 +497,7 @@ def bicoherence_m(
     f, _, sxx = sg.spectrogram(
         signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
     )
+    sxx = np.require(sxx, dtype=complex)
 
     freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
     freq_ind = np.where((f > flow) & (f < fhigh))[0]
@@ -461,14 +509,21 @@ def bicoherence_m(
             * np.conjugate(sxx[:, freq_ind + f_ind, :]),
             axis=-1,
         )
-        denom_left = np.mean(
-            np.abs(sxx[:, f_ind, :][:, np.newaxis, :] * sxx[:, freq_ind, :]) ** 2,
-            axis=-1,
-        )
-        denom_right = np.mean(np.abs(sxx[:, freq_ind + f_ind, :]) ** 2, axis=-1)
-        bispec[:, row, :] = numer / np.sqrt(denom_left * denom_right)
+        # denom_left = np.mean(
+        #     np.abs(sxx[:, f_ind, :][:, np.newaxis, :] * sxx[:, freq_ind, :]) ** 2,
+        #     axis=-1,
+        # )
+        # denom_right = np.mean(np.abs(sxx[:, freq_ind + f_ind, :]) ** 2, axis=-1)
 
-    bicoher = np.abs(bispec) ** 2
+        sf_ind = np.abs(sxx[:, f_ind, :][:, np.newaxis, :]) ** 2
+        sf_freq_ind = np.abs(sxx[:, freq_ind, :]) ** 2
+        sf_plus = np.abs(sxx[:, freq_ind + f_ind, :]) ** 2
+
+        denom = np.mean(np.sqrt(sf_ind * sf_freq_ind * sf_plus), axis=-1)
+
+        bispec[:, row, :] = numer / denom
+
+    bicoher = np.abs(bispec)
     # bicoher = np.fliplr(np.triu(np.fliplr(np.triu(bicoher, k=0)), k=0))
     # bispec = np.fliplr(np.triu(np.fliplr(np.triu(bispec, k=0)), k=0))
 
