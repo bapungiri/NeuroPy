@@ -1,62 +1,29 @@
-import numpy as np
-import scipy.signal as sg
 from dataclasses import dataclass
 from typing import Any
-from scipy.ndimage import gaussian_filter
+
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.interpolate as interp
+import scipy.linalg as linalg
 import scipy.ndimage as filtSig
-from collections import namedtuple
+import scipy.signal as sg
 import scipy.stats as stats
-from scipy.interpolate import interp1d
+from joblib import Parallel, delayed
+from numpy import linalg
+from numpy.lib.npyio import NpzFile
 from scipy import fftpack
 from scipy.fft import fft
-from lspopt import spectrogram_lspopt
-from waveletFunctions import wavelet
-import scipy.interpolate as interp
 from scipy.fftpack import next_fast_len
-import time
-import matplotlib.pyplot as plt
-import dask
-from joblib import Parallel, delayed
+from scipy.interpolate import interp1d
+from scipy.ndimage import gaussian_filter
 
-# def filter_(signal, sampleRate=1250, fband=None, hf=None, lf=None, order=3, ax=-1):
-#     nyq = 0.5 * sampleRate
-#     freqbands = {
-#         "theta": [4, 10],
-#         "spindle": [8, 16],
-#         "slowgamma": [25, 50],
-#         "medgamma": [60, 90],
-#         "fastgamma": [100, 150],
-#         "ripple": [150, 240],
-#     }
-
-#     arguments = [fband, hf, lf]
-#     assert any(arguments), "please provide frequencies"
-
-#     if fband is None:
-#         if (hf is None) and (lf is not None):
-#             btype = "highpass"
-#             wn = lf / nyq
-#         elif (hf is not None) and (lf is None):
-#             btype = "lowpass"
-#             wn = hf / nyq
-#         elif (hf is not None) and (lf is not None):
-#             btype = "bandpass"
-#             wn = [lf / nyq, hf / nyq]
-#     else:
-#         assert fband in freqbands, f"fband must be from {list(freqbands.keys())}"
-#         btype = "bandpass"
-#         wn = [f / nyq for f in freqbands[fband]]
-
-#     b, a = sg.butter(order, wn, btype=btype)
-#     yf = sg.filtfilt(b, a, signal, axis=ax)
-
-#     return yf
+from waveletFunctions import wavelet
 
 
 class filter_sig:
     @staticmethod
-    def bandpass(signal, hf, lf, sampleRate=1250, order=3, ax=-1):
-        nyq = 0.5 * sampleRate
+    def bandpass(signal, hf, lf, fs=1250, order=3, ax=-1):
+        nyq = 0.5 * fs
 
         b, a = sg.butter(order, [lf / nyq, hf / nyq], btype="bandpass")
         yf = sg.filtfilt(b, a, signal, axis=ax)
@@ -64,8 +31,8 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def highpass(signal, cutoff, sampleRate=1250, order=6, ax=-1):
-        nyq = 0.5 * sampleRate
+    def highpass(signal, cutoff, fs=1250, order=6, ax=-1):
+        nyq = 0.5 * fs
 
         b, a = sg.butter(order, cutoff / nyq, btype="highpass")
         yf = sg.filtfilt(b, a, signal, axis=ax)
@@ -73,8 +40,8 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def lowpass(signal, cutoff, sampleRate=1250, order=6, ax=-1):
-        nyq = 0.5 * sampleRate
+    def lowpass(signal, cutoff, fs=1250, order=6, ax=-1):
+        nyq = 0.5 * fs
 
         b, a = sg.butter(order, cutoff / nyq, btype="lowpass")
         yf = sg.filtfilt(b, a, signal, axis=ax)
@@ -82,59 +49,32 @@ class filter_sig:
         return yf
 
     @staticmethod
-    def ripple(signal, sampleRate=1250, ax=0):
-        lowpass_freq = 150
-        highpass_freq = 240
-        nyq = 0.5 * sampleRate
-
-        b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=ax)
-
-        return yf
+    def delta(signal, fs=1250, order=3, ax=-1):
+        return filter_sig.bandpass(signal, lf=0.5, hf=4, fs=fs, order=order, ax=ax)
 
     @staticmethod
-    def theta(signal, sampleRate=1250, ax=0):
-        lowpass_freq = 4
-        highpass_freq = 10
-        nyq = 0.5 * sampleRate
-
-        b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=ax)
-
-        return yf
+    def theta(signal, fs=1250, order=3, ax=-1):
+        return filter_sig.bandpass(signal, lf=4, hf=10, fs=fs, order=order, ax=ax)
 
     @staticmethod
-    def delta(signal, sampleRate=1250, ax=0):
-        lowpass_freq = 0.5
-        highpass_freq = 4
-        nyq = 0.5 * sampleRate
-
-        b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=ax)
-
-        return yf
+    def spindle(signal, fs=1250, order=3, ax=-1):
+        return filter_sig.bandpass(signal, lf=8, hf=16, fs=fs, order=order, ax=ax)
 
     @staticmethod
-    def spindle(signal, sampleRate=1250, ax=0):
-        lowpass_freq = 9
-        highpass_freq = 18
-        nyq = 0.5 * sampleRate
-
-        b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=ax)
-
-        return yf
+    def slowgamma(signal, fs=1250, order=3, ax=-1):
+        return filter_sig.bandpass(signal, lf=25, hf=50, fs=fs, order=order, ax=ax)
 
     @staticmethod
-    def fastgamma(signal, sampleRate=1250, ax=0):
-        lowpass_freq = 100
-        highpass_freq = 150
-        nyq = 0.5 * sampleRate
+    def mediumgamma(signal, fs=1250, order=3, ax=-1):
+        return filter_sig.bandpass(signal, lf=60, hf=90, fs=fs, order=order, ax=ax)
 
-        b, a = sg.butter(3, [lowpass_freq / nyq, highpass_freq / nyq], btype="bandpass")
-        yf = sg.filtfilt(b, a, signal, axis=ax)
+    @staticmethod
+    def fastgamma(signal, fs=1250, order=3, ax=-1):
+        return filter_sig.bandpass(signal, lf=100, hf=140, fs=fs, order=order, ax=ax)
 
-        return yf
+    @staticmethod
+    def ripple(signal, fs=1250, order=3, ax=-1):
+        return filter_sig.bandpass(signal, lf=150, hf=240, fs=fs, order=order, ax=ax)
 
 
 def whiten(strain, interp_psd, dt):
@@ -431,11 +371,133 @@ def fftnormalized(signal, fs=1250):
     return pxx, freq
 
 
-def bicoherence_parallel(
+@dataclass
+class bicoherence:
+
+    flow: int = 1
+    fhigh: int = 150
+    fs: int = 1250
+    window: int = 4 * 1250
+    overlap: int = 2 * 1250
+
+    def compute(self, signal: np.array):
+
+        """Generate bicoherence matrix for signal
+
+        Attributes:
+            bicoher (freq_req x freq_req, array): bicoherence matrix
+            freq_req {array}: frequencies at which bicoherence was calculated
+
+        References:
+        -----------------------
+        1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
+        """
+
+        # ------ changing dimensions if a single lfp is provided---------
+        if signal.ndim == 1:
+            signal = signal[np.newaxis, :]
+
+        # ----- Normalization and complex spectrogram -------------
+        signal = signal - np.mean(signal, axis=-1, keepdims=True)  # zero mean
+        f, _, sxx = sg.spectrogram(
+            signal,
+            window="hann",
+            nperseg=self.window,
+            noverlap=self.overlap,
+            fs=self.fs,
+            mode="complex",
+            nfft=fftpack.next_fast_len(self.window),
+        )
+        sxx = np.require(sxx, dtype=complex)
+
+        # ------ Getting required frequencies and their indices -------------
+        freq_req = f[np.where((f > self.flow) & (f < self.fhigh))[0]]
+        freq_ind = np.where((f > self.flow) & (f < self.fhigh))[0]
+
+        """ ===========================================
+        bispectrum = |mean( X(f1) * X(f2) * conj(X(f1+f2)) )|
+        normalization = sqrt( mean( P(f1) * P(f2) * P(f1+f2) ) )
+
+        where,
+            X is complex spectrogram
+            P is real/absolute square spectrogram
+        ================================================="""
+
+        X_f2 = sxx[:, freq_ind, :]  # complex spectrogram of required frequencies
+        P_f2 = np.abs(X_f2) ** 2  # absolute square of spectrogram
+
+        def bicoh_product(f_ind):
+            X_f1 = sxx[:, f_ind, np.newaxis, :]
+            X_f1f2 = sxx[:, freq_ind + f_ind, :]
+
+            # ----- bispectrum triple product --------------
+            bispec_freq = np.mean(X_f1 * X_f2 * np.conjugate(X_f1f2), axis=-1)
+
+            # ----- normalization to calculate bicoherence ---------
+            # P_f1 = np.abs(X_f1) ** 2
+            P_f1f2 = np.abs(X_f1f2) ** 2
+            # norm = np.sqrt(np.mean(P_f1 * P_f2 * P_f1f2, axis=-1))
+            norm = np.sqrt(
+                np.mean(np.abs(X_f1 * X_f2) ** 2, axis=-1) * np.mean(P_f1f2, axis=-1)
+            )
+
+            return bispec_freq / norm
+
+        bispec = Parallel(n_jobs=10, require="sharedmem")(
+            delayed(bicoh_product)(f_ind) for f_ind in freq_ind
+        )
+        bispec = np.dstack(bispec)
+        bicoher = np.abs(bispec)
+
+        self.bicoher = bicoher.squeeze()
+        self.bispec = bispec.squeeze()
+        self.freq = freq_req
+        self.dof = sxx.shape[-1]
+        self.significance = np.sqrt(6 / self.dof)
+
+    def plot(self, index=None, ax=None, vmin=0, vmax=0.2, cmap="hot"):
+
+        bic = self.bicoher[index]
+        lt = np.tril_indices_from(bic, k=-1)
+        bic[lt] = np.nan
+        bic[(lt[0], -lt[1])] = np.nan
+        # bic = bic - np.nanmean(bic)
+        # bic = stats.mstats.zscore(bic, nan_policy="omit")
+        bic[bic < 0.04] = 0
+        bic = gaussian_filter(bic, sigma=1)
+
+        if ax is None:
+            _, ax = plt.subplots(1, 1)
+
+        bicoh_plt = ax.pcolormesh(
+            self.freq,
+            self.freq,
+            bic,
+            cmap=cmap,
+            # shading="gouraud",
+            vmin=0,
+            vmax=0.2,
+            rasterized=True,
+        )
+
+        ax.set_ylim([0, np.max(self.freq) / 2])
+
+        ax.plot(
+            [1, np.max(self.freq / 2)], [1, np.max(self.freq) / 2], "gray",
+        )
+        ax.plot(
+            [np.max(self.freq) / 2, np.max(self.freq)],
+            [np.max(self.freq) / 2, 1],
+            "gray",
+        )
+        plt.colorbar(bicoh_plt)
+
+
+def bicoherence_test(
     signal: np.array, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250
 ):
 
-    """Generate bicoherence triangular matrix for signal
+    """Generate bicoherence matrix for signal
 
     Returns:
         bicoher (freq_req x freq_req, array): bicoherence matrix
@@ -446,134 +508,76 @@ def bicoherence_parallel(
     1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
     """
 
-    signal = stats.zscore(signal, axis=-1)
-    nsig: int = signal.shape[0]
+    # ------ changing dimensions if a single lfp is provided---------
+
+    assert fhigh <= fs / 2, "fhigh must be less than half of nyquinst frequency"
+    if signal.ndim == 1:
+        signal = signal[np.newaxis, :]
+
+    # ----- Normalization and complex spectrogram -------------
+    signal = signal - np.mean(signal, axis=-1, keepdims=True)  # zero mean
     f, _, sxx = sg.spectrogram(
-        signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
+        signal,
+        window="hann",
+        nperseg=window,
+        noverlap=overlap,
+        fs=fs,
+        mode="complex",
+        nfft=fftpack.next_fast_len(window),
     )
     sxx = np.require(sxx, dtype=complex)
+
+    # ------ Getting required frequencies and their indices -------------
     freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
     freq_ind = np.where((f > flow) & (f < fhigh))[0]
 
-    allfreq = sxx[:, freq_ind, :]
-    s_allfreq = np.abs(allfreq) ** 2
+    """ ===========================================
+    bispectrum = |mean( X(f1) * X(f2) * conj(X(f1+f2)) )|
+    normalization = sqrt( mean( P(f1) * P(f2) * P(f1+f2) ) )
 
-    def bicoh_product(f_ind):
-        freq = sxx[:, f_ind, :][:, np.newaxis]
-        sumfreq = sxx[:, freq_ind + f_ind, :]
+    where,
+        X is complex spectrogram
+        P is real/absolute square spectrogram
+    ================================================="""
 
-        numer = np.mean(freq * allfreq * np.conjugate(sumfreq), axis=-1)
-        s_freq = np.abs(freq) ** 2
-        s_sumfreq = np.abs(sumfreq) ** 2
-        denom = np.mean(np.sqrt(s_freq * s_allfreq * s_sumfreq), axis=-1)
+    X_f2 = sxx[:, freq_ind, :]  # complex spectrogram of required frequencies
+    P_f2 = np.abs(X_f2) ** 2  # absolute square of spectrogram
 
-        return numer / denom
+    def bicoh_product(sxx_chan):
+        bispec_chan = []
+        norm = []
+        for t in range(sxx_chan.shape[1]):
+            X_f1 = sxx_chan[freq_ind, t]
+            X_f1f2 = sxx_chan[2 * freq_ind[0] : 2 * freq_ind[-1], t]
+            X_f1f2 = linalg.hankel(X_f1f2)[: len(freq_ind), : len(freq_ind)]
+            bispec_t = (X_f1.T * X_f1) * np.conjugate(X_f1f2)
+
+            P_f1f2 = np.abs(X_f1f2) ** 2
+            norm_t = np.abs(X_f1.T * X_f1) ** 2 * P_f1f2
+            bispec_chan.append(bispec_t)
+            norm.append(norm_t)
+
+        bispec_chan = np.dstack(bispec_chan).mean(axis=-1)
+        norm = np.sqrt(np.dstack(norm).mean(axis=-1))
+        return bispec_chan / norm
+
+        # X_f1 = sxx[:, f_ind, np.newaxis, :]
+        # X_f1f2 = sxx[:, freq_ind + f_ind, :]
+
+    # ----- bispectrum triple product --------------
+    # bispec_freq = np.mean(X_f1 * X_f2 * np.conjugate(X_f1f2), axis=-1)
+
+    # ----- normalization to calculate bicoherence ---------
+    # P_f1 = np.abs(X_f1) ** 2
+    # norm = np.sqrt(np.mean(P_f1 * P_f2 * P_f1f2, axis=-1))
 
     bispec = Parallel(n_jobs=10, require="sharedmem")(
-        delayed(bicoh_product)(f_ind) for f_ind in freq_ind
+        delayed(bicoh_product)(sxx_chan) for sxx_chan in sxx
     )
     bispec = np.dstack(bispec)
     bicoher = np.abs(bispec)
-    return bicoher, freq_req, bispec
 
-
-def bicoherence_m(
-    signal: np.array, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250
-):
-
-    """Generate bicoherence triangular matrix for signal
-
-    Returns:
-        bicoher (freq_req x freq_req, array): bicoherence matrix
-        freq_req {array}: frequencies at which bicoherence was calculated
-
-    References:
-    -----------------------
-    1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
-    """
-
-    signal = stats.zscore(signal, axis=-1)
-    nsig: int = signal.shape[0]
-    f, _, sxx = sg.spectrogram(
-        signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
-    )
-    sxx = np.require(sxx, dtype=complex)
-
-    freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
-    freq_ind = np.where((f > flow) & (f < fhigh))[0]
-    bispec = np.zeros((nsig, len(freq_ind), len(freq_ind)), dtype=complex)
-    for row, f_ind in enumerate(freq_ind):
-        numer = np.mean(
-            sxx[:, f_ind, :][:, np.newaxis, :]
-            * sxx[:, freq_ind, :]
-            * np.conjugate(sxx[:, freq_ind + f_ind, :]),
-            axis=-1,
-        )
-        # denom_left = np.mean(
-        #     np.abs(sxx[:, f_ind, :][:, np.newaxis, :] * sxx[:, freq_ind, :]) ** 2,
-        #     axis=-1,
-        # )
-        # denom_right = np.mean(np.abs(sxx[:, freq_ind + f_ind, :]) ** 2, axis=-1)
-
-        sf_ind = np.abs(sxx[:, f_ind, :][:, np.newaxis, :]) ** 2
-        sf_freq_ind = np.abs(sxx[:, freq_ind, :]) ** 2
-        sf_plus = np.abs(sxx[:, freq_ind + f_ind, :]) ** 2
-
-        denom = np.mean(np.sqrt(sf_ind * sf_freq_ind * sf_plus), axis=-1)
-
-        bispec[:, row, :] = numer / denom
-
-    bicoher = np.abs(bispec)
-    # bicoher = np.fliplr(np.triu(np.fliplr(np.triu(bicoher, k=0)), k=0))
-    # bispec = np.fliplr(np.triu(np.fliplr(np.triu(bispec, k=0)), k=0))
-
-    return bicoher, freq_req, bispec
-
-
-def bicoherence(signal, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250):
-
-    """Generate bicoherence triangular matrix for signal
-
-    Returns:
-        bicoher (freq_req x freq_req, array): bicoherence matrix
-        freq_req {array}: frequencies at which bicoherence was calculated
-
-    References:
-    -----------------------
-    1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
-    """
-
-    signal = signal - np.mean(signal)
-    f, _, sxx = sg.spectrogram(
-        signal, nperseg=window, noverlap=overlap, fs=fs, mode="complex"
-    )
-
-    freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
-    freq_ind = np.where((f > flow) & (f < fhigh))[0]
-    bispec = np.zeros((len(freq_ind), len(freq_ind)), dtype=complex)
-    # print(len(freq_ind))
-
-    # f_sum = np.vstack([sxx[freq_ind + _, :] for _ in range(1, len(freq_ind) + 1)]).T
-    # f_self = np.tile(sxx[freq_ind, :].T, (1, len(freq_ind)))
-    # f_couple = sxx[freq_ind, :] @ (f_sum * f_self)
-    # print(sxx.shape, f_couple.shape, f_self.shape, f_sum.shape)
-    # bispec = f_couple
-
-    # numer = sxx[freq_ind, :] @ (sxx[freq_ind, :] * sxx[freq_ind])
-    for row, f_ind in enumerate(freq_ind):
-        numer = np.mean(
-            sxx[f_ind, :] * (sxx[freq_ind, :] * np.conj(sxx[freq_ind + f_ind, :])),
-            axis=1,
-        )
-        denom_left = np.mean(np.abs(sxx[f_ind, :] * sxx[freq_ind, :]) ** 2, axis=1)
-        denom_right = np.mean(np.abs(sxx[freq_ind + f_ind, :]) ** 2, axis=1)
-        bispec[row, :] = numer / np.sqrt(denom_left * denom_right)
-
-    bicoher = np.abs(bispec) ** 2
-    bicoher = np.fliplr(np.triu(np.fliplr(np.triu(bicoher, k=0)), k=0))
-    bispec = np.fliplr(np.triu(np.fliplr(np.triu(bispec, k=0)), k=0))
-
-    return bicoher, freq_req, bispec
+    return bicoher.squeeze(), freq_req, bispec.squeeze()
 
 
 def phasePowerCorrelation(signal):
