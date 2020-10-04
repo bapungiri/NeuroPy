@@ -13,6 +13,8 @@ import signal_process
 import matplotlib.gridspec as gridspec
 import colorednoise as cn
 import time
+from polycoherence import _plot_signal, polycoherence, plot_polycoherence
+from scipy.fftpack import next_fast_len
 
 cmap = matplotlib.cm.get_cmap("hot_r")
 
@@ -51,14 +53,16 @@ fig = plt.figure(1, figsize=(10, 15), sharex=True, sharey=True)
 gs = gridspec.GridSpec(4, 4, figure=fig)
 fig.subplots_adjust(hspace=0.3)
 
-bic, f_s, _ = signal_process.bicoherence_m(np.asarray(y), fhigh=60)
+t = time.time()
+bic1, f_s, bispec = signal_process.bicoherence(np.asarray(y), fhigh=60)
+print(time.time() - t)
+
+t = time.time()
+bic2, f_s, bispec = signal_process.bicoherence_test(np.asarray(y), fhigh=60)
+print(time.time() - t)
 
 for i in range(len(y)):
-    t = time.time()
-    bicoh, freq, _ = signal_process.bicoherence(y[i], fhigh=60)
-    print(time.time() - t)
     f, pxx = sg.welch(y[i], fs=1250, nperseg=4 * 1250, noverlap=2 * 1250)
-    bicoh = gaussian_filter(bicoh, sigma=2)
 
     axsig = fig.add_subplot(gs[0, i])
     axsig.plot(y[i][:625], "#564d4d")
@@ -70,22 +74,17 @@ for i in range(len(y)):
     axpxx.set_yscale("log")
 
     axbcoh = fig.add_subplot(gs[2, i])
-    axbcoh.pcolormesh(freq, freq, bicoh, cmap="Spectral_r", vmax=0.7, vmin=-0.7)
-    axbcoh.set_ylim([2, 30])
+    axbcoh.pcolormesh(f_s, f_s, bic1[i], cmap="Spectral_r", vmax=0.7, vmin=-0.7)
+    # axbcoh.set_ylim([2, 30])
     axbcoh.set_xlabel("Frequency (Hz)")
     axbcoh.set_ylabel("Frequency (Hz)")
 
     ax2 = plt.subplot(gs[3, i])
     # bic_ = bic[i, :, :]
     ax2.pcolormesh(
-        f_s,
-        f_s,
-        gaussian_filter(bic[i, :, :], sigma=2),
-        cmap="Spectral_r",
-        vmax=0.7,
-        vmin=-0.7,
+        f_s, f_s, bic2[:, :, i], cmap="Spectral_r", vmax=0.7, vmin=-0.7,
     )
-    ax2.set_ylim([2, 30])
+    # ax2.set_ylim([2, 30])
 
 
 # fig, ax = plt.subplots()

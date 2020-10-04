@@ -374,6 +374,32 @@ def fftnormalized(signal, fs=1250):
 @dataclass
 class bicoherence:
 
+    """Generate bicoherence matrix for signal
+
+    Attributes:
+    ---------------
+        flow: int, low frequency
+        fhigh: int, highest frequency
+        window: int, segment size
+        noverlap:
+        
+        bicoher (freq_req x freq_req, array): bicoherence matrix
+        freq {array}: frequencies at which bicoherence was calculated
+        bispec:
+        significance:
+
+    Methods:
+    ---------------
+    compute
+        calculates the bicoherence
+    plot
+        plots bicoherence matrix in the provided axis
+
+    References:
+    -----------------------
+    1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
+    """
+
     flow: int = 1
     fhigh: int = 150
     fs: int = 1250
@@ -381,16 +407,12 @@ class bicoherence:
     overlap: int = 2 * 1250
 
     def compute(self, signal: np.array):
+        """Computes bicoherence
 
-        """Generate bicoherence matrix for signal
-
-        Attributes:
-            bicoher (freq_req x freq_req, array): bicoherence matrix
-            freq_req {array}: frequencies at which bicoherence was calculated
-
-        References:
-        -----------------------
-        1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
+        Parameters
+        -----------
+            signal: array,
+                lfp signal on which bicoherence will be calculated
         """
 
         # ------ changing dimensions if a single lfp is provided---------
@@ -457,7 +479,7 @@ class bicoherence:
 
     def plot(self, index=None, ax=None, vmin=0, vmax=0.2, cmap="hot"):
 
-        bic = self.bicoher[index]
+        bic = self.bicoher[index].copy()
         lt = np.tril_indices_from(bic, k=-1)
         bic[lt] = np.nan
         bic[(lt[0], -lt[1])] = np.nan
@@ -491,93 +513,6 @@ class bicoherence:
             "gray",
         )
         plt.colorbar(bicoh_plt)
-
-
-def bicoherence_test(
-    signal: np.array, flow=1, fhigh=150, fs=1250, window=4 * 1250, overlap=2 * 1250
-):
-
-    """Generate bicoherence matrix for signal
-
-    Returns:
-        bicoher (freq_req x freq_req, array): bicoherence matrix
-        freq_req {array}: frequencies at which bicoherence was calculated
-
-    References:
-    -----------------------
-    1) Sheremet, A., Burke, S. N., & Maurer, A. P. (2016). Movement enhances the nonlinearity of hippocampal theta. Journal of Neuroscience, 36(15), 4218-4230.
-    """
-
-    # ------ changing dimensions if a single lfp is provided---------
-
-    assert fhigh <= fs / 2, "fhigh must be less than half of nyquinst frequency"
-    if signal.ndim == 1:
-        signal = signal[np.newaxis, :]
-
-    # ----- Normalization and complex spectrogram -------------
-    signal = signal - np.mean(signal, axis=-1, keepdims=True)  # zero mean
-    f, _, sxx = sg.spectrogram(
-        signal,
-        window="hann",
-        nperseg=window,
-        noverlap=overlap,
-        fs=fs,
-        mode="complex",
-        nfft=fftpack.next_fast_len(window),
-    )
-    sxx = np.require(sxx, dtype=complex)
-
-    # ------ Getting required frequencies and their indices -------------
-    freq_req = f[np.where((f > flow) & (f < fhigh))[0]]
-    freq_ind = np.where((f > flow) & (f < fhigh))[0]
-
-    """ ===========================================
-    bispectrum = |mean( X(f1) * X(f2) * conj(X(f1+f2)) )|
-    normalization = sqrt( mean( P(f1) * P(f2) * P(f1+f2) ) )
-
-    where,
-        X is complex spectrogram
-        P is real/absolute square spectrogram
-    ================================================="""
-
-    X_f2 = sxx[:, freq_ind, :]  # complex spectrogram of required frequencies
-    P_f2 = np.abs(X_f2) ** 2  # absolute square of spectrogram
-
-    def bicoh_product(sxx_chan):
-        bispec_chan = []
-        norm = []
-        for t in range(sxx_chan.shape[1]):
-            X_f1 = sxx_chan[freq_ind, t]
-            X_f1f2 = sxx_chan[2 * freq_ind[0] : 2 * freq_ind[-1], t]
-            X_f1f2 = linalg.hankel(X_f1f2)[: len(freq_ind), : len(freq_ind)]
-            bispec_t = (X_f1.T * X_f1) * np.conjugate(X_f1f2)
-
-            P_f1f2 = np.abs(X_f1f2) ** 2
-            norm_t = np.abs(X_f1.T * X_f1) ** 2 * P_f1f2
-            bispec_chan.append(bispec_t)
-            norm.append(norm_t)
-
-        bispec_chan = np.dstack(bispec_chan).mean(axis=-1)
-        norm = np.sqrt(np.dstack(norm).mean(axis=-1))
-        return bispec_chan / norm
-
-        # X_f1 = sxx[:, f_ind, np.newaxis, :]
-        # X_f1f2 = sxx[:, freq_ind + f_ind, :]
-
-    # ----- bispectrum triple product --------------
-    # bispec_freq = np.mean(X_f1 * X_f2 * np.conjugate(X_f1f2), axis=-1)
-
-    # ----- normalization to calculate bicoherence ---------
-    # P_f1 = np.abs(X_f1) ** 2
-    # norm = np.sqrt(np.mean(P_f1 * P_f2 * P_f1f2, axis=-1))
-
-    bispec = Parallel(n_jobs=10, require="sharedmem")(
-        delayed(bicoh_product)(sxx_chan) for sxx_chan in sxx
-    )
-    bispec = np.dstack(bispec)
-    bicoher = np.abs(bispec)
-
-    return bicoher.squeeze(), freq_req, bispec.squeeze()
 
 
 def phasePowerCorrelation(signal):

@@ -11,10 +11,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pingouin as pg
+from scipy import interpolate
 import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
 import signal_process
+from signal_process import bicoherence
 import statsmodels.api as sm
 from callfunc import processData
 from mathutil import threshPeriods
@@ -274,7 +276,7 @@ axslide.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 
 # endregion
 
-#%% theta phase specific extraction of lfp during HIGH VELOCITY epochs on MAZE theta MAZE with different binning techiques
+#%% bicoherence in multiple channels from HIGH VELOCITY epochs on MAZE
 # region
 
 data: Dict[str, np.array] = {}
@@ -397,13 +399,11 @@ for i in range(len(data)):
 
 # endregion
 
-#%% bicoherence at multiple depths of linear probe
+#%% bicoherence at multiple channels during strong theta periods on MAZE
 # region
 
 data: Dict[str, np.array] = {}
-
-for sub, sess in enumerate(sessions[7:8]):
-
+for sub, sess in enumerate(sessions[5:6]):
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
     changrp = sess.recinfo.goodchangrp
@@ -417,55 +417,38 @@ for sub, sess in enumerate(sessions[7:8]):
     ]
     maze = sess.epochs.maze
 
-    lfpmaze = sess.utils.geteeg(chans=63, timeRange=maze)
-    lfpmaze_t = np.linspace(maze[0], maze[1], len(lfpmaze))
-
-    # ---- filtering --> zscore --> threshold --> strong theta periods ----
-    thetalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=4, hf=10)
-    hil_theta = signal_process.hilbertfast(thetalfp)
-    theta_amp = np.abs(hil_theta)
-
-    zsc_theta = stats.zscore(theta_amp)
-    thetaevents = threshPeriods(
-        zsc_theta, lowthresh=0, highthresh=0.5, minDistance=300, minDuration=1250
-    )
-
-    strong_theta, theta_indices = [], []
-    for (beg, end) in thetaevents:
-        strong_theta.extend(lfpmaze[beg:end])
-        theta_indices.extend(np.arange(beg, end))
-    strong_theta = np.asarray(strong_theta)
-    theta_indices = np.asarray(theta_indices)
-    non_theta = np.delete(lfpmaze, theta_indices)
-
     lfpmaze = sess.utils.geteeg(chans=chans2plot, timeRange=maze)
-    lfpmaze_t = np.linspace(maze[0], maze[1], lfpmaze.shape[-1])
-
-    lfp_highspd = lfpmaze[:, theta_indices]
+    lfpmaze = sess.artifact.removefrom(lfpmaze, timepoints=maze)
+    strong_theta = sess.theta.getstrongTheta(lfpmaze)[0]
 
     # ------ psd calculation-----------
-    f_, pxx = sg.welch(lfp_highspd, fs=1250, nperseg=4 * 1250, noverlap=2 * 250)
+    f, pxx = sg.welch(
+        strong_theta, fs=eegSrate, nperseg=4 * eegSrate, noverlap=eegSrate
+    )
     # f_slow, pxx_slow = sg.welch(lfp_lowspd, fs=1250, nperseg=4 * 1250, noverlap=2 * 250)
 
     # ---- bicoherence calculation ----------
-    bicoh, f, _ = signal_process.bicoherence_m(lfp_highspd, flow=1, fhigh=180)
+    filtered_data = signal_process.filter_sig.bandpass(strong_theta, lf=1, hf=200)
+    bicoh = signal_process.bicoherence(flow=1, fhigh=150)
+    bicoh.compute(filtered_data)
 
     data[sub] = {
         "chans": chans2plot,
         # "fpxx_slow": f_slow,
         # "pxx_slow": pxx_slow,
-        "fpxx": f_,
+        "fpxx": f,
         "pxx": pxx,
-        "fbicoh": f,
         "bicoh": bicoh,
     }
 
 
 # ---- plotting ----------
 figure = Fig()
-cmap = Colormap().dynamic3()
+cmap = Colormap().dynamic2()
 for i in range(len(data)):
     data_sub = data[i]
+    bicoh = data_sub["bicoh"]
+
     fig, gs = figure.draw(num=i + 1, grid=[3, 2], size=[15, 15])
     for chan in range(len(data_sub["chans"])):
         ax = plt.subplot(gs[2 * chan])
@@ -478,47 +461,15 @@ for i in range(len(data)):
         ax.set_xlim([3, 200])
         ax.set_ylim(bottom=10)
 
-        ax = plt.subplot(gs[2 * chan + 1])
-        # ax.imshow(data_sub["bicoh"][chan, :, :])
-        bic = data_sub["bicoh"][chan, :, :]
-        bic = np.sqrt(bic)
-        lt = np.tril_indices_from(bic, k=-1)
-        bic[lt] = np.nan
-        bic[(lt[0], -lt[1])] = np.nan
-        bic = bic - np.nanmean(bic)
-        # bic[bic < 0.1] = 0
-        # bic = stats.mstats.zscore(bic, nan_policy="omit")
-        bic = gaussian_filter(bic, sigma=1)
-        bicoh_plt = ax.pcolormesh(
-            data_sub["fbicoh"],
-            data_sub["fbicoh"],
-            bic,
-            cmap="Spectral_r",
-            # shading="gouraud",
-            vmin=-0.1,
-            vmax=0.1,
-        )
-
-        ax.set_ylim([0, np.max(data_sub["fbicoh"]) / 2])
-        # ax.set_ylim([0, 20])
-
-        ax.plot(
-            [1, np.max(data_sub["fbicoh"]) / 2],
-            [1, np.max(data_sub["fbicoh"]) / 2],
-            "gray",
-        )
-        ax.plot(
-            [np.max(data_sub["fbicoh"]) / 2, np.max(data_sub["fbicoh"])],
-            [np.max(data_sub["fbicoh"]) / 2, 1],
-            "gray",
-        )
-        # ax.set_title(sessions[i].sessinfo.session.sessionName)
+        axbicoh = plt.subplot(gs[2 * chan + 1])
+        bicoh.plot(index=chan, ax=axbicoh)
 
 
 # figure.savefig("phase_specific_slowgamma", __file__)
 
-
 # endregion
+
+
 #%% theta phase specific extraction of lfp during REM sleep
 # region
 

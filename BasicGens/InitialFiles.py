@@ -49,9 +49,8 @@ for sub, sess in enumerate(sessions):
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    sess.artifact.art_thresh = 10
-    zsc_sig = sess.artifact.usingZscore()
-    plt.plot(zsc_sig)
+    # sess.artifact.usingZscore(thresh=10)
+    sess.artifact.plot(chan=32)
 # endregion
 
 #%% Generate position files
@@ -77,3 +76,12 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     sess.spikes.gen_instfiring()
 # endregion
+
+#%%Generate bestThetachan
+# region
+
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    sess.theta.detectBestChan()
+# endregion
+

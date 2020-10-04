@@ -10,8 +10,9 @@ import matplotlib as mpl
 import time
 import scipy.signal as sg
 from ccg import correlograms
-
+from lfpEvent import 
 # mpl.interactive(True)
+from parsePath import path2files
 
 
 mpl.style.use("figPublish")
@@ -66,6 +67,7 @@ class event_event:
         """
 
         # --- parameters----------
+        self.path = path2files()
 
         if quantparam is not None:
             quantiles = pd.qcut(quantparam, nQuantiles, labels=False)

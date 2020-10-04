@@ -30,16 +30,21 @@ def __freq_ind(freq, f0):
 
 
 def __product_other_freqs(spec, indices, synthetic=(), t=None):
-    p1 = np.prod([amplitude * np.exp(2j * np.pi * freq * t + phase)
-                  for (freq, amplitude, phase) in synthetic], axis=0)
-    p2 = np.prod(spec[:, indices[len(synthetic):]], axis=1)
+    p1 = np.prod(
+        [
+            amplitude * np.exp(2j * np.pi * freq * t + phase)
+            for (freq, amplitude, phase) in synthetic
+        ],
+        axis=0,
+    )
+    p2 = np.prod(spec[:, indices[len(synthetic) :]], axis=1)
     return p1 * p2
 
 
 def _polycoherence_0d(data, fs, *freqs, norm=2, synthetic=(), **kwargs):
     """Polycoherence between freqs and sum of freqs"""
     norm1, norm2 = __get_norm(norm)
-    freq, t, spec = spectrogram(data, fs=fs, mode='complex', **kwargs)
+    freq, t, spec = spectrogram(data, fs=fs, mode="complex", **kwargs)
     ind = __freq_ind(freq, freqs)
     sum_ind = __freq_ind(freq, np.sum(freqs))
     spec = np.transpose(spec, [1, 0])
@@ -60,7 +65,7 @@ def _polycoherence_1d(data, fs, *freqs, norm=2, synthetic=(), **kwargs):
     Polycoherence between f1 given freqs and their sum as a function of f1
     """
     norm1, norm2 = __get_norm(norm)
-    freq, t, spec = spectrogram(data, fs=fs, mode='complex', **kwargs)
+    freq, t, spec = spectrogram(data, fs=fs, mode="complex", **kwargs)
     spec = np.transpose(spec, [1, 0])
     ind2 = __freq_ind(freq, freqs)
     ind1 = np.arange(len(freq) - sum(ind2))
@@ -79,11 +84,10 @@ def _polycoherence_1d(data, fs, *freqs, norm=2, synthetic=(), **kwargs):
     return freq[ind1], coh
 
 
-def _polycoherence_1d_sum(data, fs, f0, *ofreqs, norm=2,
-                          synthetic=(), **kwargs):
+def _polycoherence_1d_sum(data, fs, f0, *ofreqs, norm=2, synthetic=(), **kwargs):
     """Polycoherence with fixed frequency sum f0 as a function of f1"""
     norm1, norm2 = __get_norm(norm)
-    freq, t, spec = spectrogram(data, fs=fs, mode='complex', **kwargs)
+    freq, t, spec = spectrogram(data, fs=fs, mode="complex", **kwargs)
     spec = np.transpose(spec, [1, 0])
     ind3 = __freq_ind(freq, ofreqs)
     otemp = __product_other_freqs(spec, ind3, synthetic, t)[:, None]
@@ -104,14 +108,15 @@ def _polycoherence_1d_sum(data, fs, f0, *ofreqs, norm=2,
     return freq[ind1], coh
 
 
-def _polycoherence_2d(data, fs, *ofreqs, norm=2, flim1=None, flim2=None,
-                      synthetic=(), **kwargs):
+def _polycoherence_2d(
+    data, fs, *ofreqs, norm=2, flim1=None, flim2=None, synthetic=(), **kwargs
+):
     """
     Polycoherence between freqs and their sum as a function of f1 and f2
     """
     norm1, norm2 = __get_norm(norm)
-    freq, t, spec = spectrogram(data, fs=fs, mode='complex', **kwargs)
-    spec = np.require(spec, 'complex64')
+    freq, t, spec = spectrogram(data, fs=fs, mode="complex", **kwargs)
+    spec = np.require(spec, "complex64")
     spec = np.transpose(spec, [1, 0])  # transpose (f, t) -> (t, f)
     if flim1 is None:
         flim1 = (0, (np.max(freq) - np.sum(ofreqs)) / 2)
@@ -175,13 +180,13 @@ def polycoherence(data, *args, dim=2, **kwargs):
         parameters nperseg, noverlap, nfft.
     """
     N = len(data)
-    kwargs.setdefault('nperseg', N // 20)
-    kwargs.setdefault('nfft', next_fast_len(N // 10))
+    kwargs.setdefault("nperseg", N // 20)
+    kwargs.setdefault("nfft", next_fast_len(N // 10))
     if dim == 0:
         f = _polycoherence_0d
     elif dim == 1:
         f = _polycoherence_1d
-    elif dim == 'sum':
+    elif dim == "sum":
         f = _polycoherence_1d_sum
     elif dim == 2:
         f = _polycoherence_2d
@@ -200,29 +205,29 @@ def plot_polycoherence(freq1, freq2, bicoh):
     freq2 = np.append(freq2, freq2[-1] + df2) - 0.5 * df2
     plt.figure()
     plt.pcolormesh(freq2, freq1, np.abs(bicoh))
-    plt.xlabel('freq (Hz)')
-    plt.ylabel('freq (Hz)')
+    plt.xlabel("freq (Hz)")
+    plt.ylabel("freq (Hz)")
     plt.colorbar()
 
 
 def _plot_polycoherence_1d(freq, coh):
     plt.figure()
     plt.plot(freq, coh)
-    plt.xlabel('freq (Hz)')
+    plt.xlabel("freq (Hz)")
 
 
 def _plot_signal(t, signal):
     plt.figure()
     plt.subplot(211)
     plt.plot(t, signal)
-    plt.xlabel('time (s)')
+    plt.xlabel("time (s)")
     plt.subplot(212)
     ndata = len(signal)
     nfft = next_fast_len(ndata)
     freq = rfftfreq(nfft, t[1] - t[0])
     spec = rfft(signal, nfft) * 2 / ndata
     plt.plot(freq, np.abs(spec))
-    plt.xlabel('freq (Hz)')
+    plt.xlabel("freq (Hz)")
     plt.tight_layout()
 
 
@@ -242,80 +247,82 @@ def _test():
     # bicoherence
     signal = s1 + s2 + noise + 0.5 * s1 * s2
     _plot_signal(t, signal)
-    plt.suptitle('signal and spectrum for bicoherence tests')
-    print('bicoherence for f1=5Hz, f2=7Hz:',
-          polycoherence(signal, fs, 5, 7, dim=0, **kw))
-    print('bicoherence for f1=5Hz, f2=6Hz:',
-          polycoherence(signal, fs, 5, 6, dim=0, **kw))
+    plt.suptitle("signal and spectrum for bicoherence tests")
+    print(
+        "bicoherence for f1=5Hz, f2=7Hz:", polycoherence(signal, fs, 5, 7, dim=0, **kw)
+    )
+    print(
+        "bicoherence for f1=5Hz, f2=6Hz:", polycoherence(signal, fs, 5, 6, dim=0, **kw)
+    )
 
     result = polycoherence(signal, fs, **kw)
     plot_polycoherence(*result)
-    plt.suptitle('bicoherence')
+    plt.suptitle("bicoherence")
 
     result = polycoherence(signal, fs, norm=None, **kw)
     plot_polycoherence(*result)
-    plt.suptitle('bispectrum')
+    plt.suptitle("bispectrum")
 
     result = polycoherence(signal, fs, 5, dim=1, **kw)
     _plot_polycoherence_1d(*result)
-    plt.suptitle('bicoherence for f2=5Hz (column, expected 2Hz, 7Hz)')
+    plt.suptitle("bicoherence for f2=5Hz (column, expected 2Hz, 7Hz)")
 
-    result = polycoherence(signal, fs, 12, dim='sum', **kw)
+    result = polycoherence(signal, fs, 12, dim="sum", **kw)
     _plot_polycoherence_1d(*result)
-    plt.suptitle('bicoherence for f1+f2=12Hz (diagonal, expected 5Hz, 7Hz)')
+    plt.suptitle("bicoherence for f1+f2=12Hz (diagonal, expected 5Hz, 7Hz)")
 
-   # tricoherence
+    # tricoherence
     signal = s2 + s3 + s4 + 0.1 * s2 * s3 * s4 + noise
     _plot_signal(t, signal)
-    plt.suptitle('signal and spectrum for tricoherence tests')
-    print('tricoherence for f1=1Hz, f2=7Hz, f3=9.5Hz:',
-          polycoherence(signal, fs, 1, 7, 9.5, dim=0, **kw))
+    plt.suptitle("signal and spectrum for tricoherence tests")
+    print(
+        "tricoherence for f1=1Hz, f2=7Hz, f3=9.5Hz:",
+        polycoherence(signal, fs, 1, 7, 9.5, dim=0, **kw),
+    )
 
-    result = polycoherence(signal, fs, 9.5, flim1=(0., 2), flim2=(6., 8), **kw)
+    result = polycoherence(signal, fs, 9.5, flim1=(0.0, 2), flim2=(6.0, 8), **kw)
     plot_polycoherence(*result)
-    plt.suptitle('tricoherence with f3=9.5Hz')
+    plt.suptitle("tricoherence with f3=9.5Hz")
 
     result = polycoherence(signal, fs, 9.5, norm=None, **kw)
     plot_polycoherence(*result)
-    plt.suptitle('trispectrum with f3=9.5Hz')
+    plt.suptitle("trispectrum with f3=9.5Hz")
 
     result = polycoherence(signal, fs, 1, 9.5, dim=1, **kw)
     _plot_polycoherence_1d(*result)
-    plt.suptitle('tricoherence for f2=1Hz, f3=9.5Hz')
+    plt.suptitle("tricoherence for f2=1Hz, f3=9.5Hz")
 
-    result = polycoherence(signal, fs, 17.5, 9.5, dim='sum', **kw)
+    result = polycoherence(signal, fs, 17.5, 9.5, dim="sum", **kw)
     _plot_polycoherence_1d(*result)
-    plt.suptitle('tricoherence for f1+f2+f3=17.5Hz f3=9.5Hz')
+    plt.suptitle("tricoherence for f1+f2+f3=17.5Hz f3=9.5Hz")
 
-   # tricoherence with synthetic signal
+    # tricoherence with synthetic signal
     signal = s2 + s3 + s5 - 0.5 * s2 * s3 * s5 + noise
     _plot_signal(t, signal)
-    plt.suptitle('signal and spectrum for tricoherence tests with synthetic')
-    synthetic = ((0.02, 10, 1), )
-    print('tricoherence for f1=0.02Hz (synthetic)), f2=1Hz, f3=7Hz:',
-          polycoherence(signal, fs, 0.02, 1, 7, dim=0,
-                        synthetic=synthetic, **kw))
+    plt.suptitle("signal and spectrum for tricoherence tests with synthetic")
+    synthetic = ((0.02, 10, 1),)
+    print(
+        "tricoherence for f1=0.02Hz (synthetic)), f2=1Hz, f3=7Hz:",
+        polycoherence(signal, fs, 0.02, 1, 7, dim=0, synthetic=synthetic, **kw),
+    )
     result = polycoherence(signal, fs, 0.02, synthetic=synthetic, **kw)
     plot_polycoherence(*result)
-    plt.suptitle('tricoherence with f3=0.02Hz (synthetic)')
+    plt.suptitle("tricoherence with f3=0.02Hz (synthetic)")
 
-    result = polycoherence(signal, fs, 0.02, synthetic=synthetic,
-                           norm=None, **kw)
+    result = polycoherence(signal, fs, 0.02, synthetic=synthetic, norm=None, **kw)
     plot_polycoherence(*result)
-    plt.suptitle('trispectrum with f3=0.02Hz (synthetic)')
+    plt.suptitle("trispectrum with f3=0.02Hz (synthetic)")
 
-    result = polycoherence(signal, fs, 0.02, 7, dim=1,
-                           synthetic=synthetic, **kw)
+    result = polycoherence(signal, fs, 0.02, 7, dim=1, synthetic=synthetic, **kw)
     _plot_polycoherence_1d(*result)
-    plt.suptitle('tricoherence for f2=0.02Hz (synthetic), f3=7Hz')
+    plt.suptitle("tricoherence for f2=0.02Hz (synthetic), f3=7Hz")
 
-    result = polycoherence(signal, fs, 8.02, 0.02, dim='sum',
-                           synthetic=synthetic, **kw)
+    result = polycoherence(signal, fs, 8.02, 0.02, dim="sum", synthetic=synthetic, **kw)
     _plot_polycoherence_1d(*result)
-    plt.suptitle('tricoherence for f1+f2+f3=8.02Hz f3=0.02Hz (synthetic)')
+    plt.suptitle("tricoherence for f1+f2+f3=8.02Hz f3=0.02Hz (synthetic)")
 
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _test()

@@ -1,26 +1,24 @@
 import os
 from pathlib import Path
 
-from parsePath import path2files
-
-from lfpEvent import Ripple, Hswa, Spindle, Theta
 import numpy as np
 
+from artifactDetect import findartifact
+from behavior import behavior_epochs
+from decoders import DecodeBehav
+from eventCorr import event_event
+from getPosition import ExtractPosition
+from getSpikes import spikes
+from lfpEvent import Hswa, Ripple, Spindle, Theta
 from makeChanMap import recinfo
 from MakePrmKlusta import makePrmPrb
-from eventCorr import event_event
-from artifactDetect import findartifact
-from getPosition import ExtractPosition
-from behavior import behavior_epochs
-from sleepDetect import SleepScore
-from MakePrmKlusta import makePrmPrb
-from getSpikes import spikes
-from replay import Replay
+from parsePath import path2files
 from pfPlot import pf
-from decoders import DecodeBehav
-from spkEvent import LocalSleep, PBE
-from viewerData import SessView
+from replay import Replay
 from sessionUtil import SessionUtil
+from sleepDetect import SleepScore
+from spkEvent import PBE, LocalSleep
+from viewerData import SessView
 
 
 class processData:

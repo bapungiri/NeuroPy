@@ -6,6 +6,7 @@ from pathlib import Path
 import typing
 
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import axis
 import numpy as np
 from numpy.core.records import array
 import numpy.random as rnd
@@ -18,7 +19,6 @@ import scipy.stats as stats
 from matplotlib.gridspec import GridSpec
 from scipy import fftpack as ft
 import mathutil
-
 import signal_process
 from lfpDetect import swr as spwrs
 from signal_process import filter_sig as filt
@@ -908,8 +908,7 @@ class Theta:
 
         # ----- defining file names ---------
         filePrefix = self._obj.sessinfo.files.filePrefix
-        # self.files = namedtuple("files", [])
-        # self.files.bestThetachan = Path(str(filePrefix) + "_bestThetaChan.npy")
+
         @dataclass
         class files:
             bestThetachan: str = Path(str(filePrefix) + "_bestThetaChan.npy")
@@ -927,6 +926,17 @@ class Theta:
 
     def getBestChanlfp(self):
         return self._obj.utils.geteeg(chans=self.bestchan)
+
+    def _getAUC(self, eeg):
+        eegSrate = self._obj.recinfo.lfpSrate
+        f, pxx = sg.welch(
+            eeg, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate, axis=-1
+        )
+        f_theta = np.where((f > 5) & (f < 20))[0]
+        area_chan = np.trapz(y=pxx[:, f_theta], x=f[f_theta], axis=1)
+        sorted_thetapow = np.argsort(area_chan)[::-1]
+
+        return sorted_thetapow
 
     def detectBestChan(self):
         """Selects the best channel by computing area under the curve of spectral density
@@ -1036,27 +1046,58 @@ class Theta:
 
         return Params()
 
-    def getstrongTheta(self, lfp):
+    def getstrongTheta(
+        self, lfp, lowthresh=0, highthresh=0.5, minDistance=300, minDuration=1250
+    ):
+        """Returns strong theta lfp. If it has multiple channels, then strong theta periods are calculated from that channel which has highest area under the curve in the theta frequency band. Parameters are applied on z-scored lfp.
+
+        Parameters
+        ----------
+        lfp : array like, channels x time
+            from which strong periods are concatenated and returned 
+        lowthresh : float, optional
+            threshold above which it is considered strong, by default 0 which is mean of the selected channel
+        highthresh : float, optional
+            [description], by default 0.5
+        minDistance : int, optional
+            minimum gap between periods before they are merged, by default 300 samples
+        minDuration : int, optional
+            [description], by default 1250, which means theta period should atleast last for 1 second
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+
+        lfp_besttheta = lfp
+
+        if lfp.ndim == 2:
+            theta_order = self._getAUC(lfp)
+            lfp_besttheta = lfp[theta_order[0], :]
 
         # ---- filtering --> zscore --> threshold --> strong theta periods ----
-        thetalfp = signal_process.filter_sig.bandpass(lfp, lf=4, hf=10)
+        thetalfp = signal_process.filter_sig.bandpass(lfp_besttheta, lf=4, hf=10)
         hil_theta = signal_process.hilbertfast(thetalfp)
         theta_amp = np.abs(hil_theta)
 
         zsc_theta = stats.zscore(theta_amp)
         thetaevents = mathutil.threshPeriods(
-            zsc_theta, lowthresh=0, highthresh=0.5, minDistance=300, minDuration=1250
+            zsc_theta,
+            lowthresh=lowthresh,
+            highthresh=highthresh,
+            minDistance=minDistance,
+            minDuration=minDuration,
         )
 
-        strong_theta, theta_indices = [], []
+        theta_indices = []
         for (beg, end) in thetaevents:
-            strong_theta.extend(lfp[beg:end])
             theta_indices.extend(np.arange(beg, end))
-        strong_theta = np.asarray(strong_theta)
         theta_indices = np.asarray(theta_indices)
-        # non_theta = np.delete(lfp, theta_indices)
 
-        return strong_theta
+        strong_theta = np.take(lfp, theta_indices, axis=-1)
+        weak_theta = np.delete(lfp, theta_indices, axis=-1)
+        return strong_theta, weak_theta, theta_indices
 
     def plot(self):
         """Gives a comprehensive view of the detection process with some statistics and examples

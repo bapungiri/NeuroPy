@@ -162,6 +162,9 @@ for sub, sess in enumerate(sessions):
 
 
 group = pd.concat(group, ignore_index=True)
+
+figure = Fig()
+fig, gs = figure.draw(grid=[2, 2])
 ax = fig.add_subplot(gs[1, 1])
 ax.clear()
 sns.boxplot(
@@ -169,8 +172,8 @@ sns.boxplot(
 )
 ax.set_ylabel("ratio")
 ax.set_xlabel("")
-ax.set_title("Mean theta-delta ratio \n during REM", fontsize=titlesize)
-panel_label(ax, "c")
+ax.set_title("Mean theta-delta ratio \n during REM")
+figure.panel_label(ax, "c")
 
 # endregion
 
