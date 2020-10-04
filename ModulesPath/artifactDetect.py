@@ -7,18 +7,24 @@ from numpy.fft import fft
 import scipy.ndimage as filtSig
 from pathlib import Path
 from dataclasses import dataclass
+from parsePath import Recinfo
 
 
 class findartifact:
 
     lfpsRate = 1250
 
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
+
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
+
         self.time = None
 
         # ----- defining file names ---------
-        filePrefix = self._obj.sessinfo.files.filePrefix
+        filePrefix = self._obj.files.filePrefix
 
         @dataclass
         class files:
@@ -74,7 +80,7 @@ class findartifact:
         calculating periods to exclude for analysis using simple z-score measure 
         """
         if chans is None:
-            chans = np.random.choice(self._obj.recinfo.goodchans, 4)
+            chans = np.random.choice(self._obj.goodchans, 4)
 
         lfp = self._obj.utils.geteeg(chans=chans)
         lfp = np.median(lfp, axis=0)

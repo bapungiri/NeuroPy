@@ -11,6 +11,7 @@ from pathlib import Path
 import matplotlib.gridspec as gridspec
 import matplotlib as mpl
 from mathutil import threshPeriods
+from parsePath import Recinfo
 
 
 class LocalSleep:
@@ -33,9 +34,14 @@ class LocalSleep:
     binSize = 0.001  # in seconds
     gauss_std = 0.025  # in seconds
 
-    def __init__(self, obj):
-        self._obj = obj
-        filePrefix = self._obj.sessinfo.files.filePrefix
+    def __init__(self, basepath):
+
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
+
+        filePrefix = self._obj.files.filePrefix
         self._filename = Path(str(filePrefix) + "_localsleep.npy")
         if self._filename.is_file():
             data = np.load(self._filename, allow_pickle=True).item()
@@ -269,9 +275,14 @@ class PBE:
     """Populations burst events 
     """
 
-    def __init__(self, obj):
-        self._obj = obj
-        filePrefix = self._obj.sessinfo.files.filePrefix
+    def __init__(self, basepath):
+
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
+
+        filePrefix = self._obj.files.filePrefix
 
         @dataclass
         class files:

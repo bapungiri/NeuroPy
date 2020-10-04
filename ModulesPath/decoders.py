@@ -9,19 +9,23 @@ from scipy.special import factorial
 import matplotlib.gridspec as gridspec
 import seaborn as sns
 import pandas as pd
+from parsePath import Recinfo
 
 
 class DecodeBehav:
-    def __init__(self, obj):
+    def __init__(self, basepath):
 
-        # self._obj = obj
-        self.bayes1d = bayes1d(obj)
-        self.bayes2d = bayes2d(obj)
+        # self._obj = basepath
+        self.bayes1d = bayes1d(basepath)
+        self.bayes2d = bayes2d(basepath)
 
 
 class bayes1d:
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
     def fit(self):
         spkAll = self._obj.spikes.times
@@ -111,9 +115,12 @@ class bayes1d:
 
 
 class bayes2d:
-    def __init__(self, obj):
+    def __init__(self, basepath):
 
-        self._obj = obj
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
     def fit(self):
         trackingSrate = self._obj.position.tracking_sRate

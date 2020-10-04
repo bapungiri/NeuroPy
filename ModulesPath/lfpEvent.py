@@ -20,20 +20,25 @@ from matplotlib.gridspec import GridSpec
 from scipy import fftpack as ft
 import mathutil
 import signal_process
-from lfpDetect import swr as spwrs
 from signal_process import filter_sig as filt
+from parsePath import Recinfo
+from behavior import behavior_epochs
 
 
 class Hswa:
-    def __init__(self, obj):
+    def __init__(self, basepath):
 
-        self._obj = obj
-        if Path(self._obj.sessinfo.files.slow_wave).is_file():
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
+
+        if Path(self._obj.files.slow_wave).is_file():
             self._load()
 
     def _load(self):
 
-        evt = np.load(self._obj.sessinfo.files.slow_wave, allow_pickle=True).item()
+        evt = np.load(self._obj.files.slow_wave, allow_pickle=True).item()
         self.peakamp = np.asarray(evt["peakamp"])
         self.time = np.asarray(evt["time"])
         self.tbeg = np.asarray(evt["tbeg"])
@@ -181,25 +186,20 @@ class Ripple:
     maxRipplePower = 60  # in normalized power units
     mergeDistance = 50
 
-    def __init__(self, obj):
+    def __init__(self, basepath):
 
-        self._obj = obj
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
-        if Path(self._obj.sessinfo.files.ripple_evt).is_file():
+        if Path(self._obj.files.ripple_evt).is_file():
 
-            ripple_evt = np.load(
-                obj.sessinfo.files.ripple_evt, allow_pickle=True
-            ).item()
+            ripple_evt = np.load(self._obj.files.ripple_evt, allow_pickle=True).item()
             self.time = ripple_evt["times"]
             self.peakpower = ripple_evt["peakPower"]
             self.peaktime = ripple_evt["peaktime"]
             # self.peakSharpWave = ripple_evt["peakSharpwave"]
-
-            if obj.trange.any():
-                start, end = obj.trange
-                indwhere = np.where((self.time[:, 0] > start) & (self.time[:, 0] < end))
-                self.time = self.time[indwhere]
-                self.peakpower = self.peakpower[indwhere]
 
     def best_chan_lfp(self):
         """Returns just best of best channels of each shank or returns all best channels of shanks
@@ -583,24 +583,19 @@ class Spindle:
     # maxSpindleDuration = 450
     mergeDistance = 125
 
-    def __init__(self, obj):
+    def __init__(self, basepath):
 
-        self._obj = obj
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
-        if Path(self._obj.sessinfo.files.spindle_evt).is_file():
+        if Path(self._obj.files.spindle_evt).is_file():
 
-            spindle_evt = np.load(
-                obj.sessinfo.files.spindle_evt, allow_pickle=True
-            ).item()
+            spindle_evt = np.load(self._obj.files.spindle_evt, allow_pickle=True).item()
             self.time = spindle_evt["times"]
             self.peakpower = spindle_evt["peakPower"]
             self.peaktime = spindle_evt["peaktime"]
-
-            if obj.trange.any():
-                start, end = obj.trange
-                indwhere = np.where((self.time[:, 0] > start) & (self.time[:, 0] < end))
-                self.time = self.time[indwhere]
-                self.peakpower = self.peakpower[indwhere]
 
     def best_chan_lfp(self):
         """Returns just best of best channels of each shank or returns all best channels of shanks
@@ -902,12 +897,15 @@ class Spindle:
 
 
 class Theta:
-    def __init__(self, obj):
+    def __init__(self, basepath):
 
-        self._obj = obj
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
         # ----- defining file names ---------
-        filePrefix = self._obj.sessinfo.files.filePrefix
+        filePrefix = self._obj.files.filePrefix
 
         @dataclass
         class files:
@@ -928,7 +926,7 @@ class Theta:
         return self._obj.utils.geteeg(chans=self.bestchan)
 
     def _getAUC(self, eeg):
-        eegSrate = self._obj.recinfo.lfpSrate
+        eegSrate = self._obj.lfpSrate
         f, pxx = sg.welch(
             eeg, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate, axis=-1
         )
@@ -942,10 +940,11 @@ class Theta:
         """Selects the best channel by computing area under the curve of spectral density
 
         """
-        channels = self._obj.recinfo.goodchans
-        maze = self._obj.epochs.maze
+        epochs = behavior_epochs(self._obj)
+        channels = self._obj.goodchans
+        maze = epochs.maze
         eeg = self._obj.utils.geteeg(chans=channels, timeRange=maze)
-        eegSrate = self._obj.recinfo.lfpSrate
+        eegSrate = self._obj.lfpSrate
         f, pxx = sg.welch(
             eeg, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate
         )

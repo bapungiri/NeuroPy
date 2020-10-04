@@ -7,19 +7,23 @@ import os
 from mathutil import parcorr_mult, getICA_Assembly
 import scipy.stats as stats
 import matplotlib.gridspec as gridspec
+from parsePath import Recinfo
 
 
 class Replay:
-    def __init__(self, obj):
-        self.expvar = ExplainedVariance(obj)
-        self.bayesian = Bayesian(obj)
-        self.assemblyICA = CellAssemblyICA(obj)
-        self.corr = Correlation(obj)
+    def __init__(self, basepath):
+        self.expvar = ExplainedVariance(basepath)
+        self.bayesian = Bayesian(basepath)
+        self.assemblyICA = CellAssemblyICA(basepath)
+        self.corr = Correlation(basepath)
 
 
 class Bayesian:
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
     def correlation(self, template_time=None, match_time=None, cells=None):
         """Pairwise correlation between template window and matching windows
@@ -109,8 +113,11 @@ class ExplainedVariance:
     binSize = 0.250  # in seconds
     window = 900  # in seconds
 
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
     # TODO  smooth version of explained variance
     def compute(self, template=None, match=None, control=None):
@@ -224,8 +231,12 @@ class ExplainedVariance:
 
 
 class CellAssemblyICA:
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
+
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
     def getAssemblies(self, x):
         """extracting statisticaly independent components from significant eigenvectors as detected using Marcenko-Pasteur distributionvinput = Matrix  (m x n) where 'm' are the number of cells and 'n' time bins ICA weights thus extracted have highiest weight positive (as done in Gido M. van de Ven et al. 2016) V = ICA weights for each neuron in the coactivation (weight having the highiest value is kept positive) M1 =  originally extracted neuron weights
@@ -328,8 +339,11 @@ class CellAssemblyICA:
 
 
 class Correlation:
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
     def comparePeriods(self, template, match, spks=None, window=900, bnsz=0.25):
 

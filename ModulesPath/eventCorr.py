@@ -10,9 +10,9 @@ import matplotlib as mpl
 import time
 import scipy.signal as sg
 from ccg import correlograms
-from lfpEvent import 
+
 # mpl.interactive(True)
-from parsePath import path2files
+from parsePath import Recinfo
 
 
 mpl.style.use("figPublish")
@@ -44,8 +44,8 @@ def psth(event_reference, event_post, trange, nbins=150):
 class event_event:
     def __init__(self, obj):
 
-        self.hswa_ripple = hswa_ripple(obj)
-        self.hswa_spindle = Hswa_spindle(obj)
+        # self.hswa_ripple = hswa_ripple(obj)
+        # self.hswa_spindle = Hswa_spindle(obj)
 
         self._obj = obj
 
@@ -67,7 +67,6 @@ class event_event:
         """
 
         # --- parameters----------
-        self.path = path2files()
 
         if quantparam is not None:
             quantiles = pd.qcut(quantparam, nQuantiles, labels=False)

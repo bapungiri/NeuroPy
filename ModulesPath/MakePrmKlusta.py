@@ -3,13 +3,17 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from pathlib import Path
+from parsePath import Recinfo
 
 # folderPath = '../'
 
 
 class makePrmPrb:
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
         # print(self._obj.makePrmPrb.prmTemplate)
         self.prmTemplate = (
             "/home/bapung/Documents/MATLAB/pythonprogs/RoutineAnalysis/template.prm"
@@ -226,10 +230,10 @@ class makePrmPrb:
                             f1.write(line)
 
     def makePrbCircus(self, probetype, shanksCombine=0):
-        nShanks = self._obj.recinfo.nShanks
-        nChans = self._obj.recinfo.nChans
-        channelgroups = self._obj.recinfo.channelgroups
-        circus_prb = (self._obj.sessinfo.files.filePrefix).with_suffix(".prb")
+        nShanks = self._obj.nShanks
+        nChans = self._obj.nChans
+        channelgroups = self._obj.channelgroups
+        circus_prb = (self._obj.files.filePrefix).with_suffix(".prb")
         if probetype == "buzsaki":
             xpos = [0, 37, 4, 33, 8, 29, 12, 20]
             ypos = np.arange(160, 0, -20)

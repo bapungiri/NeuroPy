@@ -7,16 +7,22 @@ from dataclasses import dataclass
 import scipy.signal as sg
 import matplotlib.gridspec as gridspec
 import matplotlib as mpl
+from parsePath import Recinfo
+from sessionUtil import SessionUtil
 
 
 class spikes:
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
 
-        self.stability = Stability(obj)
-        self.dynamics = firingDynamics(obj)
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
-        filePrefix = self._obj.sessinfo.files.filePrefix
+        self.stability = Stability(basepath)
+        # self.dynamics = firingDynamics(basepath)
+
+        filePrefix = self._obj.files.filePrefix
 
         @dataclass
         class files:
@@ -25,7 +31,7 @@ class spikes:
 
         self.files = files()
 
-        filename = self._obj.sessinfo.files.spikes
+        filename = self._obj.files.spikes
         if filename.is_file():
             spikes = np.load(filename, allow_pickle=True).item()
             self.times = spikes["times"]
@@ -115,11 +121,11 @@ class spikes:
     def fromCircus(self, fileformat="diff_folder"):
 
         if fileformat == "diff_folder":
-            nShanks = self._obj.recinfo.nShanks
-            sRate = self._obj.recinfo.sampfreq
-            name = self._obj.sessinfo.session.name
-            day = self._obj.sessinfo.session.day
-            basePath = self._obj.sessinfo.basePath
+            nShanks = self._obj.nShanks
+            sRate = self._obj.sampfreq
+            name = self._obj.session.name
+            day = self._obj.session.day
+            basePath = self._obj.basePath
             clubasePath = Path(basePath, "spykcirc")
             spkall, info, shankID = [], [], []
             for shank in range(1, nShanks + 1):
@@ -148,11 +154,11 @@ class spikes:
             spktimes = spkall
 
         if fileformat == "same_folder":
-            nShanks = self._obj.recinfo.nShanks
-            sRate = self._obj.recinfo.sampfreq
-            subname = self._obj.sessinfo.session.subname
-            basePath = self._obj.sessinfo.basePath
-            changroup = self._obj.recinfo.channelgroups
+            nShanks = self._obj.nShanks
+            sRate = self._obj.sampfreq
+            subname = self._obj.session.subname
+            basePath = self._obj.basePath
+            changroup = self._obj.channelgroups
             clubasePath = Path(basePath, "spykcirc")
 
             clufolder = Path(clubasePath, subname, subname + ".GUI",)
@@ -180,7 +186,7 @@ class spikes:
             # self.shankID = np.asarray(shankID)
 
         spikes_ = {"times": spktimes, "info": spkinfo}
-        filename = self._obj.sessinfo.files.spikes
+        filename = self._obj.files.spikes
         np.save(filename, spikes_)
 
     def fromNeurosuite(self):
@@ -191,9 +197,14 @@ class spikes:
 
 
 class Stability:
-    def __init__(self, obj):
-        self._obj = obj
-        filePrefix = self._obj.sessinfo.files.filePrefix
+    def __init__(self, basepath):
+
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
+
+        filePrefix = self._obj.files.filePrefix
 
         @dataclass
         class files:
@@ -285,15 +296,15 @@ class Stability:
         pass
 
 
-class firingDynamics:
-    def __init__(self, obj):
-        self._obj = obj
+# class firingDynamics:
+#     def __init__(self, obj):
+#         self._obj = obj
 
-    def fRate(self):
-        pass
+#     def fRate(self):
+#         pass
 
-    def plotfrate(self):
-        pass
+#     def plotfrate(self):
+#         pass
 
-    def plotRaster(self):
-        pass
+#     def plotRaster(self):
+#         pass

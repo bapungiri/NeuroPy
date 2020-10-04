@@ -7,6 +7,7 @@ import linecache
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from parsePath import Recinfo
 
 
 def posfromFBX(fileName):
@@ -130,15 +131,19 @@ class ExtractPosition:
 
     tracking_sRate = 120  # position sample rate
 
-    def __init__(self, obj):
+    def __init__(self, basepath):
         """initiates position class
 
         Arguments:
             obj {class instance} -- should have the following attributes
                 obj.sessinfo.files.position --> filename for storing the positions
         """
-        self._obj = obj
-        posfile = self._obj.sessinfo.files.position
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
+
+        posfile = self._obj.files.position
         if os.path.exists(posfile):
             posInfo = self._load(posfile).item()
             self.x = posInfo["x"] / 4  # in seconds
@@ -156,9 +161,9 @@ class ExtractPosition:
         return np.load(posfile, allow_pickle=True)
 
     def getPosition(self):
-        sRate = self._obj.recinfo.sampfreq  # .dat file sampling frequency
-        basePath = Path(self._obj.sessinfo.basePath)
-        metadata = self._obj.sessinfo.metadata
+        sRate = self._obj.sampfreq  # .dat file sampling frequency
+        basePath = Path(self._obj.basePath)
+        metadata = self._obj.metadata
 
         nfiles = metadata.count()["StartTime"]
 
@@ -247,7 +252,7 @@ class ExtractPosition:
             "trackingsRate": self.tracking_sRate,
         }
 
-        np.save(self._obj.sessinfo.files.position, posVar)
+        np.save(self._obj.files.position, posVar)
 
     def plot(self):
 
@@ -262,15 +267,15 @@ class ExtractPosition:
         print(max(x))
         print(max(y))
 
-        filename = self._obj.sessinfo.files.filePrefix.with_suffix(".pos")
+        filename = self._obj.files.filePrefix.with_suffix(".pos")
         with filename.open("w") as f:
             for xpos, ypos in zip(x, y):
                 f.write(f"{xpos} {ypos}\n")
 
     def _posPreprocess(self, posX, posY, tbegin):
 
-        eegFileOG = self._obj.sessinfo.recfiles.eegfile
-        nChans = self._obj.recinfo.nChans
+        eegFileOG = self._obj.recfiles.eegfile
+        nChans = self._obj.nChans
         posX = np.asarray(posX)
         posY = np.asarray(posY)
 

@@ -1,9 +1,13 @@
 # import os
-import numpy as np
-from pathlib import Path
-import matplotlib.pyplot as plt
 import time
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+
+from getPosition import ExtractPosition
+from parsePath import Recinfo
 
 # from parsePath import path2files
 
@@ -18,11 +22,20 @@ class behavior_epochs:
         totalduration -- entire duration excluding brief peiods between epochs
     """
 
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
 
-        if Path(self._obj.sessinfo.files.epochs).is_file():
-            epochs = np.load(self._obj.sessinfo.files.epochs, allow_pickle=True).item()
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
+
+        self._obj.position = ExtractPosition(basepath)
+        self.pre = None
+        self.maze = None
+        self.post = None
+
+        if Path(self._obj.files.epochs).is_file():
+            epochs = np.load(self._obj.files.epochs, allow_pickle=True).item()
 
             totaldur = []
             self.times = pd.DataFrame(epochs)
@@ -96,10 +109,10 @@ class behavior_epochs:
         post_time = np.array([self.maze_end + 1, t[-1]])
         epoch_times = {"PRE": pre_time, "MAZE": maze_time, "POST": post_time}
 
-        np.save(self._obj.sessinfo.files.epochs, epoch_times)
+        np.save(self._obj.files.epochs, epoch_times)
 
     def getfromCSV(self):
-        file = Path(str(self._obj.sessinfo.files.filePrefix) + "_epochs.csv")
+        file = Path(str(self._obj.files.filePrefix) + "_epochs.csv")
         epochs = pd.read_csv(file, index_col=0)
         epochs_name = epochs.index.values.tolist()
 
@@ -107,4 +120,4 @@ class behavior_epochs:
         for name in epochs_name:
             epochs_times[name] = np.asarray(epochs.loc[name])
 
-        np.save(self._obj.sessinfo.files.epochs, epochs_times)
+        np.save(self._obj.files.epochs, epochs_times)

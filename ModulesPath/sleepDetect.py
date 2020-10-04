@@ -18,6 +18,7 @@ from scipy.ndimage import gaussian_filter
 from matplotlib.widgets import Slider, Button, RadioButtons
 import ipywidgets as widgets
 import numpy.ma as ma
+from parsePath import Recinfo
 
 
 def make_boxes(
@@ -138,14 +139,17 @@ class SleepScore:
     window = 1  # seconds
     overlap = 0.2  # seconds
 
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
-        if Path(self._obj.sessinfo.files.stateparams).is_file():
-            self.params = pd.read_pickle(self._obj.sessinfo.files.stateparams)
+        if Path(self._obj.files.stateparams).is_file():
+            self.params = pd.read_pickle(self._obj.files.stateparams)
 
-        if Path(self._obj.sessinfo.files.states).is_file():
-            self.states = pd.read_pickle(self._obj.sessinfo.files.states)
+        if Path(self._obj.files.states).is_file():
+            self.states = pd.read_pickle(self._obj.files.states)
             # Adding name convention to the states
             state_number_dict = {
                 1: "nrem",
@@ -158,8 +162,8 @@ class SleepScore:
     def detect(self):
 
         self.params, self.sxx, self.states = self._getparams()
-        self.params.to_pickle(self._obj.sessinfo.files.stateparams)
-        self.states.to_pickle(self._obj.sessinfo.files.states)
+        self.params.to_pickle(self._obj.files.stateparams)
+        self.states.to_pickle(self._obj.files.states)
 
     @staticmethod
     def _label2states(theta_delta, delta_l, emg_l):

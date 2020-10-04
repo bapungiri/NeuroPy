@@ -4,18 +4,26 @@ from matplotlib.gridspec import GridSpec
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from sklearn.decomposition import PCA
 from plotUtil import Colormap
+from parsePath import Recinfo
 
 
 class pf:
-    def __init__(self, obj, **kwargs):
-        self._obj = obj
-        self.pf1d = pf1d(obj)
-        self.pf2d = pf2d(obj)
+    def __init__(self, basepath, **kwargs):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
+
+        self.pf1d = pf1d(basepath)
+        self.pf2d = pf2d(basepath)
 
 
 class pf1d:
-    def __init__(self, obj, **kwargs):
-        self._obj = obj
+    def __init__(self, basepath, **kwargs):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
     def compute(self):
         trackingSRate = self._obj.position.tracking_sRate
@@ -100,8 +108,11 @@ class pf1d:
 
 
 class pf2d:
-    def __init__(self, obj, **kwargs):
-        self._obj = obj
+    def __init__(self, basepath, **kwargs):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
     def compute(self, gridbin=10):
 

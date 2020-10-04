@@ -25,6 +25,7 @@ from scipy import fft
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from sklearn import linear_model
 from tables.description import Col
+import time
 
 # warnings.simplefilter(action="default")
 
@@ -59,6 +60,7 @@ def getPxx(lfp):
 # endregion
 
 #%% Subjects to choose from
+t = time.time()
 basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     "/data/Clustering/SleepDeprivation/RatK/Day1/",
@@ -67,12 +69,12 @@ basePath = [
     "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
-    "/data/Clustering/SleepDeprivation/RatK/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/",
     # "/data/Clustering/SleepDeprivation/RatN/Day4/",
-    "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
+    # "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
 sessions = [processData(_) for _ in basePath]
-
+print(time.time() - t)
 
 #%% Phase-amplitude comodulogram for multiple frequencies
 # region
@@ -404,7 +406,6 @@ for i in range(len(data)):
 
 data: Dict[str, np.array] = {}
 for sub, sess in enumerate(sessions[5:6]):
-    sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
     changrp = sess.recinfo.goodchangrp
     # chans2plot = np.concatenate([shank[::14] for shank in changrp]).astype(int)
@@ -417,7 +418,7 @@ for sub, sess in enumerate(sessions[5:6]):
     ]
     maze = sess.epochs.maze
 
-    lfpmaze = sess.utils.geteeg(chans=chans2plot, timeRange=maze)
+    lfpmaze = sess.recinfo.geteeg(chans=chans2plot, timeRange=maze)
     lfpmaze = sess.artifact.removefrom(lfpmaze, timepoints=maze)
     strong_theta = sess.theta.getstrongTheta(lfpmaze)[0]
 

@@ -8,6 +8,7 @@ from matplotlib.patches import Rectangle
 import matplotlib as mpl
 import random
 import ipywidgets as widgets
+from parsePath import Recinfo
 
 
 def make_boxes(
@@ -31,8 +32,11 @@ def make_boxes(
 
 
 class SessView:
-    def __init__(self, obj):
-        self._obj = obj
+    def __init__(self, basepath):
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
 
     def specgram(self, chan=None, period=None, window=4, overlap=2, ax=None):
         """Generating spectrogram plot for given channel
@@ -52,7 +56,7 @@ class SessView:
         """
 
         if chan is None:
-            goodchans = self._obj.recinfo.goodchans
+            goodchans = self._obj.goodchans
             chan = random.choice(goodchans)
 
         spec = self._obj.utils.spectrogram(

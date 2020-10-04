@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+from pandas.core.dtypes import base
 
 from artifactDetect import findartifact
 from behavior import behavior_epochs
@@ -10,9 +11,10 @@ from eventCorr import event_event
 from getPosition import ExtractPosition
 from getSpikes import spikes
 from lfpEvent import Hswa, Ripple, Spindle, Theta
-from makeChanMap import recinfo
+
+# from makeChanMap import recinfo
 from MakePrmKlusta import makePrmPrb
-from parsePath import path2files
+from parsePath import Recinfo
 from pfPlot import pf
 from replay import Replay
 from sessionUtil import SessionUtil
@@ -23,36 +25,28 @@ from viewerData import SessView
 
 class processData:
     # common parameters used frequently
-    _lfpsRate = 1250
+    lfpsRate = 1250
 
-    def __init__(self, basePath):
-        self.sessinfo = path2files(basePath)
-        self.recinfo = recinfo(self)
+    def __init__(self, basepath):
+        # self.sessinfo = path2files(basePath)
+        self.recinfo = Recinfo(basepath)
 
-        self.position = ExtractPosition(self)
-        self.epochs = behavior_epochs(self)
-        self.artifact = findartifact(self)
-        self.makePrmPrb = makePrmPrb(self)
-        self.utils = SessionUtil(self)
-        self._trange = None
+        self.position = ExtractPosition(self.recinfo)
+        self.epochs = behavior_epochs(self.recinfo)
+        self.artifact = findartifact(self.recinfo)
+        self.makePrmPrb = makePrmPrb(self.recinfo)
+        self.utils = SessionUtil(self.recinfo)
 
-    @property
-    def trange(self):
-        return self._trange
-
-    @trange.setter
-    def trange(self, period):
-        self._trange = period
-        self.spikes = spikes(self)
-        self.theta = Theta(self)
-        self.brainstates = SleepScore(self)
-        self.ripple = Ripple(self)
-        self.swa = Hswa(self)
-        self.spindle = Spindle(self)
-        self.eventpsth = event_event(self)
-        self.placefield = pf(self)
-        self.replay = Replay(self)
-        self.decode = DecodeBehav(self)
-        self.localsleep = LocalSleep(self)
-        self.viewdata = SessView(self)
-        self.pbe = PBE(self)
+        self.spikes = spikes(self.recinfo)
+        self.theta = Theta(self.recinfo)
+        self.brainstates = SleepScore(self.recinfo)
+        self.ripple = Ripple(self.recinfo)
+        self.swa = Hswa(self.recinfo)
+        self.spindle = Spindle(self.recinfo)
+        # self.eventpsth = event_event(self.recording)
+        self.placefield = pf(self.recinfo)
+        self.replay = Replay(self.recinfo)
+        self.decode = DecodeBehav(self.recinfo)
+        self.localsleep = LocalSleep(self.recinfo)
+        self.viewdata = SessView(self.recinfo)
+        self.pbe = PBE(self.recinfo)
