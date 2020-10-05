@@ -1,8 +1,8 @@
 # %%
 import os
 import random
-from typing import Dict
 import warnings
+from typing import Dict
 
 # import ipywidgets as widgets
 import matplotlib as mpl
@@ -11,21 +11,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pingouin as pg
-from scipy import interpolate
 import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
 import signal_process
-from signal_process import bicoherence
-import statsmodels.api as sm
 from callfunc import processData
 from mathutil import threshPeriods
-from plotUtil import Fig, Colormap
-from scipy import fft
+from plotUtil import Colormap, Fig
+from scipy import fft, interpolate
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
+from signal_process import bicoherence
 from sklearn import linear_model
 from tables.description import Col
-import time
 
 # warnings.simplefilter(action="default")
 
@@ -60,7 +57,6 @@ def getPxx(lfp):
 # endregion
 
 #%% Subjects to choose from
-t = time.time()
 basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     "/data/Clustering/SleepDeprivation/RatK/Day1/",
@@ -74,7 +70,7 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
 sessions = [processData(_) for _ in basePath]
-print(time.time() - t)
+
 
 #%% Phase-amplitude comodulogram for multiple frequencies
 # region

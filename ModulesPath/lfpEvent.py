@@ -1,55 +1,41 @@
-import os
-from collections import namedtuple
-from dataclasses import dataclass, field
+import typing
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-import typing
 
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import axis
 import numpy as np
-from numpy.core.records import array
-import numpy.random as rnd
 import pandas as pd
-import pywt
-import scipy.fftpack as ft
-import scipy.ndimage as smth
 import scipy.signal as sg
 import scipy.stats as stats
-from matplotlib.gridspec import GridSpec
-from scipy import fftpack as ft
+
 import mathutil
 import signal_process
+from callfunc import processData
+
 from signal_process import filter_sig as filt
-from parsePath import Recinfo
-from behavior import behavior_epochs
 
 
 class Hswa:
-    def __init__(self, basepath):
+    def __init__(self, obj: processData):
 
-        if isinstance(basepath, Recinfo):
-            self._obj = basepath
+        if isinstance(obj, str):
+            self._obj = processData(obj)
         else:
-            self._obj = Recinfo(basepath)
+            self._obj = obj
 
-        if Path(self._obj.files.slow_wave).is_file():
+        if Path(self._obj.recinfo.files.slow_wave).is_file():
             self._load()
 
     def _load(self):
 
-        evt = np.load(self._obj.files.slow_wave, allow_pickle=True).item()
+        evt = np.load(self._obj.recinfo.files.slow_wave, allow_pickle=True).item()
         self.peakamp = np.asarray(evt["peakamp"])
         self.time = np.asarray(evt["time"])
         self.tbeg = np.asarray(evt["tbeg"])
         self.tend = np.asarray(evt["tend"])
         self.endamp = np.asarray(evt["endamp"])
-
-        # if self._obj.trange.any():
-        #     start, end = self._obj.trange
-        #     indwhere = np.where((self.time > start) & (self.time < end))[0]
-        #     self.time = self.time[indwhere]
-        #     self.amp = self.amp[indwhere]
 
     def detect(self):
         """
@@ -138,7 +124,7 @@ class Hswa:
         ndelta = len(times)
 
         fig = plt.figure(1, figsize=(6, 10))
-        gs = GridSpec(2, 10, figure=fig)
+        gs = gridspec.GridSpec(2, 10, figure=fig)
         fig.subplots_adjust(hspace=0.2)
 
         delta_to_plot = list(range(50, 60))
@@ -186,16 +172,18 @@ class Ripple:
     maxRipplePower = 60  # in normalized power units
     mergeDistance = 50
 
-    def __init__(self, basepath):
+    def __init__(self, obj: processData):
 
-        if isinstance(basepath, Recinfo):
-            self._obj = basepath
+        if isinstance(obj, str):
+            self._obj = obj
         else:
-            self._obj = Recinfo(basepath)
+            self._obj = obj
 
-        if Path(self._obj.files.ripple_evt).is_file():
+        if Path(self._obj.recinfo.files.ripple_evt).is_file():
 
-            ripple_evt = np.load(self._obj.files.ripple_evt, allow_pickle=True).item()
+            ripple_evt = np.load(
+                self._obj.recinfo.files.ripple_evt, allow_pickle=True
+            ).item()
             self.time = ripple_evt["times"]
             self.peakpower = ripple_evt["peakPower"]
             self.peaktime = ripple_evt["peaktime"]
@@ -208,7 +196,7 @@ class Ripple:
             [type] -- [description]
         """
 
-        lfpinfo = np.load(self._obj.sessinfo.files.ripplelfp, allow_pickle=True).item()
+        lfpinfo = np.load(self._obj.recinfo.files.ripplelfp, allow_pickle=True).item()
         chans = np.asarray(lfpinfo["channels"])
         lfps = np.asarray(lfpinfo["lfps"])
         coords = lfpinfo["coords"]
@@ -583,16 +571,18 @@ class Spindle:
     # maxSpindleDuration = 450
     mergeDistance = 125
 
-    def __init__(self, basepath):
+    def __init__(self, obj: processData):
 
-        if isinstance(basepath, Recinfo):
-            self._obj = basepath
+        if isinstance(obj, str):
+            self._obj = obj
         else:
-            self._obj = Recinfo(basepath)
+            self._obj = obj
 
-        if Path(self._obj.files.spindle_evt).is_file():
+        if Path(self._obj.recinfo.files.spindle_evt).is_file():
 
-            spindle_evt = np.load(self._obj.files.spindle_evt, allow_pickle=True).item()
+            spindle_evt = np.load(
+                self._obj.recinfo.files.spindle_evt, allow_pickle=True
+            ).item()
             self.time = spindle_evt["times"]
             self.peakpower = spindle_evt["peakPower"]
             self.peaktime = spindle_evt["peaktime"]
@@ -897,15 +887,15 @@ class Spindle:
 
 
 class Theta:
-    def __init__(self, basepath):
+    def __init__(self, obj: processData):
 
-        if isinstance(basepath, Recinfo):
-            self._obj = basepath
+        if isinstance(obj, str):
+            self._obj = processData(obj)
         else:
-            self._obj = Recinfo(basepath)
+            self._obj = obj
 
         # ----- defining file names ---------
-        filePrefix = self._obj.files.filePrefix
+        filePrefix = self._obj.recinfo.files.filePrefix
 
         @dataclass
         class files:
@@ -923,10 +913,10 @@ class Theta:
         return data
 
     def getBestChanlfp(self):
-        return self._obj.utils.geteeg(chans=self.bestchan)
+        return self._obj.geteeg(chans=self.bestchan)
 
     def _getAUC(self, eeg):
-        eegSrate = self._obj.lfpSrate
+        eegSrate = self._obj.recinfo.lfpSrate
         f, pxx = sg.welch(
             eeg, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate, axis=-1
         )
@@ -940,10 +930,10 @@ class Theta:
         """Selects the best channel by computing area under the curve of spectral density
 
         """
-        epochs = behavior_epochs(self._obj)
+
         channels = self._obj.goodchans
-        maze = epochs.maze
-        eeg = self._obj.utils.geteeg(chans=channels, timeRange=maze)
+        maze = self._obj.epochs.maze
+        eeg = self._obj.recinfo.geteeg(chans=channels, timeRange=maze)
         eegSrate = self._obj.lfpSrate
         f, pxx = sg.welch(
             eeg, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate

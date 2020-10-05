@@ -1,4 +1,5 @@
 # import os
+from callfunc import processData
 import time
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from getPosition import ExtractPosition
-from parsePath import Recinfo
+from callfunc import processData
 
 # from parsePath import path2files
 
@@ -22,20 +23,19 @@ class behavior_epochs:
         totalduration -- entire duration excluding brief peiods between epochs
     """
 
-    def __init__(self, basepath):
+    def __init__(self, obj: processData):
 
-        if isinstance(basepath, Recinfo):
-            self._obj = basepath
+        if isinstance(obj, str):
+            self._obj = processData(obj)
         else:
-            self._obj = Recinfo(basepath)
+            self._obj = obj
 
-        self._obj.position = ExtractPosition(basepath)
         self.pre = None
         self.maze = None
         self.post = None
 
-        if Path(self._obj.files.epochs).is_file():
-            epochs = np.load(self._obj.files.epochs, allow_pickle=True).item()
+        if Path(self._obj.recinfo.files.epochs).is_file():
+            epochs = np.load(self._obj.recinfo.files.epochs, allow_pickle=True).item()
 
             totaldur = []
             self.times = pd.DataFrame(epochs)
@@ -100,13 +100,13 @@ class behavior_epochs:
             # Get rid of fill
             for p in ph:
                 p.remove()
-        self.corrds = pts
-        self.maze_start = pts[0][0]  # in seconds
-        self.maze_end = pts[2][0]  # in seconds
+        corrds = pts
+        maze_start = pts[0][0]  # in seconds
+        maze_end = pts[2][0]  # in seconds
 
-        pre_time = np.array([0, self.maze_start - 1])
-        maze_time = np.array([self.maze_start, self.maze_end])
-        post_time = np.array([self.maze_end + 1, t[-1]])
+        pre_time = np.array([0, maze_start - 1])
+        maze_time = np.array([maze_start, maze_end])
+        post_time = np.array([maze_end + 1, t[-1]])
         epoch_times = {"PRE": pre_time, "MAZE": maze_time, "POST": post_time}
 
         np.save(self._obj.files.epochs, epoch_times)

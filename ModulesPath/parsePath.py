@@ -3,6 +3,8 @@ import tkinter as tk
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -13,6 +15,7 @@ class Recinfo:
     def __init__(self, basePath):
         self.basePath = Path(basePath)
 
+        filePrefix = None
         for file in os.listdir(basePath):
             if file.endswith(".xml"):
                 xmlfile = self.basePath / file
@@ -21,7 +24,6 @@ class Recinfo:
         self.session = sessionname(filePrefix)
         self.files = files(filePrefix)
         self.recfiles = recfiles(filePrefix)
-        # self.loadfile = loadfile(filePrefix)
 
         if Path(self.files.basics).is_file():
             self._intialize()
@@ -187,13 +189,13 @@ class Recinfo:
 
     def plotChanPos(self, chans=None, ax=None, colors=None):
 
-        nShanks = self._obj.nShanks
-        channelgrp = self._obj.channelgroups[:nShanks]
+        nShanks = self.nShanks
+        channelgrp = self.channelgroups[:nShanks]
         lfpchans = np.asarray([chan for shank in channelgrp for chan in shank])
 
         chans2plot = chans
         chan_rank = np.where(np.isin(lfpchans, chans2plot))[0]
-        xpos, ypos = self._obj.recinfo.probemap()
+        xpos, ypos = self.probemap()
         xpos = np.asarray(xpos)
         ypos = np.asarray(ypos)
 

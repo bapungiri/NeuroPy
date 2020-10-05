@@ -438,7 +438,7 @@ class bicoherence:
 
         """ ===========================================
         bispectrum = |mean( X(f1) * X(f2) * conj(X(f1+f2)) )|
-        normalization = sqrt( mean( P(f1) * P(f2) * P(f1+f2) ) )
+        normalization = sqrt( mean(|X(f1) * X(f2)|^2) * mean(|X(f1+f2)|^2) )
 
         where,
             X is complex spectrogram
