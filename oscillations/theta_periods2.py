@@ -65,9 +65,9 @@ basePath = [
     "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day4/",
-    # "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
+    "/data/Clustering/SleepDeprivation/RatK/Day4/",
+    "/data/Clustering/SleepDeprivation/RatN/Day4/",
+    "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
 sessions = [processData(_) for _ in basePath]
 
@@ -160,13 +160,13 @@ bin2Data = pd.DataFrame()
 slideData = pd.DataFrame()
 cmap = mpl.cm.get_cmap("Set3")
 
-for sub, sess in enumerate(sessions[4:5]):
+for sub, sess in enumerate(sessions[8:9]):
 
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
     maze = sess.epochs.maze
 
-    lfpmaze = sess.utils.geteeg(sess.theta.bestchan, timeRange=maze)
+    lfpmaze = sess.recinfo.geteeg(chans=112, timeRange=maze)
     lfpmaze_t = np.linspace(maze[0], maze[1], len(lfpmaze))
 
     # ---- filtering --> zscore --> threshold --> strong theta periods ----
@@ -401,7 +401,7 @@ for i in range(len(data)):
 # region
 
 data: Dict[str, np.array] = {}
-for sub, sess in enumerate(sessions[5:6]):
+for sub, sess in enumerate(sessions[8:9]):
     eegSrate = sess.recinfo.lfpSrate
     changrp = sess.recinfo.goodchangrp
     # chans2plot = np.concatenate([shank[::14] for shank in changrp]).astype(int)
@@ -425,9 +425,9 @@ for sub, sess in enumerate(sessions[5:6]):
     # f_slow, pxx_slow = sg.welch(lfp_lowspd, fs=1250, nperseg=4 * 1250, noverlap=2 * 250)
 
     # ---- bicoherence calculation ----------
-    filtered_data = signal_process.filter_sig.bandpass(strong_theta, lf=1, hf=200)
-    bicoh = signal_process.bicoherence(flow=1, fhigh=150)
-    bicoh.compute(filtered_data)
+    # filtered_data = signal_process.filter_sig.bandpass(strong_theta, lf=1, hf=400)
+    bicoh = signal_process.bicoherence(flow=1, fhigh=200)
+    bicoh.compute(strong_theta)
 
     data[sub] = {
         "chans": chans2plot,
@@ -459,7 +459,7 @@ for i in range(len(data)):
         ax.set_ylim(bottom=10)
 
         axbicoh = plt.subplot(gs[2 * chan + 1])
-        bicoh.plot(index=chan, ax=axbicoh)
+        bicoh.plot(index=chan, ax=axbicoh, cmap=cmap)
 
 
 # figure.savefig("phase_specific_slowgamma", __file__)

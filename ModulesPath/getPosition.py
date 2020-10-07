@@ -4,11 +4,9 @@ import matplotlib.pyplot as plt
 import csv
 import os
 import linecache
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from parsePath import Recinfo
-from callfunc import processData
 
 
 def posfromFBX(fileName):
@@ -132,7 +130,7 @@ class ExtractPosition:
 
     tracking_sRate = 120  # position sample rate
 
-    def __init__(self, basepath: processData):
+    def __init__(self, basepath):
         """initiates position class
 
         Arguments:
@@ -143,8 +141,6 @@ class ExtractPosition:
             self._obj = basepath
         else:
             self._obj = Recinfo(basepath)
-
-        # a = basepath.recinfo.badchans
 
         posfile = self._obj.files.position
         if os.path.exists(posfile):

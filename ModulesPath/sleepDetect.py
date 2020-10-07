@@ -1,24 +1,23 @@
-import numpy as np
+from pathlib import Path
+
+import ipywidgets as widgets
 import matplotlib.pyplot as plt
-from SpectralAnalysis import bestThetaChannel
-import pandas as pd
 import numpy as np
+import numpy.ma as ma
+import pandas as pd
+import scipy.ndimage as filtSig
 import scipy.signal as sg
 import scipy.stats as stats
 from hmmlearn.hmm import GaussianHMM
-import scipy.ndimage as filtSig
-import os
-from pathlib import Path
-from signal_process import spectrogramBands
 from joblib import Parallel, delayed
-from matplotlib.patches import Rectangle
 from matplotlib.collections import PatchCollection
 from matplotlib.gridspec import GridSpec
+from matplotlib.patches import Rectangle
+from matplotlib.widgets import Button, RadioButtons, Slider
 from scipy.ndimage import gaussian_filter
-from matplotlib.widgets import Slider, Button, RadioButtons
-import ipywidgets as widgets
-import numpy.ma as ma
+
 from parsePath import Recinfo
+from signal_process import spectrogramBands
 
 
 def make_boxes(
@@ -140,6 +139,7 @@ class SleepScore:
     overlap = 0.2  # seconds
 
     def __init__(self, basepath):
+
         if isinstance(basepath, Recinfo):
             self._obj = basepath
         else:
@@ -394,9 +394,9 @@ class SleepScore:
         emg_lfp = filtSig.gaussian_filter1d(emg_lfp, 10)
         return emg_lfp
 
-    def addBackgroundtoPlots(self, ax):
+    def addBackgroundtoPlots(self, tstart=0, ax=None):
         states = self.states
-        x = (np.asarray(states.start) - self._obj.epochs.post[0]) / 3600
+        x = (np.asarray(states.start) - tstart) / 3600
 
         y = -1 * np.ones(len(x))  # + np.asarray(states.state)
         width = np.asarray(states.duration) / 3600
@@ -407,13 +407,6 @@ class SleepScore:
         col = [colors[int(state) - 1] for state in states.state]
 
         make_boxes(ax, x, y, width, height, facecolor=col)
-        # ax6.set_xlim(0, 50000)
-        # ax.set_ylim(1, 5)
-        # ax.annotate("wake", (-0.8, 4.5))
-        # ax.axis("off")
-        # ax.annotate("quiet", (-0.1, 3.5))
-        # ax.annotate("rem", (0.1, 2.5))
-        # ax.annotate("nrem", (-10, 1.5))
 
     def plot(self):
         states = self.states
@@ -478,7 +471,7 @@ class SleepScore:
             tstart (float, optional): Start time of hypnogram. Defaults to 0.
             unit (str, optional): Unit of time in seconds or hour. Defaults to "s".
         """
-        states = self._obj.brainstates.states
+        states = self.states
 
         if ax1 is None:
             fig = plt.figure(1, figsize=(6, 10))

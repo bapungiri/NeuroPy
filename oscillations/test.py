@@ -15,6 +15,7 @@ import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
 import signal_process
+
 from callfunc import processData
 from mathutil import threshPeriods
 from plotUtil import Colormap, Fig
@@ -24,15 +25,17 @@ from signal_process import bicoherence
 from sklearn import linear_model
 from tables.description import Col
 
+# from artifactDetect import findartifact
+
 # warnings.simplefilter(action="default")
 #%% Subjects to choose from
 basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/",
     # "/data/Clustering/SleepDeprivation/RatN/Day4/",

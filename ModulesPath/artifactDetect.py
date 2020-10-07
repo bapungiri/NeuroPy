@@ -1,25 +1,32 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import scipy.signal as sg
-import scipy.stats as stat
-import pandas as pd
-from numpy.fft import fft
-import scipy.ndimage as filtSig
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.stats as stat
 from parsePath import Recinfo
 
 
 class findartifact:
+    """Detects noisy periods uding downsampled data
 
-    lfpsRate = 1250
+    Attributes
+    ------------
+    time: array,
+        time periods which are noisy
 
-    def __init__(self, basepath):
+    Methods
+    ------------
+    removefrom:
+        removes noisy timestamps
+    """
 
-        if isinstance(basepath, Recinfo):
-            self._obj = basepath
+    def __init__(self, obj):
+
+        if isinstance(obj, Recinfo):
+            self._obj = obj
         else:
-            self._obj = Recinfo(basepath)
+            self._obj = Recinfo(obj)
 
         self.time = None
 
@@ -33,6 +40,7 @@ class findartifact:
 
         self.files = files()
 
+        # ----- loading files --------
         if self.files.artifact.is_file():
             self._load()
         elif Path(self.files.dead).is_file():
@@ -77,12 +85,13 @@ class findartifact:
 
     def usingZscore(self, chans=None, thresh=5):
         """
-        calculating periods to exclude for analysis using simple z-score measure 
+        calculating periods to exclude for analysis using simple z-score measure
         """
         if chans is None:
-            chans = np.random.choice(self._obj.goodchans, 4)
+            chans = np.random.choice(self._obj.recinfo.goodchans, 4)
 
-        lfp = self._obj.utils.geteeg(chans=chans)
+        eegSrate = self._obj.lfpSrate
+        lfp = self._obj.recinfo.geteeg(chans=chans)
         lfp = np.median(lfp, axis=0)
         zsc = np.abs(stat.zscore(lfp))
 
@@ -94,7 +103,7 @@ class findartifact:
 
         firstPass = np.vstack((artifact_start - 10, artifact_end + 2)).T
 
-        minInterArtifactDist = 5 * self.lfpsRate
+        minInterArtifactDist = 5 * eegSrate
         secondPass = []
         artifact = firstPass[0]
         for i in range(1, len(artifact_start)):
@@ -108,12 +117,12 @@ class findartifact:
         secondPass.append(artifact)
 
         # --- converting to required time units for various puposes ------
-        artifact_ms = np.asarray(secondPass) / (self.lfpsRate / 1000)  # ms
-        artifact_s = np.asarray(secondPass) / self.lfpsRate  # seconds
+        artifact_ms = np.asarray(secondPass) / (eegSrate / 1000)  # ms
+        artifact_s = np.asarray(secondPass) / eegSrate  # seconds
 
         # --- writing to file for visualizing in neuroscope and spyking circus ----
-        file_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.art")
-        circus_file = self._obj.sessinfo.files.filePrefix.with_suffix(".dead")
+        file_neuroscope = self._obj.recinfo.files.filePrefix.with_suffix(".evt.art")
+        circus_file = self._obj.recinfo.files.filePrefix.with_suffix(".dead")
         with file_neuroscope.open("w") as a, circus_file.open("w") as c:
             for beg, stop in artifact_ms:
                 a.write(f"{beg} start\n{stop} end\n")

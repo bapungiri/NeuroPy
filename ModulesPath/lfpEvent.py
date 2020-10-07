@@ -12,25 +12,24 @@ import scipy.stats as stats
 
 import mathutil
 import signal_process
-from callfunc import processData
-
+from parsePath import Recinfo
 from signal_process import filter_sig as filt
 
 
 class Hswa:
-    def __init__(self, obj: processData):
+    def __init__(self, basepath):
 
-        if isinstance(obj, str):
-            self._obj = processData(obj)
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
         else:
-            self._obj = obj
+            self._obj = Recinfo(basepath)
 
-        if Path(self._obj.recinfo.files.slow_wave).is_file():
+        if Path(self._obj.files.slow_wave).is_file():
             self._load()
 
     def _load(self):
 
-        evt = np.load(self._obj.recinfo.files.slow_wave, allow_pickle=True).item()
+        evt = np.load(self._obj.files.slow_wave, allow_pickle=True).item()
         self.peakamp = np.asarray(evt["peakamp"])
         self.time = np.asarray(evt["time"])
         self.tbeg = np.asarray(evt["tbeg"])
@@ -172,18 +171,16 @@ class Ripple:
     maxRipplePower = 60  # in normalized power units
     mergeDistance = 50
 
-    def __init__(self, obj: processData):
+    def __init__(self, basepath):
 
-        if isinstance(obj, str):
-            self._obj = obj
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
         else:
-            self._obj = obj
+            self._obj = Recinfo(basepath)
 
-        if Path(self._obj.recinfo.files.ripple_evt).is_file():
+        if Path(self._obj.files.ripple_evt).is_file():
 
-            ripple_evt = np.load(
-                self._obj.recinfo.files.ripple_evt, allow_pickle=True
-            ).item()
+            ripple_evt = np.load(self._obj.files.ripple_evt, allow_pickle=True).item()
             self.time = ripple_evt["times"]
             self.peakpower = ripple_evt["peakPower"]
             self.peaktime = ripple_evt["peaktime"]
@@ -571,18 +568,16 @@ class Spindle:
     # maxSpindleDuration = 450
     mergeDistance = 125
 
-    def __init__(self, obj: processData):
+    def __init__(self, basepath):
 
-        if isinstance(obj, str):
-            self._obj = obj
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
         else:
-            self._obj = obj
+            self._obj = Recinfo(basepath)
 
-        if Path(self._obj.recinfo.files.spindle_evt).is_file():
+        if Path(self._obj.files.spindle_evt).is_file():
 
-            spindle_evt = np.load(
-                self._obj.recinfo.files.spindle_evt, allow_pickle=True
-            ).item()
+            spindle_evt = np.load(self._obj.files.spindle_evt, allow_pickle=True).item()
             self.time = spindle_evt["times"]
             self.peakpower = spindle_evt["peakPower"]
             self.peaktime = spindle_evt["peaktime"]
@@ -887,15 +882,15 @@ class Spindle:
 
 
 class Theta:
-    def __init__(self, obj: processData):
+    def __init__(self, basepath):
 
-        if isinstance(obj, str):
-            self._obj = processData(obj)
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
         else:
-            self._obj = obj
+            self._obj = Recinfo(basepath)
 
         # ----- defining file names ---------
-        filePrefix = self._obj.recinfo.files.filePrefix
+        filePrefix = self._obj.files.filePrefix
 
         @dataclass
         class files:
@@ -907,6 +902,7 @@ class Theta:
             data = self._load()
             self.bestchan = data["chanorder"][0]
             self.chansOrder = data["chanorder"]
+
 
     def _load(self):
         data = np.load(self.files.bestThetachan, allow_pickle=True).item()

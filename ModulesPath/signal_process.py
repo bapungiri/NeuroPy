@@ -429,12 +429,13 @@ class bicoherence:
             fs=self.fs,
             mode="complex",
             nfft=fftpack.next_fast_len(self.window),
+            detrend=False,
         )
         sxx = np.require(sxx, dtype=complex)
 
         # ------ Getting required frequencies and their indices -------------
-        freq_req = f[np.where((f > self.flow) & (f < self.fhigh))[0]]
         freq_ind = np.where((f > self.flow) & (f < self.fhigh))[0]
+        freq_req = f[freq_ind]
 
         """ ===========================================
         bispectrum = |mean( X(f1) * X(f2) * conj(X(f1+f2)) )|
@@ -456,12 +457,12 @@ class bicoherence:
             bispec_freq = np.mean(X_f1 * X_f2 * np.conjugate(X_f1f2), axis=-1)
 
             # ----- normalization to calculate bicoherence ---------
-            # P_f1 = np.abs(X_f1) ** 2
+            P_f1 = np.abs(X_f1) ** 2
             P_f1f2 = np.abs(X_f1f2) ** 2
-            # norm = np.sqrt(np.mean(P_f1 * P_f2 * P_f1f2, axis=-1))
-            norm = np.sqrt(
-                np.mean(np.abs(X_f1 * X_f2) ** 2, axis=-1) * np.mean(P_f1f2, axis=-1)
-            )
+            norm = np.sqrt(np.mean(P_f1 * P_f2 * P_f1f2, axis=-1))
+            # norm = np.sqrt(
+            #     np.mean(np.abs(X_f1 * X_f2) ** 2, axis=-1) * np.mean(P_f1f2, axis=-1)
+            # )
 
             return bispec_freq / norm
 
@@ -474,19 +475,18 @@ class bicoherence:
         self.bicoher = bicoher.squeeze()
         self.bispec = bispec.squeeze()
         self.freq = freq_req
-        self.dof = sxx.shape[-1]
+        self.dof = 2 * sxx.shape[-1]
         self.significance = np.sqrt(6 / self.dof)
 
     def plot(self, index=None, ax=None, vmin=0, vmax=0.2, cmap="hot"):
 
         bic = self.bicoher[index].copy()
+        # bic = bic.T
         lt = np.tril_indices_from(bic, k=-1)
-        bic[lt] = np.nan
-        bic[(lt[0], -lt[1])] = np.nan
-        # bic = bic - np.nanmean(bic)
-        # bic = stats.mstats.zscore(bic, nan_policy="omit")
-        bic[bic < 0.04] = 0
-        bic = gaussian_filter(bic, sigma=1)
+        # bic[lt] = np.nan
+        # bic[(lt[0], -lt[1])] = np.nan
+        bic[bic < self.significance] = 0
+        bic = gaussian_filter(bic, sigma=2)
 
         if ax is None:
             _, ax = plt.subplots(1, 1)
@@ -498,7 +498,7 @@ class bicoherence:
             cmap=cmap,
             # shading="gouraud",
             vmin=0,
-            vmax=0.2,
+            vmax=0.1,
             rasterized=True,
         )
 

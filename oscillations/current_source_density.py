@@ -27,9 +27,10 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     # "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/"
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
+    "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
 
 
@@ -48,16 +49,17 @@ for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
     maze = sess.epochs.maze
-    changrp = np.concatenate(sess.recinfo.channelgroups[:8])
+    changrp = np.concatenate(sess.recinfo.goodchangrp).astype(int)
 
     period = [maze[0], maze[0] + 3600]
-    sess.lfpTheta = sess.utils.strong_theta_lfp(chans=changrp, period=period)
+    lfpmaze = sess.recinfo.geteeg(chans=changrp,timeRange=maze)
+    sess.lfpTheta = sess.theta.getstrongTheta(lfpmaze)[0]
 
 for sub, sess in enumerate(sessions):
     nChans = sess.lfpTheta.shape[0]
     nframes_2theta = 312
     n2theta = int(sess.lfpTheta.shape[1] / nframes_2theta)  # number of two theta cycles
-    theta_last = signal_process.filter_sig.filter_cust(
+    theta_last = signal_process.filter_sig.bandpass(
         sess.lfpTheta[16, :], lf=5, hf=12, ax=-1
     )
     peak = sg.find_peaks(theta_last)[0]
@@ -70,14 +72,14 @@ for sub, sess in enumerate(sessions):
     avg_theta = avg_theta / len(peak)
 
     nshanks = sess.recinfo.nShanks
-    changrp = np.concatenate(sess.recinfo.channelgroups[:8])
-    for sh_id, shank in enumerate(sess.recinfo.channelgroups[:8]):
+    changrp = np.concatenate(sess.recinfo.channelgroups)
+    for sh_id, shank in enumerate(sess.recinfo.channelgroups):
 
         chan_where = np.argwhere(np.isin(changrp, shank)).squeeze()
         theta_lfp = avg_theta[chan_where, :]
         badchans = sess.recinfo.badchans
         badchan_indx = np.argwhere(np.isin(shank, badchans))
-        ycoord = np.arange(16 * 20, 0, -20)
+        ycoord = np.arange(128 * 20, 0, -20)
         if badchan_indx.shape[0]:
             theta_lfp = np.delete(theta_lfp, badchan_indx, axis=0)
             ycoord = np.delete(ycoord, badchan_indx)

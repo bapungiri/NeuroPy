@@ -1,5 +1,3 @@
-# import os
-from callfunc import processData
 import time
 from pathlib import Path
 
@@ -8,9 +6,7 @@ import numpy as np
 import pandas as pd
 
 from getPosition import ExtractPosition
-from callfunc import processData
-
-# from parsePath import path2files
+from parsePath import Recinfo
 
 
 class behavior_epochs:
@@ -23,19 +19,19 @@ class behavior_epochs:
         totalduration -- entire duration excluding brief peiods between epochs
     """
 
-    def __init__(self, obj: processData):
+    def __init__(self, basepath):
 
-        if isinstance(obj, str):
-            self._obj = processData(obj)
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
         else:
-            self._obj = obj
+            self._obj = Recinfo(basepath)
 
         self.pre = None
         self.maze = None
         self.post = None
 
-        if Path(self._obj.recinfo.files.epochs).is_file():
-            epochs = np.load(self._obj.recinfo.files.epochs, allow_pickle=True).item()
+        if Path(self._obj.files.epochs).is_file():
+            epochs = np.load(self._obj.files.epochs, allow_pickle=True).item()
 
             totaldur = []
             self.times = pd.DataFrame(epochs)
@@ -56,6 +52,8 @@ class behavior_epochs:
         """user defines epoch boundaries from the positons by selecting a rectangular region in the plot
         """
 
+        position = ExtractPosition(self._obj.basePath)
+
         def tellme(s):
             print(s)
             plt.title(s, fontsize=16)
@@ -65,9 +63,9 @@ class behavior_epochs:
 
         # Define a rectangle by clicking two points
 
-        t = self._obj.position.t
-        y = self._obj.position.y
-        x = self._obj.position.x
+        t = position.t
+        y = position.y
+        x = position.x
 
         plt.clf()
         plt.setp(plt.gca(), autoscale_on=True)
@@ -100,7 +98,6 @@ class behavior_epochs:
             # Get rid of fill
             for p in ph:
                 p.remove()
-        corrds = pts
         maze_start = pts[0][0]  # in seconds
         maze_end = pts[2][0]  # in seconds
 

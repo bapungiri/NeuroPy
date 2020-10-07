@@ -6,6 +6,7 @@ from pandas.core.dtypes import base
 
 from artifactDetect import findartifact
 from behavior import behavior_epochs
+
 from decoders import DecodeBehav
 from eventCorr import event_event
 from getPosition import ExtractPosition
@@ -24,25 +25,21 @@ from viewerData import SessView
 
 
 class processData:
-    # common parameters used frequently
-    lfpsRate = 1250
-
     def __init__(self, basepath):
-        # self.sessinfo = path2files(basePath)
         self.recinfo = Recinfo(basepath)
 
         self.position = ExtractPosition(self.recinfo)
-        self.epochs = behavior_epochs(self)
+        self.epochs = behavior_epochs(self.recinfo)
         self.artifact = findartifact(self.recinfo)
         self.makePrmPrb = makePrmPrb(self.recinfo)
         self.utils = SessionUtil(self.recinfo)
 
         self.spikes = spikes(self.recinfo)
-        self.theta = Theta(self)
+        self.theta = Theta(self.recinfo)
         self.brainstates = SleepScore(self.recinfo)
-        self.ripple = Ripple(self)
-        self.swa = Hswa(self)
-        self.spindle = Spindle(self)
+        self.ripple = Ripple(self.recinfo)
+        self.swa = Hswa(self.recinfo)
+        self.spindle = Spindle(self.recinfo)
         self.placefield = pf(self.recinfo)
         self.replay = Replay(self.recinfo)
         self.decode = DecodeBehav(self.recinfo)
@@ -51,3 +48,4 @@ class processData:
         self.pbe = PBE(self.recinfo)
 
         self.eventpsth = event_event()
+
