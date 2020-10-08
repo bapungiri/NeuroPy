@@ -1,17 +1,13 @@
 #%%
 import warnings
 
-import elephant.current_source_density as csd2d
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import quantities as pq
 import scipy.interpolate as interp
 import scipy.signal as sg
 import scipy.stats as stats
-from kcsd.KCSD import KCSD
-from neo.core import AnalogSignal
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 import signal_process
@@ -41,19 +37,16 @@ sessions = [processData(_) for _ in basePath]
 
 figure = Fig()
 fig,gs = figure.draw(grid=[3,8])
-
-# fig = plt.figure(1, figsize=(10, 15))
-# gs = gridspec.GridSpec(1, 8, figure=fig)
-# fig.subplots_adjust(hspace=0.3)
 for sub, sess in enumerate(sessions):
 
-    sess.trange = np.array([])
     maze = sess.epochs.maze
-    changrp = np.concatenate(sess.recinfo.goodchangrp).astype(int)
+    changrp = np.concatenate(sess.recinfo.channelgroups).astype(int)
 
     period = [maze[0], maze[0] + 3600]
     lfpmaze = sess.recinfo.geteeg(chans=changrp,timeRange=maze)
-    sess.lfpTheta = sess.theta.getstrongTheta(lfpmaze)[0]
+    lfpc = sess.recinfo.geteeg(chans=78,timeRange=maze)
+    indices = sess.theta.getstrongTheta(lfpc)[2]
+    sess.lfpTheta =lfpmaze[:,indices] 
 
 for sub, sess in enumerate(sessions):
     nChans = sess.lfpTheta.shape[0]
@@ -84,41 +77,44 @@ for sub, sess in enumerate(sessions):
             theta_lfp = np.delete(theta_lfp, badchan_indx, axis=0)
             ycoord = np.delete(ycoord, badchan_indx)
 
+
         # xcoord = np.asarray(sess.recinfo.probemap()[0][:16]) + 10
         # coords = np.vstack((xcoord, ycoord)).T
 
-        # csd = signal_process.csdClassic(avg_theta, ycoord)
+        csd = signal_process.Csd(theta_lfp, ycoord,sess.recinfo.goodchans)
+        csd.classic()
+        csd.plot()
         # plt.imshow(csd, aspect="auto")
 
-        sigarr = AnalogSignal(theta_lfp.T, units="uV", sampling_rate=1250 * pq.Hz)
+    #     sigarr = AnalogSignal(theta_lfp.T, units="uV", sampling_rate=1250 * pq.Hz)
 
-        csd_data = csd2d.estimate_csd(
-            sigarr, coords=ycoord.reshape(-1, 1) * pq.um, method="KCSD1D"
-        )
+    #     csd_data = csd2d.estimate_csd(
+    #         sigarr, coords=ycoord.reshape(-1, 1) * pq.um, method="StandardCSD"
+    #     )
 
-        ypos = csd_data.annotations["x_coords"]
-        t = np.linspace(-0.5, 0.5, 1250)
-        theta_lfp = np.flipud(theta_lfp)
+    #     ypos = csd_data.annotations["x_coords"]
+    #     t = np.linspace(-0.5, 0.5, 1250)
+    #     theta_lfp = np.flipud(theta_lfp)
 
-        ax = fig.add_subplot(gs[sh_id])
-        im = ax.pcolorfast(t, ypos, np.asarray(csd_data).T, cmap="jet", zorder=1)
-        ax2 = ax.twinx()
-        ax2.plot(
-            t,
-            theta_lfp.T / 60000 + np.linspace(ypos[0], ypos[-1], theta_lfp.shape[0]),
-            zorder=2,
-            color="#616161",
-        )
-        ax.set_ylim([0, 0.35])
-        ax2.axes.get_yaxis().set_visible(False)
-        ax.axes.get_yaxis().set_visible(False)
-        ax.set_xlabel("Time (s)")
-        ax.set_title(f"Shank{sh_id+1}")
+    #     ax = fig.add_subplot(gs[sh_id])
+    #     im = ax.pcolorfast(t, ypos, np.asarray(csd_data).T, cmap="jet", zorder=1)
+    #     ax2 = ax.twinx()
+    #     ax2.plot(
+    #         t,
+    #         theta_lfp.T / 60000 + np.linspace(ypos[0], ypos[-1], theta_lfp.shape[0]),
+    #         zorder=2,
+    #         color="#616161",
+    #     )
+    #     ax.set_ylim([0, 0.35])
+    #     ax2.axes.get_yaxis().set_visible(False)
+    #     ax.axes.get_yaxis().set_visible(False)
+    #     ax.set_xlabel("Time (s)")
+    #     ax.set_title(f"Shank{sh_id+1}")
 
-        fig.colorbar(im, ax=ax, orientation="horizontal")
-    fig.suptitle("Neptune Day1 - CSD (Strong theta during MAZE)")
+    #     fig.colorbar(im, ax=ax, orientation="horizontal")
+    # fig.suptitle("Neptune Day1 - CSD (Strong theta during MAZE)")
 
-figure.savefig('csd_theta_MAZE',__file__)
+# figure.savefig('csd_theta_MAZE',__file__)
 
 # endregion
 
