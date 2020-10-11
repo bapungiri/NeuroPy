@@ -8,14 +8,13 @@ import pandas as pd
 import scipy.interpolate as interp
 import scipy.signal as sg
 import scipy.stats as stats
-from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 import signal_process
 from callfunc import processData
 from mathutil import threshPeriods
 from plotUtil import Fig
 
-warnings.simplefilter(action="default")
+# warnings.simplefilter(action="default")
 
 # ===== Subjects =======
 basePath = [
@@ -35,85 +34,15 @@ sessions = [processData(_) for _ in basePath]
 #%% csd theta period during MAZE
 # region
 
-figure = Fig()
-fig,gs = figure.draw(grid=[3,8])
 for sub, sess in enumerate(sessions):
 
     maze = sess.epochs.maze
-    changrp = np.concatenate(sess.recinfo.channelgroups).astype(int)
+    csd = sess.theta.csd(period=maze,chans = sess.recinfo.goodchans)
 
-    period = [maze[0], maze[0] + 3600]
-    lfpmaze = sess.recinfo.geteeg(chans=changrp,timeRange=maze)
-    lfpc = sess.recinfo.geteeg(chans=78,timeRange=maze)
-    indices = sess.theta.getstrongTheta(lfpc)[2]
-    sess.lfpTheta =lfpmaze[:,indices] 
+figure = Fig()
+fig,gs = figure.draw(grid=[3,8])
 
-for sub, sess in enumerate(sessions):
-    nChans = sess.lfpTheta.shape[0]
-    nframes_2theta = 312
-    n2theta = int(sess.lfpTheta.shape[1] / nframes_2theta)  # number of two theta cycles
-    theta_last = signal_process.filter_sig.bandpass(
-        sess.lfpTheta[16, :], lf=5, hf=12, ax=-1
-    )
-    peak = sg.find_peaks(theta_last)[0]
-    peak = peak[np.where((peak > 1250) & (peak < len(theta_last) - 1250))[0]]
-
-    avg_theta = np.zeros((nChans, 1250))
-    for ind in peak:
-        avg_theta = avg_theta + sess.lfpTheta[:, ind - 625 : ind + 625]
-
-    avg_theta = avg_theta / len(peak)
-
-    nshanks = sess.recinfo.nShanks
-    changrp = np.concatenate(sess.recinfo.channelgroups)
-    for sh_id, shank in enumerate(sess.recinfo.channelgroups):
-
-        chan_where = np.argwhere(np.isin(changrp, shank)).squeeze()
-        theta_lfp = avg_theta[chan_where, :]
-        badchans = sess.recinfo.badchans
-        badchan_indx = np.argwhere(np.isin(shank, badchans))
-        ycoord = np.arange(128 * 20, 0, -20)
-        if badchan_indx.shape[0]:
-            theta_lfp = np.delete(theta_lfp, badchan_indx, axis=0)
-            ycoord = np.delete(ycoord, badchan_indx)
-
-
-        # xcoord = np.asarray(sess.recinfo.probemap()[0][:16]) + 10
-        # coords = np.vstack((xcoord, ycoord)).T
-
-        csd = signal_process.Csd(theta_lfp, ycoord,sess.recinfo.goodchans)
-        csd.classic()
-        csd.plot()
-        # plt.imshow(csd, aspect="auto")
-
-    #     sigarr = AnalogSignal(theta_lfp.T, units="uV", sampling_rate=1250 * pq.Hz)
-
-    #     csd_data = csd2d.estimate_csd(
-    #         sigarr, coords=ycoord.reshape(-1, 1) * pq.um, method="StandardCSD"
-    #     )
-
-    #     ypos = csd_data.annotations["x_coords"]
-    #     t = np.linspace(-0.5, 0.5, 1250)
-    #     theta_lfp = np.flipud(theta_lfp)
-
-    #     ax = fig.add_subplot(gs[sh_id])
-    #     im = ax.pcolorfast(t, ypos, np.asarray(csd_data).T, cmap="jet", zorder=1)
-    #     ax2 = ax.twinx()
-    #     ax2.plot(
-    #         t,
-    #         theta_lfp.T / 60000 + np.linspace(ypos[0], ypos[-1], theta_lfp.shape[0]),
-    #         zorder=2,
-    #         color="#616161",
-    #     )
-    #     ax.set_ylim([0, 0.35])
-    #     ax2.axes.get_yaxis().set_visible(False)
-    #     ax.axes.get_yaxis().set_visible(False)
-    #     ax.set_xlabel("Time (s)")
-    #     ax.set_title(f"Shank{sh_id+1}")
-
-    #     fig.colorbar(im, ax=ax, orientation="horizontal")
-    # fig.suptitle("Neptune Day1 - CSD (Strong theta during MAZE)")
-
+T1 = Annotated[int, ValueRange(-10, 5)]
 # figure.savefig('csd_theta_MAZE',__file__)
 
 # endregion
