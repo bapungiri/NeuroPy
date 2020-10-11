@@ -22,7 +22,6 @@ from scipy import fft, interpolate
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from signal_process import bicoherence
 from sklearn import linear_model
-from tables.description import Col
 
 # warnings.simplefilter(action="default")
 
@@ -43,7 +42,11 @@ def getPxx(lfp):
     window = 5 * 1250
 
     freq, Pxx = sg.welch(
-        lfp, fs=1250, nperseg=window, noverlap=window / 6, detrend="linear",
+        lfp,
+        fs=1250,
+        nperseg=window,
+        noverlap=window / 6,
+        detrend="linear",
     )
     noise = np.where(
         ((freq > 59) & (freq < 61)) | ((freq > 119) & (freq < 121)) | (freq > 220)
@@ -64,7 +67,7 @@ basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
+    "/data/Clustering/SleepDeprivation/RatJ/Day4/",
     "/data/Clustering/SleepDeprivation/RatK/Day4/",
     "/data/Clustering/SleepDeprivation/RatN/Day4/",
     "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
@@ -254,6 +257,17 @@ mean_bin1.plot(x="freq", ax=axbin1, legend=False, linewidth=1)
 mean_bin2.plot(x="freq", ax=axbin2, legend=False, linewidth=1)
 mean_slide.plot(x="freq", ax=axslide, legend=False, linewidth=1)
 
+a1 = mean_bin1.set_index("freq")
+a2 = mean_bin2.set_index("freq")
+a3 = mean_slide.set_index("freq")
+
+sns.heatmap(a1, ax=axbin1)
+sns.heatmap(a2, ax=axbin2)
+sns.heatmap(a3, ax=axslide)
+axbin1.set_ylim([0, 200])
+axbin2.set_ylim([0, 200])
+axslide.set_ylim([0, 200])
+
 # ---- figure properties ----------
 [
     [ax.set_xlabel("Frequency (Hz)"), ax.set_ylabel("Power"), ax.set_xlim([0, 200])]
@@ -268,8 +282,8 @@ mean_slide.plot(x="freq", ax=axslide, legend=False, linewidth=1)
 axbin1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 axbin2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 axslide.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-
-# figure.savefig("phase_specific_slowgamma", __file__)
+axbin1.set_title("Linear Probe, channel = 112")
+figure.savefig("phase_specific_slowgamma_linearprobe", __file__)
 
 
 # endregion
@@ -1080,7 +1094,12 @@ mean_harmonic_expvar.plot.bar(
 # ax1.tick_params(axis="x", labelrotation=90)
 ax2.set_xticks(range(4))
 ax2.set_xticklabels(
-    ["Sym. rise-decay", "Sym. peak-trough", "Speed", r"$\theta$ power",]
+    [
+        "Sym. rise-decay",
+        "Sym. peak-trough",
+        "Speed",
+        r"$\theta$ power",
+    ]
 )
 
 # ---- sanity plots for detection of theta params --------
@@ -1111,3 +1130,19 @@ ax2.set_xticklabels(
 
 # endregion
 
+#%% Detect high gamma periods and then observe at what theta phases they occurred at
+# region
+
+for sub, sess in enumerate(sessions[5:6]):
+    #
+    maze = sess.epochs.maze
+    thetachan = sess.theta.bestchan
+    lfp = sess.recinfo.geteeg(chans=thetachan, timeRange=maze)
+    peakgamma = sess.gamma.getPeakIntervals(lfp, band=(25, 50))
+    thetaparams = sess.theta.getParams(lfp)
+    theta_phase = thetaparams.angle
+    phase_bin = np.linspace(0, 360, 10)
+    phase_hist = np.histogram(theta_phase[peakgamma[:, 0]], bins=phase_bin)[0]
+    plt.plot(phase_bin[:-1], phase_hist)
+
+# endregion
