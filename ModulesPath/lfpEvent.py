@@ -14,6 +14,8 @@ import mathutil
 import signal_process
 from parsePath import Recinfo
 from signal_process import filter_sig as filt
+from joblib import Parallel, delayed
+from behavior import behavior_epochs
 
 
 class Hswa:
@@ -95,8 +97,7 @@ class Hswa:
         self._load()
 
     def plot(self):
-        """Gives a comprehensive view of the detection process with some statistics and examples
-        """
+        """Gives a comprehensive view of the detection process with some statistics and examples"""
         _, spindlechan, coord = self._obj.spindle.best_chan_lfp()
         eegSrate = self._obj.recinfo.lfpSrate
         probemap = self._obj.recinfo.probemap()
@@ -218,9 +219,7 @@ class Ripple:
         return lfps, chans, coords
 
     def channels(self, viewselection=1):
-        """Channels which represent high ripple power in each shank
-
-        """
+        """Channels which represent high ripple power in each shank"""
         sampleRate = self._obj.recinfo.lfpSrate
         duration = 1 * 60 * 60  # chunk of lfp in seconds
         nChans = self._obj.recinfo.nChans
@@ -462,8 +461,7 @@ class Ripple:
         print(f"{self._obj.sessinfo.files.ripple_evt.name} created")
 
     def plot(self):
-        """Gives a comprehensive view of the detection process with some statistics and examples
-        """
+        """Gives a comprehensive view of the detection process with some statistics and examples"""
         _, _, coords = self.best_chan_lfp()
         probemap = self._obj.recinfo.probemap()
         nChans = self._obj.recinfo.nChans
@@ -598,9 +596,7 @@ class Spindle:
         return lfp, chan, coords
 
     def channels(self, viewselection=1):
-        """Channel which represent high spindle power during nrem across all channels
-
-        """
+        """Channel which represent high spindle power during nrem across all channels"""
         sampleRate = self._obj.recinfo.lfpSrate
         duration = 1 * 60 * 60  # chunk of lfp in seconds
         nyq = 0.5 * sampleRate  # Nyquist frequency
@@ -648,7 +644,10 @@ class Spindle:
 
         # the reason metricAmp name was used to allow using other metrics such median
         bestspindlechan = dict(
-            zip(["channel", "lfp", "coords"], [bestchan, lfp, coords],)
+            zip(
+                ["channel", "lfp", "coords"],
+                [bestchan, lfp, coords],
+            )
         )
 
         filename = self._obj.sessinfo.files.spindlelfp
@@ -789,8 +788,7 @@ class Spindle:
         print(f"{self._obj.sessinfo.files.spindle_evt.name} created")
 
     def plot(self):
-        """Gives a comprehensive view of the detection process with some statistics and examples
-        """
+        """Gives a comprehensive view of the detection process with some statistics and examples"""
         _, spindlechan, coord = self.best_chan_lfp()
         eegSrate = self._obj.recinfo.lfpSrate
         probemap = self._obj.recinfo.probemap()
@@ -882,6 +880,28 @@ class Spindle:
 
 
 class Theta:
+    """Everything related to theta oscillations
+
+    Parameters
+    -----------
+    basepath : str or Recinfo()
+        path of the data folder or instance of Recinfo()
+
+    Attributes
+    -----------
+    bestchan : int
+        channel with highest area under the curve for frequency range 5-20 Hz
+    chansOrder : array
+        channels in decreasing order of theta power during MAZE exploration
+
+    Methods
+    -----------
+    getBestChanlfp()
+        Returns lfp/eeg of the channel with highest auc
+    detectBestChan()
+        Calculates AUC under theta band (5-20 Hz) for all channels and sorts it
+    """
+
     def __init__(self, basepath):
 
         if isinstance(basepath, Recinfo):
@@ -889,7 +909,7 @@ class Theta:
         else:
             self._obj = Recinfo(basepath)
 
-        # ----- defining file names ---------
+        # ------- defining file names ---------
         filePrefix = self._obj.files.filePrefix
 
         @dataclass
@@ -897,60 +917,80 @@ class Theta:
             bestThetachan: str = Path(str(filePrefix) + "_bestThetaChan.npy")
 
         self.files = files()
-
-        if Path(self.files.bestThetachan).is_file():
-            data = self._load()
-            self.bestchan = data["chanorder"][0]
-            self.chansOrder = data["chanorder"]
-
+        self._load()
 
     def _load(self):
-        data = np.load(self.files.bestThetachan, allow_pickle=True).item()
-        return data
+        if (f := self.files.bestThetachan).is_file():
+            data = np.load(f, allow_pickle=True).item()
+            self.bestchan = data["chanorder"][0]
+            self.chansOrder = data["chanorder"]
 
     def getBestChanlfp(self):
         return self._obj.geteeg(chans=self.bestchan)
 
     def _getAUC(self, eeg):
-        eegSrate = self._obj.recinfo.lfpSrate
-        f, pxx = sg.welch(
-            eeg, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate, axis=-1
-        )
-        f_theta = np.where((f > 5) & (f < 20))[0]
-        area_chan = np.trapz(y=pxx[:, f_theta], x=f[f_theta], axis=1)
-        sorted_thetapow = np.argsort(area_chan)[::-1]
+        """Calculates area under the curve for frequency range 5-20 Hz
+
+        Parameters
+        ----------
+        eeg : [array]
+            channels x time, has to be two dimensional
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        eegSrate = self._obj.lfpSrate
+
+        assert eeg.ndim == 2
+
+        aucChans = []
+        for i in range(eeg.shape[0]):
+
+            f, pxx = sg.welch(
+                eeg[i],
+                fs=eegSrate,
+                nperseg=10 * eegSrate,
+                noverlap=5 * eegSrate,
+                axis=-1,
+            )
+            f_theta = np.where((f > 5) & (f < 20))[0]
+            area_in_freq = np.trapz(pxx[f_theta], x=f[f_theta])
+
+            aucChans.append(area_in_freq)
+
+        sorted_thetapow = np.argsort(np.asarray(aucChans))[::-1]
 
         return sorted_thetapow
 
     def detectBestChan(self):
-        """Selects the best channel by computing area under the curve of spectral density
-
-        """
+        """Selects the best channel by computing area under the curve of spectral density"""
+        epochs = behavior_epochs(self._obj)
 
         channels = self._obj.goodchans
-        maze = self._obj.epochs.maze
-        eeg = self._obj.recinfo.geteeg(chans=channels, timeRange=maze)
-        eegSrate = self._obj.lfpSrate
-        f, pxx = sg.welch(
-            eeg, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate
-        )
-        f_theta = np.where((f > 5) & (f < 20))[0]
-        area_chan = np.trapz(y=pxx[:, f_theta], x=f[f_theta], axis=1)
-        sorted_thetapow = np.argsort(area_chan)[::-1]
+        maze = epochs.maze
+        eeg = self._obj.geteeg(chans=channels, timeRange=maze)
+        sorted_thetapow = self._getAUC(eeg=eeg)
         chans_thetapow = channels[sorted_thetapow]
 
         filename = self.files.bestThetachan
-        best_theta_chans = {
-            "chanorder": chans_thetapow,
-            "freq": f,
-            "Pxx": pxx[sorted_thetapow, :],
-        }
+        best_theta_chans = {"chanorder": chans_thetapow}
         np.save(filename, best_theta_chans)
 
-        # auc.append(area_chan)
-
     def getParams(self, lfp):
+        """Calculatiing Various theta related parameters
 
+        Parameters
+        ----------
+        lfp : [type]
+            lfp on which theta parameters are calculated
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
         # --- calculating theta parameters from broadband theta---------
         thetalfp = signal_process.filter_sig.bandpass(lfp, lf=1, hf=25)
         hil_theta = signal_process.hilbertfast(thetalfp)
@@ -1039,7 +1079,7 @@ class Theta:
         Parameters
         ----------
         lfp : array like, channels x time
-            from which strong periods are concatenated and returned 
+            from which strong periods are concatenated and returned
         lowthresh : float, optional
             threshold above which it is considered strong, by default 0 which is mean of the selected channel
         highthresh : float, optional
@@ -1085,7 +1125,120 @@ class Theta:
         return strong_theta, weak_theta, theta_indices
 
     def plot(self):
-        """Gives a comprehensive view of the detection process with some statistics and examples
-        """
+        """Gives a comprehensive view of the detection process with some statistics and examples"""
         data = self._load()
         pxx = data["Pxx"]
+
+    def csd(self, period, chans, window=1250):
+        """Calculating current source density using laplacian method
+
+        Parameters
+        ----------
+        period : array
+            period over which theta cycles are averaged
+        chans : array
+            channels for lfp data
+        window : int, optional
+            time window around theta peak in number of samples, by default 1250
+
+        Returns:
+        ----------
+        csd : dataclass,
+            a dataclass return from signal_process module
+        """
+        lfp_period = self._obj.geteeg(chans=chans, timeRange=period)
+        nChans = lfp_period.shape[0]
+        lfp_period, _, _ = self.getstrongTheta(lfp_period)
+
+        # --- Selecting channel with strongest theta for calculating theta peak-----
+        chan_order = self._getAUC(lfp_period)
+        theta_lfp = signal_process.filter_sig.bandpass(
+            lfp_period[chan_order[0], :], lf=5, hf=12, ax=-1
+        )
+        peak = sg.find_peaks(theta_lfp)[0]
+        # Ignoring first and last second of data
+        peak = peak[np.where((peak > 1250) & (peak < len(theta_lfp) - 1250))[0]]
+
+        # ---- averaging around theta cycle ---------------
+        avg_theta = np.zeros((nChans, window))
+        for ind in peak:
+            avg_theta = avg_theta + lfp_period[:, ind - window // 2 : ind + window // 2]
+        avg_theta = avg_theta / len(peak)
+
+        _, ycoord = self._obj.probemap.get(chans=chans)
+
+        csd = signal_process.Csd(lfp=avg_theta, coords=ycoord, chan_label=chans)
+        csd.classic()
+
+        return csd
+
+
+class Gamma:
+    def __init__(self, basepath):
+
+        if isinstance(basepath, Recinfo):
+            self._obj = basepath
+        else:
+            self._obj = Recinfo(basepath)
+
+        # ------- defining file names ---------
+        filePrefix = self._obj.files.filePrefix
+
+        @dataclass
+        class files:
+            gamma: str = filePrefix.with_suffix(".gamma.npy")
+
+        self.files = files()
+        self._load()
+
+    def _load(self):
+        if (f := self.files.gamma).is_file():
+            data = np.load(f, allow_pickle=True).item()
+            self.bestchan = data["chanorder"][0]
+            self.chansOrder = data["chanorder"]
+
+    def getPeakIntervals(
+        self,
+        lfp,
+        band=(25, 50),
+        lowthresh=0,
+        highthresh=0.5,
+        minDistance=300,
+        minDuration=1250,
+    ):
+        """Returns strong theta lfp. If it has multiple channels, then strong theta periods are calculated from that channel which has highest area under the curve in the theta frequency band. Parameters are applied on z-scored lfp.
+
+        Parameters
+        ----------
+        lfp : array like, channels x time
+            from which strong periods are concatenated and returned
+        lowthresh : float, optional
+            threshold above which it is considered strong, by default 0 which is mean of the selected channel
+        highthresh : float, optional
+            [description], by default 0.5
+        minDistance : int, optional
+            minimum gap between periods before they are merged, by default 300 samples
+        minDuration : int, optional
+            [description], by default 1250, which means theta period should atleast last for 1 second
+
+        Returns
+        -------
+        2D array
+            start and end frames where events exceeded the set thresholds
+        """
+
+        # ---- filtering --> zscore --> threshold --> strong gamma periods ----
+        gammalfp = signal_process.filter_sig.bandpass(lfp, lf=band[0], hf=band[1])
+        hil_gamma = signal_process.hilbertfast(gammalfp)
+        gamma_amp = np.abs(hil_gamma)
+
+        zsc_gamma = stats.zscore(gamma_amp)
+        peakevents = mathutil.threshPeriods(
+            zsc_gamma,
+            lowthresh=lowthresh,
+            highthresh=highthresh,
+            minDistance=minDistance,
+            minDuration=minDuration,
+        )
+
+        return peakevents
