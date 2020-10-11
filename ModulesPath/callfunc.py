@@ -1,19 +1,10 @@
-import os
-from pathlib import Path
-
-import numpy as np
-from pandas.core.dtypes import base
-
 from artifactDetect import findartifact
 from behavior import behavior_epochs
-
 from decoders import DecodeBehav
 from eventCorr import event_event
 from getPosition import ExtractPosition
 from getSpikes import spikes
-from lfpEvent import Hswa, Ripple, Spindle, Theta
-
-# from makeChanMap import recinfo
+from lfpEvent import Hswa, Ripple, Spindle, Theta, Gamma
 from MakePrmKlusta import makePrmPrb
 from parsePath import Recinfo
 from pfPlot import pf
@@ -35,11 +26,12 @@ class processData:
         self.utils = SessionUtil(self.recinfo)
 
         self.spikes = spikes(self.recinfo)
-        self.theta = Theta(self.recinfo)
         self.brainstates = SleepScore(self.recinfo)
-        self.ripple = Ripple(self.recinfo)
         self.swa = Hswa(self.recinfo)
+        self.theta = Theta(self.recinfo)
         self.spindle = Spindle(self.recinfo)
+        self.gamma = Gamma(self.recinfo)
+        self.ripple = Ripple(self.recinfo)
         self.placefield = pf(self.recinfo)
         self.replay = Replay(self.recinfo)
         self.decode = DecodeBehav(self.recinfo)
@@ -48,4 +40,3 @@ class processData:
         self.pbe = PBE(self.recinfo)
 
         self.eventpsth = event_event()
-

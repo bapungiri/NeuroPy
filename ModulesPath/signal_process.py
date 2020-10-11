@@ -3,11 +3,11 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.interpolate as interp
+from scipy import interpolate
 import scipy.linalg as linalg
 import scipy.ndimage as filtSig
 import scipy.signal as sg
-import scipy.stats as stats
+from scipy import stats
 from joblib import Parallel, delayed
 from numpy import linalg
 from numpy.lib.npyio import NpzFile
@@ -16,7 +16,7 @@ from scipy.fft import fft
 from scipy.fftpack import next_fast_len
 from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter
-
+from plotUtil import Fig
 from waveletFunctions import wavelet
 
 
@@ -97,7 +97,7 @@ class spectrogramBands:
     lfp: Any
     sampfreq: float = 1250.0
     window: int = 1  # in seconds
-    overlap: int = window / 8  # in seconds
+    overlap: float = 0.5  # in seconds
     smooth: int = None
     multitaper: bool = False
 
@@ -469,6 +469,7 @@ class bicoherence:
         bispec = Parallel(n_jobs=10, require="sharedmem")(
             delayed(bicoh_product)(f_ind) for f_ind in freq_ind
         )
+
         bispec = np.dstack(bispec)
         bicoher = np.abs(bispec)
 
@@ -519,20 +520,51 @@ def phasePowerCorrelation(signal):
     pass
 
 
-def csdClassic(lfp, coords):
-    time = np.arange(0, lfp.shape[1], 1)
-    print(lfp.shape)
-    f_pot = interp.interp2d(time, coords, lfp, kind="cubic")
+@dataclass
+class Csd:
+    lfp: np.array
+    coords: np.array
+    chan_label: np.array = None
 
-    y_new = np.linspace(min(coords), max(coords), 200)
-    lfp_new = f_pot(time, y_new)
-    csd = np.diff(np.diff(lfp_new, axis=0), axis=0)
+    def classic(self):
+        coords = self.coords.copy()
+        time = np.linspace(0, 1, self.lfp.shape[1])
+        csd = self.lfp[:-2, :] - 2 * self.lfp[1:-1, :] + self.lfp[2:, :]
+        self.csdmap = csd
+        self.coords = coords[1:-1]
+        self.time = time
 
-    return csd
+    def icsd(self, lfp, coords):
+        pass
 
+    def plot(self, ax=None, cmap="jet", smooth=3):
+        csdmap = gaussian_filter(self.csdmap, sigma=smooth)
 
-def icsd(lfp, coords):
-    pass
+        gs = None
+        if ax is None:
+            figure = Fig()
+            _, gs = figure.draw(grid=[1, 1])
+
+        axmap = plt.subplot(gs[0])
+        axmap.pcolormesh(self.time, self.coords, csdmap, cmap=cmap, shading="gouraud")
+        axmap.set_title("Current source density map")
+        axmap.set_ylabel("y Coordinates")
+        axmap.set_xlabel("Normalized time")
+
+        lfp = self.lfp[1:-1] - np.min(self.lfp[1:-1])
+        lfp = (lfp / np.max(lfp)) * 60
+        # lfp = np.flipud(lfp)
+        # axlfp = axmap.twinx()
+        axmap.plot(self.time, lfp.T + self.coords, "k", lw=1)
+        axmap.set_ylim(bottom=0)
+
+        # if self.chan_label is not None:
+        #     ax[1].scatter(np.ones(len(self.chan_label[1:-1])), self.coords)
+
+        #     for i, txt in enumerate(self.chan_label[1:-1]):
+        #         ax[1].annotate(str(txt), (1, self.coords[i]))
+
+        #     ax[1].axis("off")
 
 
 def mtspect(signal, nperseg, noverlap, fs=1250):

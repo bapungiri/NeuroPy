@@ -15,8 +15,8 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day4/"
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
+    # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/",
     # "/data/Clustering/SleepDeprivation/RatN/Day4/",
     "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
@@ -30,9 +30,9 @@ sessions = [processData(_) for _ in basePath]
 
 for sub, sess in enumerate(sessions):
 
-    sess.trange = np.array([])
-    badchans = [0]
-    sess.recinfo.makerecinfo(badchans=badchans)
+    # sess.trange = np.array([])
+    # badchans = [0]
+    sess.recinfo.makerecinfo()
 # endregion
 
 #%% Generate .prb for spyking circus

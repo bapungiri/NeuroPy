@@ -95,7 +95,7 @@ class Colormap:
 class Fig:
     labelsize = 8
 
-    def draw(self, num=1, grid=[2, 2], size=[8.5, 11], style="figPublish"):
+    def draw(self, num=1, grid=(2, 2), size=(8.5, 11), style="figPublish"):
 
         # --- plot settings --------
         if style == "figPublish":
@@ -150,4 +150,3 @@ class Fig:
             alpha=0.5,
         )
         fig.savefig(filename)
-
