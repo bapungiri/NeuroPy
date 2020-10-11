@@ -18,7 +18,7 @@ from ccg import correlograms
 from plotUtil import Colormap, Fig
 
 cmap = matplotlib.cm.get_cmap("hot_r")
-warnings.simplefilter(action="default")
+# warnings.simplefilter(action="default")
 
 
 #%% Subjects
