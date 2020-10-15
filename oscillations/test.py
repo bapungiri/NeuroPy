@@ -1,9 +1,16 @@
-def append_to(element, to=[1,5]):
-    to.append(element)
-    return to
+import numpy as np
 
-my_list = append_to(12)
-print(my_list)
 
-my_other_list = append_to(42)
-print(my_other_list)
+def check(input_arg):
+    m = input_arg
+
+    class c:
+        @property
+        def b(self):
+            return m / 2
+
+        @property
+        def k(self):
+            return self.b / 3
+
+    return c()
