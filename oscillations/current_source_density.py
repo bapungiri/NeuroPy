@@ -8,12 +8,13 @@ import pandas as pd
 import scipy.interpolate as interp
 import scipy.signal as sg
 import scipy.stats as stats
+import seaborn as sns
 
 import signal_process
 from callfunc import processData
 from mathutil import threshPeriods
 from plotUtil import Fig
-
+from plotUtil import Colormap
 # warnings.simplefilter(action="default")
 
 # ===== Subjects =======
@@ -37,15 +38,80 @@ sessions = [processData(_) for _ in basePath]
 for sub, sess in enumerate(sessions):
 
     maze = sess.epochs.maze
-    csd = sess.theta.csd(period=maze,chans = sess.recinfo.goodchans)
+    # csd = sess.theta.csd(period=maze,refchan =64, chans = sess.recinfo.goodchans)
+    f,pxx = sess.recinfo.getPxx(chans=sess.recinfo.goodchans,timeRange=maze)
 
 figure = Fig()
-fig,gs = figure.draw(grid=[3,8])
+fig,gs = figure.draw(grid=[4,4])
+ax =plt.subplot(gs[0])
+csd.plot(ax = ax)
+ax.set_title('CSD theta')
 
-T1 = Annotated[int, ValueRange(-10, 5)]
-# figure.savefig('csd_theta_MAZE',__file__)
+figure.savefig('csd_theta_MAZE',__file__)
 
 # endregion
+
+#%% csd theta period during MAZE
+# region
+df = pd.DataFrame()
+for sub, sess in enumerate(sessions):
+
+    maze = sess.epochs.maze
+    lfp = sess.recinfo.geteeg(chans=sess.recinfo.goodchans,timeRange=maze)
+
+    f= None
+    for chan_ind,chan in enumerate(sess.recinfo.goodchans):
+        f,pxx = sg.welch(lfp[chan_ind],fs=1250,nperseg=2*1250,noverlap = 1250)
+        f_ind = np.where((f>1)&(f<150))[0]
+        f=f[f_ind]
+        df[chan] = np.log10(pxx[f_ind])
+        
+
+    df['freq'] = np.log10(f)
+
+
+
+group = df.set_index('freq')
+a  = group.to_numpy()
+
+# a = stats.zscore(a,axis=None)
+cmap = Colormap().dynamic2()
+figure = Fig()
+fig,gs = figure.draw(grid=[4,4])
+ax =plt.subplot(gs[0])
+ax.pcolormesh(f,sess.recinfo.goodchans,a.T,cmap='jet',shading='nearest',rasterized=True)
+# sns.heatmap(group.T,ax=ax)
+# ax.set_xlim([1,150])
+ax.set_xscale('log')
+ax.set_title('Pxx')
+ax.invert_yaxis()
+ax.set_ylabel('channels')
+ax.set_xlabel('Frequency (Hz)')
+
+figure.savefig('pxx_MAZE',__file__)
+
+# endregion
+
+
+#%% csd theta period during MAZE
+# region
+
+for sub, sess in enumerate(sessions):
+
+    maze = sess.epochs.maze
+    channels = sess.recinfo.goodchans
+    csd = sess.gamma.csd(period=maze,refchan=64,chans=channels,band=(25,50),window= 126)
+
+figure = Fig()
+fig,gs = figure.draw(grid=[4,4])
+ax =plt.subplot(gs[0])
+csd.plot(smooth=2,ax = ax)
+ax.set_title('CSD slow gamma')
+
+figure.savefig('csd_slow gamma_MAZE',__file__)
+
+# endregion
+
 
 #%% CSD locked to ripple peak time
 # region

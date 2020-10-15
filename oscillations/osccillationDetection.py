@@ -17,14 +17,15 @@ from plotUtil import Colormap
 
 #%% Subjects
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
     # "/data/Clustering/SleepDeprivation/RatN/Day4/"
+    # "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
 
 
@@ -33,14 +34,18 @@ sessions = [processData(_) for _ in basePath]
 
 #%% Ripples
 # region
-plt.clf()
+# plt.clf()
 
 # fig, ax = plt.subplots(figsize=(5, 3))
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
-    sess.ripple.channels()
-    sess.ripple.detect()
+    
+    
+    sess.recinfo.
+    # sess.ripple.channels()
+    # sess.ripple.detect()
+    # sess.ripple.export2Neuroscope()
     # sess.ripple.plot()
     # sess.spindle.channels()
     # sess.spindle.detect()

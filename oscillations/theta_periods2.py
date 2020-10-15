@@ -22,6 +22,7 @@ from scipy import fft, interpolate
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from signal_process import bicoherence
 from sklearn import linear_model
+from joblib import Parallel, delayed
 
 # warnings.simplefilter(action="default")
 
@@ -1102,39 +1103,15 @@ ax2.set_xticklabels(
     ]
 )
 
-# ---- sanity plots for detection of theta params --------
-# ax3 = plt.subplot(gs[1, :])
-# theta_lfp = signal_process.filter_sig.bandpass(lfpmaze, lf=1, hf=25)
-# ax3.plot(lfpmaze, "gray", alpha=0.3)
-# ax3.plot(theta_lfp, "k")
-# ax3.plot(theta_trough, theta_lfp[theta_trough], "|", markersize=30)
-# ax3.plot(thetaparams.peak, theta_lfp[thetaparams.peak], "|", color="r", markersize=30)
-# ax3.plot(
-#     thetaparams.rise_mid,
-#     theta_lfp[thetaparams.rise_mid],
-#     "|",
-#     color="gray",
-#     markersize=30,
-# )
-# ax3.plot(
-#     thetaparams.fall_mid,
-#     theta_lfp[thetaparams.fall_mid],
-#     "|",
-#     color="magenta",
-#     markersize=30,
-# )
-# ax3.plot(theta_trough, theta_lfp[theta_trough], "|", markersize=30)
-
 # figure.savefig("gamma_bands_expvar", __file__)
 
 
 # endregion
 
-#%% Detect high gamma periods and then observe at what theta phases they occurred at
+#%% Detect high gamma periods and then calculate at what theta phases they occurred
 # region
-
-for sub, sess in enumerate(sessions[5:6]):
-    #
+gamma_at_thetaphase = pd.DataFrame()
+for sub, sess in enumerate(sessions[9:10]):
     maze = sess.epochs.maze
     thetachan = sess.theta.bestchan
     lfp = sess.recinfo.geteeg(chans=thetachan, timeRange=maze)
@@ -1142,7 +1119,83 @@ for sub, sess in enumerate(sessions[5:6]):
     thetaparams = sess.theta.getParams(lfp)
     theta_phase = thetaparams.angle
     phase_bin = np.linspace(0, 360, 10)
-    phase_hist = np.histogram(theta_phase[peakgamma[:, 0]], bins=phase_bin)[0]
-    plt.plot(phase_bin[:-1], phase_hist)
+    phase_centers = phase_bin[:-1] + np.diff(phase_bin).mean() / 2
 
+    # ---- start of gamma w.r.t theta phase -------
+    phase_hist_start = np.histogram(theta_phase[peakgamma[:, 0]], bins=phase_bin)[0]
+
+    # ----- entire gamma event phase preference -------
+    gamma_indices = np.concatenate([np.arange(beg, end) for (beg, end) in peakgamma])
+    phase_hist_all = np.histogram(theta_phase[gamma_indices], bins=phase_bin)[0]
+
+    gamma_at_thetaphase = gamma_at_thetaphase.append(
+        pd.DataFrame(
+            {
+                "sub": sub,
+                "phase": phase_centers,
+                "start_phase": phase_hist_start / np.sum(phase_hist_start),
+                "all_phase": phase_hist_all / np.sum(phase_hist_all),
+            }
+        )
+    )
+
+mean_group = gamma_at_thetaphase.groupby("phase").mean()
+sem_group = gamma_at_thetaphase.groupby("phase").sem()
+
+figure = Fig()
+fig, gs = figure.draw(grid=(3, 3))
+ax = plt.subplot(gs[0])
+mean_group.plot(
+    y="all_phase", yerr=sem_group.all_phase, legend=None, ax=ax, color="#DD2C00"
+)
+ax.set_title("Prefered phase for high gamma time points \n (0 degree = theta trough)")
+ax.set_xlabel(r"$\theta$ Phase (degree)")
+ax.set_ylabel(r"Normalized counts")
+
+
+# endregion
+
+#%% Detect high gamma periods for each channel individually and then calculate at what theta phases they occurred in the corresponding channel
+# region
+gamma_at_thetaphase = pd.DataFrame()
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    channels = sess.recinfo.goodchans
+    nChans = len(channels)
+    phase_bin = np.linspace(0, 360, 21)
+    phase_centers = phase_bin[:-1] + np.diff(phase_bin).mean() / 2
+    lfpmaze = sess.recinfo.geteeg(chans=channels, timeRange=maze)
+
+    def theta_phase_pref(lfp):
+        peakgamma = sess.gamma.getPeakIntervals(lfp, band=(100, 150))
+        thetaparams = sess.theta.getParams(lfp, lowtheta=1, hightheta=25)
+        theta_phase = thetaparams.angle
+
+        # ----- entire gamma event phase preference -------
+        gamma_indices = np.concatenate(
+            [np.arange(beg, end) for (beg, end) in peakgamma]
+        )
+        phase_hist_all = np.histogram(theta_phase[gamma_indices], bins=phase_bin)[0]
+
+        del thetaparams
+        del peakgamma
+        return phase_hist_all
+
+    vals = Parallel(n_jobs=10)(delayed(theta_phase_pref)(lfp_) for lfp_ in lfpmaze)
+    vals = stats.zscore(np.asarray(vals), axis=None)
+    df = pd.DataFrame(vals.T, columns=channels)
+    df["phase"] = phase_centers
+    gamma_at_thetaphase = gamma_at_thetaphase.append(df)
+
+group = gamma_at_thetaphase.set_index("phase")
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 4))
+ax = plt.subplot(gs[0])
+sns.heatmap(data=group.T, ax=ax, cmap="Spectral_r", shading="gouraud", rasterized=True)
+ax.set_title("fast gamma \n (0 degree = theta trough)")
+ax.set_xlabel(r"$\theta$ Phase (degree)")
+ax.set_ylabel("channels")
+
+figure.savefig("fastgamma_thetaphase", __file__)
 # endregion
