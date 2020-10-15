@@ -203,7 +203,7 @@ class wavelet_decomp:
 
         Returns:
             [type]: [description]
-        
+
         References
         ------------
         1) Colgin, L. L., Denninger, T., Fyhn, M., Hafting, T., Bonnevie, T., Jensen, O., ... & Moser, E. I. (2009). Frequency of gamma oscillations routes flow of information in the hippocampus. Nature, 462(7271), 353-357.
@@ -238,7 +238,7 @@ class wavelet_decomp:
 
         Returns:
             [type]: [description]
-        
+
         References
         ------------
         1) Le Van Quyen, M., Bragin, A., Staba, R., Crépon, B., Wilson, C. L., & Engel, J. (2008). Cell type-specific firing during ripple oscillations in the hippocampal formation of humans. Journal of Neuroscience, 28(24), 6104-6110.
@@ -382,7 +382,7 @@ class bicoherence:
         fhigh: int, highest frequency
         window: int, segment size
         noverlap:
-        
+
         bicoher (freq_req x freq_req, array): bicoherence matrix
         freq {array}: frequencies at which bicoherence was calculated
         bispec:
@@ -506,7 +506,9 @@ class bicoherence:
         ax.set_ylim([0, np.max(self.freq) / 2])
 
         ax.plot(
-            [1, np.max(self.freq / 2)], [1, np.max(self.freq) / 2], "gray",
+            [1, np.max(self.freq / 2)],
+            [1, np.max(self.freq) / 2],
+            "gray",
         )
         ax.plot(
             [np.max(self.freq) / 2, np.max(self.freq)],
@@ -529,7 +531,7 @@ class Csd:
     def classic(self):
         coords = self.coords.copy()
         time = np.linspace(0, 1, self.lfp.shape[1])
-        csd = self.lfp[:-2, :] - 2 * self.lfp[1:-1, :] + self.lfp[2:, :]
+        csd = -(self.lfp[:-2, :] - 2 * self.lfp[1:-1, :] + self.lfp[2:, :])
         self.csdmap = csd
         self.coords = coords[1:-1]
         self.time = time
@@ -544,19 +546,27 @@ class Csd:
         if ax is None:
             figure = Fig()
             _, gs = figure.draw(grid=[1, 1])
-
-        axmap = plt.subplot(gs[0])
-        axmap.pcolormesh(self.time, self.coords, csdmap, cmap=cmap, shading="gouraud")
-        axmap.set_title("Current source density map")
-        axmap.set_ylabel("y Coordinates")
-        axmap.set_xlabel("Normalized time")
+            ax = plt.subplot(gs[0])
+        ax.pcolormesh(
+            self.time,
+            np.arange(len(self.coords) + 1, 1, -1),
+            stats.zscore(csdmap, axis=None),
+            cmap=cmap,
+            shading="gouraud",
+            # vmax=1,
+            rasterized=True,
+        )
+        ax.set_title("Current source density map")
+        ax.set_ylabel("y Coordinates")
+        ax.set_xlabel("Normalized time")
+        ax.set_ylim([0, len(self.coords) + 2])
 
         lfp = self.lfp[1:-1] - np.min(self.lfp[1:-1])
         lfp = (lfp / np.max(lfp)) * 60
         # lfp = np.flipud(lfp)
         # axlfp = axmap.twinx()
-        axmap.plot(self.time, lfp.T + self.coords, "k", lw=1)
-        axmap.set_ylim(bottom=0)
+        # axmap.plot(self.time, lfp.T + self.coords, "k", lw=1)
+        # axmap.set_ylim(bottom=0)
 
         # if self.chan_label is not None:
         #     ax[1].scatter(np.ones(len(self.chan_label[1:-1])), self.coords)
@@ -580,4 +590,3 @@ def mtspect(signal, nperseg, noverlap, fs=1250):
     psd = np.asarray(psd_taper).mean(axis=0)
 
     return f, psd
-

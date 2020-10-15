@@ -8,6 +8,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.signal as sg
 
 
 class Recinfo:
@@ -80,8 +81,7 @@ class Recinfo:
         return metadata
 
     def makerecinfo(self):
-        """Reads recording parameter from xml file
-        """
+        """Reads recording parameter from xml file"""
 
         myroot = ET.parse(self.recfiles.xmlfile).getroot()
 
@@ -167,6 +167,13 @@ class Recinfo:
         eeg = eeg[chans, :]
         return eeg
 
+    def getPxx(self, chans, timeRange=None):
+        eeg = self.geteeg(chans=chans, timeRange=timeRange)
+        f, pxx = sg.welch(
+            eeg, fs=self.lfpSrate, nperseg=2 * self.lfpSrate, noverlap=self.lfpSrate
+        )
+        return f, pxx
+
 
 class files:
     def __init__(self, filePrefix):
@@ -177,8 +184,8 @@ class files:
         self.badchans = Path(str(filePrefix) + "_badChans.npy")
         self.position = Path(str(filePrefix) + "_position.npy")
         self.epochs = Path(str(filePrefix) + "_epochs.npy")
-        self.ripplelfp = Path(str(filePrefix) + "_BestRippleChans.npy")
-        self.ripple_evt = Path(str(filePrefix) + "_ripples.npy")
+        # self.ripplelfp = Path(str(filePrefix) + "_BestRippleChans.npy")
+        # self.ripple_evt = Path(str(filePrefix) + "_ripples.npy")
         self.spindle_evt = Path(str(filePrefix) + "_spindles.npy")
         self.spindlelfp = Path(str(filePrefix) + "_BestSpindleChan.npy")
         self.thetalfp = Path(str(filePrefix) + "_BestThetaChan.npy")
@@ -305,9 +312,8 @@ class Probemap:
             fig.subplots_adjust(hspace=0.3)
             ax = fig.add_subplot(gs[0])
 
-        ax.scatter(xpos, ypos, s=4, color="gray", zorder=1)
+        ax.scatter(xpos, ypos, s=0.8, color="gray", zorder=1)
         if colors is None:
             ax.scatter(xpos[chan_rank], ypos[chan_rank], c="red", s=20, zorder=2)
         else:
             ax.scatter(xpos[chan_rank], ypos[chan_rank], c=colors, s=40, zorder=2)
-

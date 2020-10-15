@@ -9,11 +9,10 @@ import numpy as np
 import pandas as pd
 import scipy.signal as sg
 import scipy.stats as stats
-
+from scipy import fftpack
 import mathutil
 import signal_process
 from parsePath import Recinfo
-from signal_process import filter_sig as filt
 from joblib import Parallel, delayed
 from behavior import behavior_epochs
 
@@ -179,9 +178,23 @@ class Ripple:
         else:
             self._obj = Recinfo(basepath)
 
-        if Path(self._obj.files.ripple_evt).is_file():
+        # ------- defining file names ---------
+        filePrefix = self._obj.files.filePrefix
 
-            ripple_evt = np.load(self._obj.files.ripple_evt, allow_pickle=True).item()
+        @dataclass
+        class files:
+            ripples: Path = filePrefix.with_suffix(".ripples.npy")
+            bestRippleChans: Path = filePrefix.with_suffix(".BestRippleChans.npy")
+            zscbestRippleChan: Path = filePrefix.with_suffix(".zscbestRippleChan.npy")
+            neuroscope: Path = filePrefix.with_suffix(".evt.rpl")
+
+        self.files = files()
+        self._load()
+
+    def _load(self):
+        if (f := self.files.ripples).is_file():
+
+            ripple_evt = np.load(f, allow_pickle=True).item()
             self.time = ripple_evt["times"]
             self.peakpower = ripple_evt["peakPower"]
             self.peaktime = ripple_evt["peaktime"]
@@ -194,115 +207,72 @@ class Ripple:
             [type] -- [description]
         """
 
-        lfpinfo = np.load(self._obj.recinfo.files.ripplelfp, allow_pickle=True).item()
+        lfpinfo = np.load(self.files.bestRippleChans, allow_pickle=True).item()
         chans = np.asarray(lfpinfo["channels"])
         lfps = np.asarray(lfpinfo["lfps"])
-        coords = lfpinfo["coords"]
         metric = np.asarray(lfpinfo["metricAmp"])
-
-        # lfp_t = np.linspace(0, len(lfps) / lfpsrate, len(lfps))
 
         # sorting accoriding to the metric values
         descend_indx = np.argsort(metric)[::-1]
         lfps = lfps[descend_indx, :]
 
-        # if chans == "best":
-        #     lfps = lfps[0, :]
-        #     coords = coords[0]
-
-        # if self._obj.trange.any():
-        #     # convert to frames
-        #     start, end = self._obj.trange * lfpsrate
-        #     lfp = lfp[int(start) : int(end)]
-        #     lfp_t = np.linspace(int(start) / lfpsrate, int(end) / lfpsrate, len(lfp))
-
-        return lfps, chans, coords
+        return lfps, chans
 
     def channels(self, viewselection=1):
         """Channels which represent high ripple power in each shank"""
-        sampleRate = self._obj.recinfo.lfpSrate
-        duration = 1 * 60 * 60  # chunk of lfp in seconds
-        nChans = self._obj.recinfo.nChans
-        badchans = self._obj.recinfo.badchans
-        allchans = self._obj.recinfo.channels
-        changrp = self._obj.recinfo.channelgroups
-        nShanks = self._obj.recinfo.nShanks
-        probemap = self._obj.recinfo.probemap()
-        brainChannels = [item for sublist in changrp[:nShanks] for item in sublist]
-        dict_probemap = dict(zip(brainChannels, zip(probemap[0], probemap[1])))
+        duration = 1 * 60 * 60  # 1 hour chunk of lfp in seconds
+        nShanks = self._obj.nShanks
 
-        fileName = self._obj.sessinfo.recfiles.eegfile
-        lfpAll = np.memmap(fileName, dtype="int16", mode="r")
-        lfpAll = np.memmap.reshape(lfpAll, (int(len(lfpAll) / nChans), nChans))
-        lfpCA1 = lfpAll[: sampleRate * duration, :]
+        lfpCA1 = self._obj.geteeg(chans=self._obj.goodchans, timeRange=[0, duration])
+        goodChans = self._obj.goodchans  # keeps order
 
-        # exclude badchannels
-        lfpCA1 = np.delete(lfpCA1, badchans, 1)
-        goodChans = np.setdiff1d(allchans, badchans, assume_unique=True)  # keeps order
-
-        hilbertfast = lambda x: sg.hilbert(x, fftpack.next_fast_len(len(x)))[: len(x)]
-
-        # filter and hilbet amplitude for each channel
-        avgRipple = np.zeros(lfpCA1.shape[1])
-        for i in range(lfpCA1.shape[1]):
-            rippleband = filt.filter_ripple(lfpCA1[:, i])
-            amplitude_envelope = np.abs(hilbertfast(rippleband))
+        # --- filter and hilbert amplitude for each channel --------
+        avgRipple = np.zeros(lfpCA1.shape[0])
+        for i in range(lfpCA1.shape[0]):
+            rippleband = signal_process.filter_sig.ripple(lfpCA1[i])
+            amplitude_envelope = np.abs(signal_process.hilbertfast(rippleband))
             avgRipple[i] = np.mean(amplitude_envelope, axis=0)
 
         rippleamp_chan = dict(zip(goodChans, avgRipple))
 
-        # plt.plot(probemap[0], probemap[1], ".", color="#bfc0c0")
-
-        rplchan_shank, lfps, coord, metricAmp = [], [], [], []
+        rplchan_shank, lfps, metricAmp = [], [], []
         for shank in range(nShanks):
-            chans = np.asarray(changrp[shank])
-            goodChans_shank = np.setdiff1d(chans, badchans, assume_unique=True)
+            goodChans_shank = np.asarray(self._obj.goodchangrp[shank])
 
             if goodChans_shank.size != 0:
                 avgrpl_shank = np.asarray(
-                    [rippleamp_chan[key] for key in goodChans_shank]
+                    [rippleamp_chan[chan] for chan in goodChans_shank]
                 )
                 chan_max = goodChans_shank[np.argmax(avgrpl_shank)]
-                xcoord = dict_probemap[chan_max][0]
-                ycoord = dict_probemap[chan_max][1]
                 rplchan_shank.append(chan_max)
-                lfps.append(lfpAll[:, np.where(goodChans == chan_max)[0][0]])
-                coord.append([xcoord, ycoord])
+                lfps.append(self._obj.geteeg(chans=chan_max))
                 metricAmp.append(np.max(avgrpl_shank))
 
-        # the reason metricAmp name was used to allow using other metrics such median
-        bestripplechans = dict(
-            zip(
-                ["channels", "lfps", "coords", "metricAmp"],
-                [rplchan_shank, lfps, coord, metricAmp],
-            )
-        )
+        # --- the reason metricAmp was used to allow using other metrics such as median
+        bestripplechans = {
+            "channels": rplchan_shank,
+            "lfps": lfps,
+            "metricAmp": metricAmp,
+        }
 
-        filename = self._obj.sessinfo.files.ripplelfp
+        filename = self.files.bestRippleChans
         np.save(filename, bestripplechans)
 
     def _zscbestchannel(self, fromfile=1):
-        filename = str(self._obj.sessinfo.files.filePrefix) + "_zscbestRippleChan.npy"
-
         if fromfile == 1:
-            signal = np.load(filename)
+            signal = np.load(self.files.zscbestRippleChan)
         else:
-            ripplelfps, _, _ = self.best_chan_lfp()
+            ripplelfps, _ = self.best_chan_lfp()
             signal = np.asarray(ripplelfps, dtype=np.float)  # convert data to float
 
-            # optimizing memory and performance writing on the same array of signal
-            hilbertfast = lambda x: sg.hilbert(x, fftpack.next_fast_len(len(x)))[
-                : len(x)
-            ]
-
+            # --- optimizing memory and performance writing on same array --
             for i in range(signal.shape[0]):
                 print(i)
-                yf = filt.filter_ripple(signal[i, :], ax=-1)
-                # amplitude_envelope = np.abs(sg.hilbert(yf, axis=-1))
-                amplitude_envelope = np.abs(hilbertfast(yf))
+                yf = signal_process.filter_sig.ripple(signal[i, :], ax=-1)
+                amplitude_envelope = np.abs(signal_process.hilbertfast(yf))
                 signal[i, :] = stats.zscore(amplitude_envelope, axis=-1)
 
-            np.save(filename, signal)
+            np.save(self.files.zscbestRippleChan, signal)
 
         return signal
 
@@ -312,22 +282,24 @@ class Ripple:
         Returns:
             [type] -- [description]
         """
-        SampFreq = self._obj.recinfo.lfpSrate
+        SampFreq = self._obj.lfpSrate
         lowFreq = 150
         highFreq = 240
         # TODO chnage raw amplitude threshold to something statistical
         highRawSigThresholdFactor = 15000
 
-        ripplelfps, _, _ = self.best_chan_lfp()
+        ripplelfps, _ = self.best_chan_lfp()
         signal = np.asarray(ripplelfps, dtype=np.float)[0, :]
 
         zscsignal = self._zscbestchannel(fromfile=0)
-        sharpWv_sig = np.abs(filt.filter_cust(zscsignal, lf=2, hf=50, ax=1)).sum(axis=0)
+        sharpWv_sig = np.abs(
+            signal_process.filter_sig.bandpass(zscsignal, lf=2, hf=50, ax=1)
+        ).sum(axis=0)
 
         # sharp_wave_sig = sharp_wave_sig - np.mean(sharp_wave_sig)
 
         # ---------delete ripples in noisy period--------
-        deadfile = (self._obj.sessinfo.files.filePrefix).with_suffix(".dead")
+        deadfile = (self._obj.files.filePrefix).with_suffix(".dead")
         if deadfile.is_file():
             with deadfile.open("r") as f:
                 noisy = []
@@ -365,7 +337,6 @@ class Ripple:
         ripple = firstPass[0]
         for i in range(1, len(firstPass)):
             if firstPass[i, 0] - ripple[1] < minInterRippleSamples:
-                # Merging ripples
                 ripple = [ripple[0], firstPass[i, 1]]
             else:
                 secondPass.append(ripple)
@@ -457,8 +428,9 @@ class Ripple:
             },
         }
 
-        np.save(self._obj.sessinfo.files.ripple_evt, ripples)
-        print(f"{self._obj.sessinfo.files.ripple_evt.name} created")
+        np.save(self.files.ripples, ripples)
+        print(f"{self.files.ripples} created")
+        self._load()
 
     def plot(self):
         """Gives a comprehensive view of the detection process with some statistics and examples"""
@@ -491,7 +463,7 @@ class Ripple:
             start = int(frames[ripple, 0])
             end = int(frames[ripple, 1])
             lfp = stats.zscore(eegdata[start:end, :])
-            ripplebandlfp = filt.filter_ripple(lfp, ax=0)
+            ripplebandlfp = signal_process.filter_sig.ripple(lfp)
             # lfp = (lfp.T - np.median(lfp, axis=1)).T
             lfp = lfp + np.linspace(40, 0, lfp.shape[1])
             ripplebandlfp = ripplebandlfp + np.linspace(40, 0, lfp.shape[1])
@@ -551,8 +523,7 @@ class Ripple:
 
     def export2Neuroscope(self):
         times = self.time * 1000  # convert to ms
-        file_neuroscope = self._obj.sessinfo.files.filePrefix.with_suffix(".evt.rpl")
-        with file_neuroscope.open("w") as a:
+        with self.files.neuroscope.open("w") as a:
             for beg, stop in times:
                 a.write(f"{beg} start\n{stop} end\n")
 
@@ -914,7 +885,7 @@ class Theta:
 
         @dataclass
         class files:
-            bestThetachan: str = Path(str(filePrefix) + "_bestThetaChan.npy")
+            bestThetachan: str = filePrefix.with_suffix(".bestThetaChan.npy")
 
         self.files = files()
         self._load()
@@ -978,7 +949,7 @@ class Theta:
         best_theta_chans = {"chanorder": chans_thetapow}
         np.save(filename, best_theta_chans)
 
-    def getParams(self, lfp):
+    def getParams(self, lfp, lowtheta=1, hightheta=25):
         """Calculatiing Various theta related parameters
 
         Parameters
@@ -992,7 +963,8 @@ class Theta:
             [description]
         """
         # --- calculating theta parameters from broadband theta---------
-        thetalfp = signal_process.filter_sig.bandpass(lfp, lf=1, hf=25)
+        eegSrate = self._obj.lfpSrate
+        thetalfp = signal_process.filter_sig.bandpass(lfp, lf=lowtheta, hf=hightheta)
         hil_theta = signal_process.hilbertfast(thetalfp)
         theta_360 = np.angle(hil_theta, deg=True) + 180
         theta_angle = np.abs(np.angle(hil_theta, deg=True))
@@ -1007,56 +979,72 @@ class Theta:
 
         assert len(theta_trough) == len(theta_peak)
 
-        rising_time = (theta_peak[1:] - theta_trough[1:]) / 1250
-        falling_time = (theta_trough[1:] - theta_peak[:-1]) / 1250
-
-        rise_midpoints = np.array(
-            [
-                trough
-                + np.argmin(
-                    np.abs(
-                        thetalfp[trough:peak]
-                        - (
-                            max(thetalfp[trough:peak])
-                            - np.ptp(thetalfp[trough:peak]) / 2
-                        )
-                    )
-                )
-                for (trough, peak) in zip(theta_trough, theta_peak)
-            ]
-        )
-
-        fall_midpoints = np.array(
-            [
-                peak
-                + np.argmin(
-                    np.abs(
-                        thetalfp[peak:trough]
-                        - (
-                            max(thetalfp[peak:trough])
-                            - np.ptp(thetalfp[peak:trough]) / 2
-                        )
-                    )
-                )
-                for (peak, trough) in zip(theta_peak[:-1], theta_trough[1:])
-            ]
-        )
-        peak_width_ = (fall_midpoints - rise_midpoints[:-1]) / 1250
-        trough_width_ = (rise_midpoints[1:] - fall_midpoints) / 1250
+        rising_time = (theta_peak[1:] - theta_trough[1:]) / eegSrate
+        falling_time = (theta_trough[1:] - theta_peak[:-1]) / eegSrate
 
         # ----- nested class for keeping parameters and sanity plots ----------
         @dataclass
         class Params:
+            lfp_filtered: np.array = thetalfp
             amplitude: np.array = theta_amp
             angle: np.array = theta_360  # ranges from 0 to 360
             peak: np.array = theta_peak
             trough: np.array = theta_trough
             rise_time: np.array = rising_time
             fall_time: np.array = falling_time
-            rise_mid: typing.Any = rise_midpoints
-            fall_mid: np.array = fall_midpoints
-            peak_width: np.array = peak_width_
-            trough_width: np.array = trough_width_
+
+            @property
+            def rise_mid(self):
+                theta_trough = self.trough
+                theta_peak = self.peak
+                thetalfp = self.lfp_filtered
+                rise_midpoints = np.array(
+                    [
+                        trough
+                        + np.argmin(
+                            np.abs(
+                                thetalfp[trough:peak]
+                                - (
+                                    max(thetalfp[trough:peak])
+                                    - np.ptp(thetalfp[trough:peak]) / 2
+                                )
+                            )
+                        )
+                        for (trough, peak) in zip(theta_trough, theta_peak)
+                    ]
+                )
+                return rise_midpoints
+
+            @property
+            def fall_mid(self):
+                theta_peak = self.peak
+                theta_trough = self.trough
+                thetalfp = self.lfp_filtered
+                fall_midpoints = np.array(
+                    [
+                        peak
+                        + np.argmin(
+                            np.abs(
+                                thetalfp[peak:trough]
+                                - (
+                                    max(thetalfp[peak:trough])
+                                    - np.ptp(thetalfp[peak:trough]) / 2
+                                )
+                            )
+                        )
+                        for (peak, trough) in zip(theta_peak[:-1], theta_trough[1:])
+                    ]
+                )
+
+                return fall_midpoints
+
+            @property
+            def peak_width(self):
+                return (self.fall_mid - self.rise_mid[:-1]) / eegSrate
+
+            @property
+            def trough_width(self):
+                return (self.rise_mid[1:] - self.fall_mid) / eegSrate
 
             @property
             def asymmetry(self):
@@ -1067,6 +1055,27 @@ class Theta:
                 return self.peak_width / (self.peak_width + self.trough_width)
 
             def sanityCheck(self, rawTheta):
+                # ax3 = plt.subplot(gs[1, :])
+                # theta_lfp = signal_process.filter_sig.bandpass(lfpmaze, lf=1, hf=25)
+                # ax3.plot(lfpmaze, "gray", alpha=0.3)
+                # ax3.plot(theta_lfp, "k")
+                # ax3.plot(theta_trough, theta_lfp[theta_trough], "|", markersize=30)
+                # ax3.plot(thetaparams.peak, theta_lfp[thetaparams.peak], "|", color="r", markersize=30)
+                # ax3.plot(
+                #     thetaparams.rise_mid,
+                #     theta_lfp[thetaparams.rise_mid],
+                #     "|",
+                #     color="gray",
+                #     markersize=30,
+                # )
+                # ax3.plot(
+                #     thetaparams.fall_mid,
+                #     theta_lfp[thetaparams.fall_mid],
+                #     "|",
+                #     color="magenta",
+                #     markersize=30,
+                # )
+                # ax3.plot(theta_trough, theta_lfp[theta_trough], "|", markersize=30)
                 pass
 
         return Params()
@@ -1129,13 +1138,15 @@ class Theta:
         data = self._load()
         pxx = data["Pxx"]
 
-    def csd(self, period, chans, window=1250):
+    def csd(self, period, refchan, chans, window=1250):
         """Calculating current source density using laplacian method
 
         Parameters
         ----------
         period : array
             period over which theta cycles are averaged
+        refchan : int or array
+            channel whose theta peak will be considered. If array then median of lfp across all channels will be chosen for peak detection
         chans : array
             channels for lfp data
         window : int, optional
@@ -1147,14 +1158,17 @@ class Theta:
             a dataclass return from signal_process module
         """
         lfp_period = self._obj.geteeg(chans=chans, timeRange=period)
+        lfp_period = signal_process.filter_sig.bandpass(lfp_period, lf=5, hf=12)
+
+        theta_lfp = self._obj.geteeg(chans=refchan, timeRange=period)
         nChans = lfp_period.shape[0]
-        lfp_period, _, _ = self.getstrongTheta(lfp_period)
+        # lfp_period, _, _ = self.getstrongTheta(lfp_period)
 
         # --- Selecting channel with strongest theta for calculating theta peak-----
-        chan_order = self._getAUC(lfp_period)
-        theta_lfp = signal_process.filter_sig.bandpass(
-            lfp_period[chan_order[0], :], lf=5, hf=12, ax=-1
-        )
+        # chan_order = self._getAUC(lfp_period)
+        # theta_lfp = signal_process.filter_sig.bandpass(
+        #     lfp_period[chan_order[0], :], lf=5, hf=12, ax=-1)
+        theta_lfp = signal_process.filter_sig.bandpass(theta_lfp, lf=5, hf=12)
         peak = sg.find_peaks(theta_lfp)[0]
         # Ignoring first and last second of data
         peak = peak[np.where((peak > 1250) & (peak < len(theta_lfp) - 1250))[0]]
@@ -1202,9 +1216,9 @@ class Gamma:
         lfp,
         band=(25, 50),
         lowthresh=0,
-        highthresh=0.5,
+        highthresh=1,
         minDistance=300,
-        minDuration=1250,
+        minDuration=125,
     ):
         """Returns strong theta lfp. If it has multiple channels, then strong theta periods are calculated from that channel which has highest area under the curve in the theta frequency band. Parameters are applied on z-scored lfp.
 
@@ -1242,3 +1256,55 @@ class Gamma:
         )
 
         return peakevents
+
+    def csd(self, period, refchan, chans, band=(25, 50), window=1250):
+        """Calculating current source density using laplacian method
+
+        Parameters
+        ----------
+        period : array
+            period over which theta cycles are averaged
+        refchan : int or array
+            channel whose theta peak will be considered. If array then median of lfp across all channels will be chosen for peak detection
+        chans : array
+            channels for lfp data
+        window : int, optional
+            time window around theta peak in number of samples, by default 1250
+
+        Returns:
+        ----------
+        csd : dataclass,
+            a dataclass return from signal_process module
+        """
+        lfp_period = self._obj.geteeg(chans=chans, timeRange=period)
+        lfp_period = signal_process.filter_sig.bandpass(
+            lfp_period, lf=band[0], hf=band[1]
+        )
+
+        gamma_lfp = self._obj.geteeg(chans=refchan, timeRange=period)
+        nChans = lfp_period.shape[0]
+        # lfp_period, _, _ = self.getstrongTheta(lfp_period)
+
+        # --- Selecting channel with strongest theta for calculating theta peak-----
+        # chan_order = self._getAUC(lfp_period)
+        # gamma_lfp = signal_process.filter_sig.bandpass(
+        #     lfp_period[chan_order[0], :], lf=5, hf=12, ax=-1)
+        gamma_lfp = signal_process.filter_sig.bandpass(
+            gamma_lfp, lf=band[0], hf=band[1]
+        )
+        peak = sg.find_peaks(gamma_lfp)[0]
+        # Ignoring first and last second of data
+        peak = peak[np.where((peak > 1250) & (peak < len(gamma_lfp) - 1250))[0]]
+
+        # ---- averaging around theta cycle ---------------
+        avg_theta = np.zeros((nChans, window))
+        for ind in peak:
+            avg_theta = avg_theta + lfp_period[:, ind - window // 2 : ind + window // 2]
+        avg_theta = avg_theta / len(peak)
+
+        _, ycoord = self._obj.probemap.get(chans=chans)
+
+        csd = signal_process.Csd(lfp=avg_theta, coords=ycoord, chan_label=chans)
+        csd.classic()
+
+        return csd
