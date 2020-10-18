@@ -317,3 +317,5 @@ class Probemap:
             ax.scatter(xpos[chan_rank], ypos[chan_rank], c="red", s=20, zorder=2)
         else:
             ax.scatter(xpos[chan_rank], ypos[chan_rank], c=colors, s=40, zorder=2)
+
+        ax.axis("off")
