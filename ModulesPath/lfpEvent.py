@@ -15,6 +15,7 @@ import signal_process
 from parsePath import Recinfo
 from joblib import Parallel, delayed
 from behavior import behavior_epochs
+from artifactDetect import findartifact
 
 
 class Hswa:
@@ -163,14 +164,6 @@ class Hswa:
 
 
 class Ripple:
-    lowthresholdFactor = 1
-    highthresholdFactor = 5
-    highRawSigThresholdFactor = 15000
-    minRippleDuration = 50  # in milliseconds
-    maxRippleDuration = 450  # in milliseconds
-    maxRipplePower = 60  # in normalized power units
-    mergeDistance = 50
-
     def __init__(self, basepath):
 
         if isinstance(basepath, Recinfo):
@@ -185,7 +178,6 @@ class Ripple:
         class files:
             ripples: Path = filePrefix.with_suffix(".ripples.npy")
             bestRippleChans: Path = filePrefix.with_suffix(".BestRippleChans.npy")
-            zscbestRippleChan: Path = filePrefix.with_suffix(".zscbestRippleChan.npy")
             neuroscope: Path = filePrefix.with_suffix(".evt.rpl")
 
         self.files = files()
@@ -195,28 +187,12 @@ class Ripple:
         if (f := self.files.ripples).is_file():
 
             ripple_evt = np.load(f, allow_pickle=True).item()
-            self.time = ripple_evt["times"]
-            self.peakpower = ripple_evt["peakPower"]
-            self.peaktime = ripple_evt["peaktime"]
-            # self.peakSharpWave = ripple_evt["peakSharpwave"]
+            self.events = ripple_evt["events"]
+            self.params = ripple_evt["DetectionParams"]
 
-    def best_chan_lfp(self):
-        """Returns just best of best channels of each shank or returns all best channels of shanks
-
-        Returns:
-            [type] -- [description]
-        """
-
-        lfpinfo = np.load(self.files.bestRippleChans, allow_pickle=True).item()
-        chans = np.asarray(lfpinfo["channels"])
-        lfps = np.asarray(lfpinfo["lfps"])
-        metric = np.asarray(lfpinfo["metricAmp"])
-
-        # sorting accoriding to the metric values
-        descend_indx = np.argsort(metric)[::-1]
-        lfps = lfps[descend_indx, :]
-
-        return lfps, chans
+        if (f := self.files.bestRippleChans).is_file():
+            data = np.load(f, allow_pickle=True).item()
+            self.bestchans = data["channels"]
 
     def channels(self, viewselection=1):
         """Channels which represent high ripple power in each shank"""
@@ -235,7 +211,7 @@ class Ripple:
 
         rippleamp_chan = dict(zip(goodChans, avgRipple))
 
-        rplchan_shank, lfps, metricAmp = [], [], []
+        rplchan_shank, metricAmp = [], []
         for shank in range(nShanks):
             goodChans_shank = np.asarray(self._obj.goodchangrp[shank])
 
@@ -245,84 +221,81 @@ class Ripple:
                 )
                 chan_max = goodChans_shank[np.argmax(avgrpl_shank)]
                 rplchan_shank.append(chan_max)
-                lfps.append(self._obj.geteeg(chans=chan_max))
                 metricAmp.append(np.max(avgrpl_shank))
 
+        rplchan_shank = np.asarray(rplchan_shank)
+        metricAmp = np.asarray(metricAmp)
+        sort_chan = np.argsort(metricAmp)
         # --- the reason metricAmp was used to allow using other metrics such as median
         bestripplechans = {
-            "channels": rplchan_shank,
-            "lfps": lfps,
-            "metricAmp": metricAmp,
+            "channels": rplchan_shank[sort_chan],
+            "metricAmp": metricAmp[sort_chan],
         }
 
         filename = self.files.bestRippleChans
         np.save(filename, bestripplechans)
 
-    def _zscbestchannel(self, fromfile=1):
-        if fromfile == 1:
-            signal = np.load(self.files.zscbestRippleChan)
-        else:
-            ripplelfps, _ = self.best_chan_lfp()
-            signal = np.asarray(ripplelfps, dtype=np.float)  # convert data to float
+    def detect(
+        self,
+        lowFreq=150,
+        highFreq=240,
+        chans=None,
+        lowthreshold=1,
+        highthreshold=5,
+        minDuration=0.05,
+        maxDuration=0.450,
+        mergeDistance=0.05,
+        # maxPeakPower=60,
+    ):
+        """[summary]
 
-            # --- optimizing memory and performance writing on same array --
-            for i in range(signal.shape[0]):
-                print(i)
-                yf = signal_process.filter_sig.ripple(signal[i, :], ax=-1)
-                amplitude_envelope = np.abs(signal_process.hilbertfast(yf))
-                signal[i, :] = stats.zscore(amplitude_envelope, axis=-1)
-
-            np.save(self.files.zscbestRippleChan, signal)
-
-        return signal
-
-    def detect(self):
-        """ripples lfp nchans x time
-
-        Returns:
-            [type] -- [description]
+        Parameters
+        ----------
+        lowFreq : int, optional
+            [description], by default 150
+        highFreq : int, optional
+            [description], by default 240
+        chans : list
+            channels used for ripple detection, if None then chooses best chans
         """
-        SampFreq = self._obj.lfpSrate
-        lowFreq = 150
-        highFreq = 240
         # TODO chnage raw amplitude threshold to something statistical
-        highRawSigThresholdFactor = 15000
+        SampFreq = self._obj.lfpSrate
 
-        ripplelfps, _ = self.best_chan_lfp()
-        signal = np.asarray(ripplelfps, dtype=np.float)[0, :]
+        if chans is None:
+            bestchans = self.bestchans
+        else:
+            bestchans = chans
 
-        zscsignal = self._zscbestchannel(fromfile=0)
-        sharpWv_sig = np.abs(
-            signal_process.filter_sig.bandpass(zscsignal, lf=2, hf=50, ax=1)
-        ).sum(axis=0)
+        eeg = self._obj.geteeg(chans=bestchans)
+        zscsignal = []
+        sharpWv_sig = np.zeros(eeg.shape[-1])
+        for i in range(len(bestchans)):
+            yf = signal_process.filter_sig.bandpass(eeg[i, :], lf=lowFreq, hf=highFreq)
+            zsc_chan = stats.zscore(np.abs(signal_process.hilbertfast(yf)))
+            zscsignal.append(zsc_chan)
 
-        # sharp_wave_sig = sharp_wave_sig - np.mean(sharp_wave_sig)
+            broadband = signal_process.filter_sig.bandpass(eeg[i, :], lf=2, hf=50)
+            zsc_broadband = stats.zscore(np.abs(signal_process.hilbertfast(broadband)))
+            sharpWv_sig += signal_process.filter_sig.bandpass(
+                zsc_broadband, lf=2, hf=50
+            )
+        zscsignal = np.asarray(zscsignal)
 
-        # ---------delete ripples in noisy period--------
-        deadfile = (self._obj.files.filePrefix).with_suffix(".dead")
-        if deadfile.is_file():
-            with deadfile.open("r") as f:
-                noisy = []
-                for line in f:
-                    epc = line.split(" ")
-                    epc = [float(_) for _ in epc]
-                    noisy.append(epc)
-                noisy = np.asarray(noisy)
-                noisy = ((noisy / 1000) * SampFreq).astype(int)
-
-            for noisy_ind in range(noisy.shape[0]):
-                st = noisy[noisy_ind, 0]
-                en = noisy[noisy_ind, 1]
-                numnoisy = en - st
-                zscsignal[:, st:en] = np.zeros((zscsignal.shape[0], numnoisy))
+        # ---------setting noisy period zero --------
+        artifact = findartifact(self._obj)
+        if artifact.time is not None:
+            noisy_intervals = (artifact.time * SampFreq).astype(int)
+            noisy_frames = [np.arange(beg, end) for (beg, end) in noisy_intervals]
+            zscsignal[:, noisy_frames] = 0
 
         # ------hilbert transform --> binarize by > than lowthreshold
         maxPower = np.max(zscsignal, axis=0)
-        ThreshSignal = np.where(zscsignal > self.lowthresholdFactor, 1, 0).sum(axis=0)
+        ThreshSignal = np.where(zscsignal > lowthreshold, 1, 0).sum(axis=0)
         ThreshSignal = np.diff(np.where(ThreshSignal > 0, 1, 0))
         start_ripple = np.where(ThreshSignal == 1)[0]
         stop_ripple = np.where(ThreshSignal == -1)[0]
 
+        # --- getting rid of incomplete ripples at begining or end ---------
         if start_ripple[0] > stop_ripple[0]:
             stop_ripple = stop_ripple[1:]
         if start_ripple[-1] > stop_ripple[-1]:
@@ -332,7 +305,7 @@ class Ripple:
         print(f"{len(firstPass)} ripples detected initially")
 
         # --------merging close ripples------------
-        minInterRippleSamples = self.mergeDistance / 1000 * SampFreq
+        minInterRippleSamples = mergeDistance * SampFreq
         secondPass = []
         ripple = firstPass[0]
         for i in range(1, len(firstPass)):
@@ -352,85 +325,76 @@ class Ripple:
 
         for i in range(0, len(secondPass)):
             maxValue = max(maxPower[secondPass[i, 0] : secondPass[i, 1]])
-            if maxValue > self.highthresholdFactor:
+            if maxValue > highthreshold:
                 thirdPass.append(secondPass[i])
                 peakNormalizedPower.append(maxValue)
                 peaktime.append(
-                    [
-                        secondPass[i, 0]
-                        + np.argmax(maxPower[secondPass[i, 0] : secondPass[i, 1]])
-                    ]
+                    secondPass[i, 0]
+                    + np.argmax(maxPower[secondPass[i, 0] : secondPass[i, 1]])
                 )
                 peakSharpWave.append(
-                    [
-                        secondPass[i, 0]
-                        + np.argmax(sharpWv_sig[secondPass[i, 0] : secondPass[i, 1]])
-                    ]
+                    secondPass[i, 0]
+                    + np.argmax(sharpWv_sig[secondPass[i, 0] : secondPass[i, 1]])
                 )
         thirdPass = np.asarray(thirdPass)
         print(f"{len(thirdPass)} ripples reamining after deleting weak ripples")
+        print(thirdPass.shape)
 
-        ripple_duration = np.diff(thirdPass, axis=1) / SampFreq * 1000
+        ripple_duration = np.diff(thirdPass, axis=1) / SampFreq
+        ripples = pd.DataFrame(
+            {
+                "start": thirdPass[:, 0],
+                "end": thirdPass[:, 1],
+                "peakNormalizedPower": peakNormalizedPower,
+                "peakSharpWave": np.asarray(peakSharpWave),
+                "peaktime": np.asarray(peaktime),
+                "duration": ripple_duration.squeeze(),
+            }
+        )
 
         # ---------delete very short ripples--------
-        shortRipples = np.where(ripple_duration < self.minRippleDuration)[0]
-        fourthPass = np.delete(thirdPass, shortRipples, 0)
-        peakNormalizedPower = np.delete(peakNormalizedPower, shortRipples)
-        peakSharpWave = np.delete(peakSharpWave, shortRipples)
-        peaktime = np.delete(peaktime, shortRipples)
-        ripple_duration = np.delete(ripple_duration, shortRipples)
-        print(f"{len(fourthPass)} ripples reamining after deleting short ripples")
+        ripples = ripples[ripples.duration >= minDuration]
+        print(f"{len(ripples)} ripples reamining after deleting short ripples")
 
         # ----- delete ripples with unrealistic high power
-        # artifactRipples = np.where(peakNormalizedPower > maxRipplePower)[0]
+        # artifactRipples = np.where(peakNormalizedPower > maxPeakPower)[0]
         # fourthPass = np.delete(thirdPass, artifactRipples, 0)
         # peakNormalizedPower = np.delete(peakNormalizedPower, artifactRipples)
 
         # ---------delete very long ripples---------
-        veryLongRipples = np.where(ripple_duration > self.maxRippleDuration)[0]
-        fifthPass = np.delete(fourthPass, veryLongRipples, 0)
-        peakNormalizedPower = np.delete(peakNormalizedPower, veryLongRipples)
-        peakSharpWave = np.delete(peakSharpWave, veryLongRipples)
-        peaktime = np.delete(peaktime, veryLongRipples)
-        ripple_duration = np.delete(ripple_duration, veryLongRipples)
-        print(f"{len(fifthPass)} ripples reamining after deleting very long ripples")
+        ripples = ripples[ripples.duration <= maxDuration]
+        print(f"{len(ripples)} ripples reamining after deleting very long ripples")
 
-        # -----delete ripples with unusually high amp in raw signal (takes care of disconnection)---------
-        highRawInd = []
-        for i in range(0, len(fifthPass)):
-            maxValue = max(signal[fifthPass[i, 0] : fifthPass[i, 1]])
-            if maxValue > highRawSigThresholdFactor:
-                highRawInd.append(i)
-
-        sixthPass = np.delete(fifthPass, highRawInd, 0)
-        peakNormalizedPower = np.delete(peakNormalizedPower, highRawInd)
-        peaktime = np.delete(peaktime, highRawInd)
-        peakSharpWave = np.delete(peakSharpWave, highRawInd)
-        print(f"{len(sixthPass)} ripples kept after deleting unrealistic ripples")
+        # ----- converting to all time stamps to seconds --------
+        ripples[["start", "end", "peakSharpWave", "peaktime"]] /= SampFreq  # seconds
+        ripples.duration = ripples.duration / 1000  # seconds
 
         now = datetime.now()
         dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
         ripples = {
-            "times": sixthPass / SampFreq,
-            "peaktime": peaktime / SampFreq,
-            "peakPower": peakNormalizedPower,
-            "peakSharpwave": peakSharpWave,
+            "events": ripples.reset_index(drop=True),
             "Info": {"Date": dt_string},
             "DetectionParams": {
-                "lowThres": self.lowthresholdFactor,
-                "highThresh": self.highthresholdFactor,
-                "ArtifactThresh": self.maxRipplePower,
+                "lowThres": lowthreshold,
+                "highThresh": highthreshold,
+                # "ArtifactThresh": maxPeakPower,
                 "lowFreq": lowFreq,
                 "highFreq": highFreq,
-                "minDuration": self.minRippleDuration,
-                "maxDuration": self.maxRippleDuration,
+                "minDuration": minDuration,
+                "maxDuration": maxDuration,
+                "mergeDistance": mergeDistance,
             },
         }
 
         np.save(self.files.ripples, ripples)
         print(f"{self.files.ripples} created")
         self._load()
+
+    def export2Neuroscope(self):
+        with self.files.neuroscope.open("w") as a:
+            for event in self.events.itertuples():
+                a.write(f"{event.start*1000} start\n{event.end*1000} end\n")
 
     def plot(self):
         """Gives a comprehensive view of the detection process with some statistics and examples"""
@@ -520,12 +484,6 @@ class Ripple:
 
         subname = self._obj.sessinfo.session.subname
         fig.suptitle(f"Ripple detection of {subname}")
-
-    def export2Neuroscope(self):
-        times = self.time * 1000  # convert to ms
-        with self.files.neuroscope.open("w") as a:
-            for beg, stop in times:
-                a.write(f"{beg} start\n{stop} end\n")
 
 
 class Spindle:
