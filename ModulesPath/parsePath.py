@@ -155,16 +155,17 @@ class Recinfo:
 
         eeg = np.memmap(eegfile, dtype="int16", mode="r")
         eeg = np.memmap.reshape(eeg, (nChans, len(eeg) // nChans), order="F")
+        eeg = eeg[chans, :]
 
         if timeRange is not None:
             assert len(timeRange) == 2
             frameStart = int(timeRange[0] * eegSrate)
             frameEnd = int(timeRange[1] * eegSrate)
-            eeg = eeg[:, frameStart:frameEnd]
-        elif frames is not None:
-            eeg = eeg[:, frames]
+            eeg = eeg[..., frameStart:frameEnd]
 
-        eeg = eeg[chans, :]
+        elif frames is not None:
+            eeg = eeg[..., frames]
+
         return eeg
 
     def getPxx(self, chans, timeRange=None):
@@ -296,9 +297,7 @@ class Probemap:
 
     def plot(self, chans=None, ax=None, colors=None):
 
-        nShanks = self._obj.nShanks
-        channelgrp = self._obj.channelgroups[:nShanks]
-        lfpchans = np.asarray([chan for shank in channelgrp for chan in shank])
+        lfpchans = self._obj.channels
 
         chans2plot = chans
         chan_rank = np.where(np.isin(lfpchans, chans2plot))[0]
@@ -312,10 +311,25 @@ class Probemap:
             fig.subplots_adjust(hspace=0.3)
             ax = fig.add_subplot(gs[0])
 
-        ax.scatter(xpos, ypos, s=0.8, color="gray", zorder=1)
+        ax.scatter(xpos, ypos, s=2, color="gray", zorder=1, linewidths=0.5)
+
+        if len(self._obj.badchans) != 0:
+            badchans = self._obj.badchans
+            badchan_loc = np.where(np.isin(lfpchans, badchans))[0]
+            ax.scatter(
+                xpos[badchan_loc],
+                ypos[badchan_loc],
+                s=10,
+                color="#FF5252",
+                zorder=2,
+                marker="x",
+            )
+
         if colors is None:
-            ax.scatter(xpos[chan_rank], ypos[chan_rank], c="red", s=20, zorder=2)
+            ax.scatter(xpos[chan_rank], ypos[chan_rank], c="#009688", s=20, zorder=2)
         else:
             ax.scatter(xpos[chan_rank], ypos[chan_rank], c=colors, s=40, zorder=2)
+
+        # ax.legend(["channels", "bad", "chosen"])
 
         ax.axis("off")
