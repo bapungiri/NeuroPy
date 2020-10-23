@@ -2,7 +2,7 @@
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import grid
+from matplotlib.pyplot import phase_spectrum
 import numpy as np
 import pandas as pd
 import scipy.signal as sg
@@ -10,17 +10,14 @@ import scipy.stats as stats
 import seaborn as sns
 import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
-import ipywidgets as widgets
 import random
-from sklearn import linear_model
-from tensorpac import Pac
 from callfunc import processData
 import signal_process
 from mathutil import threshPeriods
 from plotUtil import Fig
 import warnings
 
-warnings.simplefilter(action="default")
+# warnings.simplefilter(action="default")
 
 #%% ====== functions needed for some computation ============
 # region
@@ -39,7 +36,11 @@ def getPxx(lfp):
     window = 5 * 1250
 
     freq, Pxx = sg.welch(
-        lfp, fs=1250, nperseg=window, noverlap=window / 6, detrend="linear",
+        lfp,
+        fs=1250,
+        nperseg=window,
+        noverlap=window / 6,
+        detrend="linear",
     )
     noise = np.where(
         ((freq > 59) & (freq < 61)) | ((freq > 119) & (freq < 121)) | (freq > 220)
@@ -58,7 +59,7 @@ basePath = [
     "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
     "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
@@ -822,30 +823,25 @@ fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
 
 #%% during Sleep deprivation compare theta phase-gamma amplitude relationship
 # region
-group = []
-plt.clf()
-fig = plt.figure(1, figsize=(1, 15))
-gs = gridspec.GridSpec(3, 1, figure=fig)
-fig.subplots_adjust(hspace=0.5)
+group = pd.DataFrame()
+for sub, sess in enumerate(sessions[:3]):
+    chan = sess.ripple.bestchans[0]
+    post = sess.epochs.post
+    maze = sess.epochs.maze
+    intervals = sess.utils.getinterval([post[0], post[0] + 5 * 3600], 5)
+    # intervals = sess.utils.getinterval([maze[0], maze[1]], 5)
 
-for sub, sess in enumerate(sessions):
-
-    sess.trange = np.array([])
-    tstart = sess.epochs.post[0]
-    tend = sess.epochs.post[0] + 5 * 3600
-    lfp, _, _ = sess.spindle.best_chan_lfp()
-    t = np.linspace(0, len(lfp) / 1250, len(lfp))
-
-    binwind = np.linspace(tstart, tend, 10)
-
-    binlfp = lambda x, t1, t2: x[(t > t1) & (t < t2)]
-
-    phase_amp = []
-    for i in range(len(binwind) - 1):
-        lfp_bin = binlfp(lfp, binwind[i], binwind[i + 1])
-
-        theta_lfp = stats.zscore(signal_process.filter_sig.filter_theta(lfp_bin))
-        gamma_lfp = stats.zscore(signal_process.filter_sig.filter_gamma(lfp_bin))
+    binsz_angle = 20
+    angle_bin = np.linspace(0, 360, 360 // binsz_angle + 1)
+    phase_center = angle_bin[:-1] + binsz_angle / 2
+    df = pd.DataFrame(
+        {"sub": sub, "theta_phase": np.concatenate((phase_center, phase_center + 360))}
+    )
+    for wind_id, window in enumerate(intervals):
+        lfp = sess.recinfo.geteeg(chans=chan, timeRange=window)
+        lfp = sess.theta.getstrongTheta(lfp)[0]
+        theta_lfp = stats.zscore(signal_process.filter_sig.bandpass(lfp, lf=4, hf=12))
+        gamma_lfp = stats.zscore(signal_process.filter_sig.bandpass(lfp, lf=30, hf=100))
 
         hil_theta = signal_process.hilbertfast(theta_lfp)
         hil_gamma = signal_process.hilbertfast(gamma_lfp)
@@ -853,31 +849,30 @@ for sub, sess in enumerate(sessions):
         theta_amp = np.abs(hil_theta)
         gamma_amp = np.abs(hil_gamma)
 
-        theta_angle = np.angle(hil_theta, deg=True)
-        angle_bin = np.arange(-180, 180, 20)
-        bin_ind = np.digitize(theta_angle, bins=angle_bin)
+        theta_angle = np.angle(hil_theta, deg=True) + 180
 
-        mean_amp = np.zeros(len(angle_bin) - 1)
-        for i in range(1, len(angle_bin)):
-            angle_ind = np.where(bin_ind == i)[0]
-            mean_amp[i - 1] = gamma_amp[angle_ind].mean()
-
+        mean_gamma = stats.binned_statistic(theta_angle, gamma_amp, bins=angle_bin)[0]
+        norm_gamma = mean_gamma / np.sum(mean_gamma)
+        df[wind_id] = np.concatenate((norm_gamma, norm_gamma))
         # gamma_peaks, _ = sg.find_peaks(gamma_amp, height=5)
         # peak_angle, _ = np.histogram(
         #     theta_angle[gamma_peaks], bins=
         # )
 
-        mean_amp_norm = mean_amp / np.sum(mean_amp)
-        phase_amp.append(mean_amp_norm)
+    group = group.append(df)
 
-    phase_amp = np.asarray(phase_amp).T
+group = group.groupby("sub")
 
-    ax = fig.add_subplot(gs[sub, 0])
-    # ax.imshow(phase, aspect="auto")
-    cmap = mpl.cm.get_cmap("viridis")
-    colmap = [cmap(x) for x in np.linspace(0, 1, phase_amp.shape[1])]
-    for i in range(len(colmap)):
-        ax.plot(angle_bin[:-1], phase_amp[:, i], color=colmap[i])
+figure = Fig()
+fig, gs = figure.draw(grid=(3, 3))
+
+for _, subject in group:
+    ax = plt.subplot(gs[_])
+    subject.drop(columns="sub").plot(x="theta_phase", ax=ax)
+    ax.set_xlabel(r"$\theta$ phase")
+    ax.set_ylabel("Amplitude")
+
+figure.savefig("theta_gamma_SD", __file__)
 # endregion
 
 #%%* Compare theta-gamma-phase coupling during REM
@@ -1006,4 +1001,3 @@ figure.savefig("comodulogram_sd", __file__)
 
 
 # endregion
-
