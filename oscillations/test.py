@@ -1,16 +1,7 @@
-import numpy as np
+import dask.array as da
+from scipy import stats
 
-
-def check(input_arg):
-    m = input_arg
-
-    class c:
-        @property
-        def b(self):
-            return m / 2
-
-        @property
-        def k(self):
-            return self.b / 3
-
-    return c()
+x = da.random.random((10000, 10000), chunks=(1000, 1000))
+y = x + x.T
+z = stats.zscore(y, axis=1)
+a = z.compute()
