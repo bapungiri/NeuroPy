@@ -419,22 +419,24 @@ class bicoherence:
         if signal.ndim == 1:
             signal = signal[np.newaxis, :]
 
-        # ----- Normalization and complex spectrogram -------------
+        # ----- subtracting mean and complex spectrogram -------------
         signal = signal - np.mean(signal, axis=-1, keepdims=True)  # zero mean
-        f, _, sxx = sg.spectrogram(
+        f, _, sxx = sg.stft(
             signal,
             window="hann",
             nperseg=self.window,
             noverlap=self.overlap,
             fs=self.fs,
-            mode="complex",
+            # mode="complex",
             nfft=fftpack.next_fast_len(self.window),
-            detrend=False,
+            # detrend=False,
+            # scaling="spectrum",
         )
         sxx = np.require(sxx, dtype=complex)
+        sxx = sxx / self.window  # scaling the fourier transform
 
         # ------ Getting required frequencies and their indices -------------
-        freq_ind = np.where((f > self.flow) & (f < self.fhigh))[0]
+        freq_ind = np.where((f > self.flow) & (f < self.fhigh / 2))[0]
         freq_req = f[freq_ind]
 
         """ ===========================================
@@ -447,22 +449,22 @@ class bicoherence:
         ================================================="""
 
         X_f2 = sxx[:, freq_ind, :]  # complex spectrogram of required frequencies
-        P_f2 = np.abs(X_f2) ** 2  # absolute square of spectrogram
+        # P_f2 = np.abs(X_f2) ** 2  # absolute square of spectrogram
 
         def bicoh_product(f_ind):
             X_f1 = sxx[:, f_ind, np.newaxis, :]
             X_f1f2 = sxx[:, freq_ind + f_ind, :]
 
             # ----- bispectrum triple product --------------
-            bispec_freq = np.mean(X_f1 * X_f2 * np.conjugate(X_f1f2), axis=-1)
+            bispec_freq = np.mean((X_f1 * X_f2) * np.conjugate(X_f1f2), axis=-1)
 
             # ----- normalization to calculate bicoherence ---------
-            P_f1 = np.abs(X_f1) ** 2
+            # P_f1 = np.abs(X_f1) ** 2
             P_f1f2 = np.abs(X_f1f2) ** 2
-            norm = np.sqrt(np.mean(P_f1 * P_f2 * P_f1f2, axis=-1))
-            # norm = np.sqrt(
-            #     np.mean(np.abs(X_f1 * X_f2) ** 2, axis=-1) * np.mean(P_f1f2, axis=-1)
-            # )
+            # norm = (np.mean(P_f1 * P_f2 * P_f1f2, axis=-1))
+            norm = np.sqrt(
+                np.mean(np.abs(X_f1 * X_f2) ** 2, axis=-1) * np.mean(P_f1f2, axis=-1)
+            )
 
             return bispec_freq / norm
 
@@ -476,12 +478,15 @@ class bicoherence:
         self.bicoher = bicoher.squeeze()
         self.bispec = bispec.squeeze()
         self.freq = freq_req
+        self.freq_ind = freq_ind
         self.dof = 2 * sxx.shape[-1]
-        self.significance = np.sqrt(6 / self.dof)
+        self.significance = np.sqrt(6 / self.dof)  # 95 percentile
+
+        return bicoher
 
     def plot(self, index=None, ax=None, vmin=0, vmax=0.2, cmap="hot"):
 
-        bic = self.bicoher[index].copy()
+        bic = self.bicoher.copy()
         # bic = bic.T
         lt = np.tril_indices_from(bic, k=-1)
         # bic[lt] = np.nan
@@ -497,9 +502,9 @@ class bicoherence:
             self.freq,
             bic,
             cmap=cmap,
-            # shading="gouraud",
+            shading="gouraud",
             vmin=0,
-            vmax=0.1,
+            vmax=0.06,
             rasterized=True,
         )
 
