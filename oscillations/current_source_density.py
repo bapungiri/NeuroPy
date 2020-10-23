@@ -51,47 +51,6 @@ figure.savefig('csd_theta_MAZE',__file__)
 
 # endregion
 
-#%% csd theta period during MAZE
-# region
-df = pd.DataFrame()
-for sub, sess in enumerate(sessions):
-
-    maze = sess.epochs.maze
-    lfp = sess.recinfo.geteeg(chans=sess.recinfo.goodchans,timeRange=maze)
-
-    f= None
-    for chan_ind,chan in enumerate(sess.recinfo.goodchans):
-        f,pxx = sg.welch(lfp[chan_ind],fs=1250,nperseg=2*1250,noverlap = 1250)
-        f_ind = np.where((f>1)&(f<150))[0]
-        f=f[f_ind]
-        df[chan] = np.log10(pxx[f_ind])
-        
-
-    df['freq'] = np.log10(f)
-
-
-
-group = df.set_index('freq')
-a  = group.to_numpy()
-
-# a = stats.zscore(a,axis=None)
-cmap = Colormap().dynamic2()
-figure = Fig()
-fig,gs = figure.draw(grid=[4,4])
-ax =plt.subplot(gs[0])
-ax.pcolormesh(f,sess.recinfo.goodchans,a.T,cmap='jet',shading='nearest',rasterized=True)
-# sns.heatmap(group.T,ax=ax)
-# ax.set_xlim([1,150])
-ax.set_xscale('log')
-ax.set_title('Pxx')
-ax.invert_yaxis()
-ax.set_ylabel('channels')
-ax.set_xlabel('Frequency (Hz)')
-
-figure.savefig('pxx_MAZE',__file__)
-
-# endregion
-
 
 #%% csd theta period during MAZE
 # region
