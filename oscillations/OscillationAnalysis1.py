@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import grid
 import numpy as np
 import pandas as pd
+from scipy.io.matlab.mio import savemat
 import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
@@ -81,44 +82,50 @@ figure.savefig("pxx_MAZE", __file__)
 #%% Bicoherence analysis on ripples
 # region
 
-colmap = Colormap().dynamicMap()
+colmap = Colormap().dynamic2()
 
-for sub, sess in enumerate(sessions):
+for sub, sess in enumerate(sessions[3:4]):
 
-    sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
-    ripples = sess.ripple.time
-    lfp = sess.spindle.best_chan_lfp()[0]
-
-    lfpripple = []
-    for ripple in ripples:
-        start = int(ripple[0] * eegSrate)
-        end = int(ripple[1] * eegSrate)
-        lfpripple.extend(lfp[start:end])
-
-    lfpripple = np.asarray(lfpripple)
-    bicoh, freq, bispec = signal_process.bicoherence(lfpripple, fhigh=300)
-
-    bicohsmth = gaussian_filter(bicoh, sigma=3)
-    # bicoh = np.where(bicoh > 0.05, bicoh, 0)
-    plt.clf()
-    fig = plt.figure(1, figsize=(10, 15))
-    gs = gridspec.GridSpec(1, 2, figure=fig)
-    fig.subplots_adjust(hspace=0.3)
-    ax = fig.add_subplot(gs[0, 1])
-    ax.clear()
-    im = ax.pcolorfast(
-        freq, freq, np.sqrt(bicohsmth), cmap=colmap, vmax=0.5, vmin=0.018
+    ripples = sess.ripple.events
+    chans = sess.ripple.bestchans[0]
+    rippleframes = np.concatenate(
+        [
+            np.arange(rpl.start * eegSrate, rpl.end * eegSrate).astype(int)
+            for rpl in ripples.itertuples()
+        ]
     )
-    # ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
-    ax.set_ylim([1, max(freq) / 2])
-    ax.set_xlabel("Frequency (Hz)")
-    ax.set_ylabel("Frequency (Hz)")
-    # cax = fig.add_axes([0.3, 0.8, 0.5, 0.05])
-    # cax.clear()
+    ripple_lfp = sess.recinfo.geteeg(chans=chans, frames=rippleframes)
+    # ripple_lfp = signal_process.filter_sig.bandpass(ripple_lfp, lf=130, hf=260)
+    # ripple_lfp = ripple_lfp[::2]
+    # savemat("ripple_data.mat", {'data':np.asarray(ripple_lfp)})
+    # lfpripple = np.asarray(lfpripple)
+    bicoh = signal_process.bicoherence(
+        flow=1, fhigh=250, fs=625, window=10 * 625, overlap=2 * 625
+    )
+    bicoh.compute(ripple_lfp)
+    bicoh.plot(cmap=colmap)
 
-    # ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
-    fig.colorbar(im, ax=ax, orientation="horizontal")
+    # bicohsmth = gaussian_filter(bicoh, sigma=3)
+    # bicoh = np.where(bicoh > 0.05, bicoh, 0)
+    # plt.clf()
+    # fig = plt.figure(1, figsize=(10, 15))
+    # gs = gridspec.GridSpec(1, 2, figure=fig)
+    # fig.subplots_adjust(hspace=0.3)
+    # ax = fig.add_subplot(gs[0, 1])
+    # ax.clear()
+    # im = ax.pcolorfast(
+    #     freq, freq, np.sqrt(bicohsmth), cmap=colmap, vmax=0.5, vmin=0.018
+    # )
+    # # ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
+    # ax.set_ylim([1, max(freq) / 2])
+    # ax.set_xlabel("Frequency (Hz)")
+    # ax.set_ylabel("Frequency (Hz)")
+    # # cax = fig.add_axes([0.3, 0.8, 0.5, 0.05])
+    # # cax.clear()
+
+    # # ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
+    # fig.colorbar(im, ax=ax, orientation="horizontal")
 
 # endregion
 
@@ -703,4 +710,3 @@ ax.set_title("Spindle probability")
 figure.panel_label(ax, "a")
 figure.savefig("spindle_delta_coupling", __file__)
 # endregion
-
