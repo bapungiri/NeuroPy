@@ -1,3 +1,4 @@
+from behavior import behavior_epochs
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -8,10 +9,10 @@ import scipy.signal as sg
 import matplotlib.gridspec as gridspec
 import matplotlib as mpl
 from parsePath import Recinfo
-from sessionUtil import SessionUtil
+from behavior import behavior_epochs
 
 
-class spikes:
+class Spikes:
     def __init__(self, basepath):
 
         if isinstance(basepath, Recinfo):
@@ -80,10 +81,19 @@ class spikes:
 
         return gaussian
 
-    def rasterPlot(self, ax=None, period=None):
+    def rasterPlot(self, ax=None, period=None, tstart=0):
+        epochs = behavior_epochs(self._obj)
         spikes = self.times
+        pyr = self.pyr
+        intneur = self.intneur
+        mua = self.mua
+        spikes = mua + pyr + intneur
+        color = (
+            ["#0c142d"] * len(mua) + ["#0c142d"] * len(pyr) + ["#02c59b"] * len(intneur)
+        )
+
         print(f"Plotting {len(spikes)} cells")
-        totalduration = self._obj.epochs.totalduration
+        totalduration = epochs.totalduration
         frate = [len(cell) / totalduration for cell in spikes]
 
         if ax is None:
@@ -102,18 +112,22 @@ class spikes:
                 [len(cell) / period_duration for cell in spikes]
             ).squeeze()
 
-        sort_frate_indices = np.argsort(frate)
-        spikes = [spikes[indx] for indx in sort_frate_indices]
+        # sort_frate_indices = np.argsort(frate)
+        # spikes = [spikes[indx] for indx in sort_frate_indices]
 
-        cmap = mpl.cm.get_cmap("inferno_r")
+        # cmap = mpl.cm.get_cmap("inferno_r")
         for cell, spk in enumerate(spikes):
-            color = cmap(cell / len(spikes))
+            # color = cmap(cell / len(spikes))
             plt.plot(
-                spk, (cell + 1) * np.ones(len(spk)), ".", markersize=0.75, color=color
+                spk - tstart,
+                (cell + 1) * np.ones(len(spk)),
+                "|",
+                markersize=2,
+                color=color[cell],
             )
-
+        ax.set_ylim([1, len(spikes)])
         ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Neurons")
+        ax.set_ylabel("Units")
 
     def removeDoubleSpikes(self):
         pass
@@ -161,7 +175,11 @@ class spikes:
             changroup = self._obj.channelgroups
             clubasePath = Path(basePath, "spykcirc")
 
-            clufolder = Path(clubasePath, subname, subname + ".GUI",)
+            clufolder = Path(
+                clubasePath,
+                subname,
+                subname + ".GUI",
+            )
             spktime = np.load(clufolder / "spike_times.npy")
             cluID = np.load(clufolder / "spike_clusters.npy")
             cluinfo = pd.read_csv(clufolder / "cluster_info.tsv", delimiter="\t")
