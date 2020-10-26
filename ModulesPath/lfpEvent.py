@@ -19,12 +19,34 @@ from artifactDetect import findartifact
 
 
 class Hswa:
+    """Analyses related to hippocampal slow oscillations
+
+    Attributes
+    ----------
+
+    Methods
+    ----------
+    detect :
+        detects putative events in the entire recording
+
+    """
+
     def __init__(self, basepath):
 
         if isinstance(basepath, Recinfo):
             self._obj = basepath
         else:
             self._obj = Recinfo(basepath)
+
+        # ------- defining file names ---------
+        filePrefix = self._obj.files.filePrefix
+
+        @dataclass
+        class files:
+            events: Path = filePrefix.with_suffix(".hswa.npy")
+
+        self.files = files()
+        # self._load()
 
         if Path(self._obj.files.slow_wave).is_file():
             self._load()
@@ -51,12 +73,12 @@ class Hswa:
         myinfo = self._obj
 
         # ----- parameters ---------
-        lfpsRate = self._obj.recinfo.lfpSrate
+        lfpsRate = self._obj.lfpSrate
 
         # ---- filtering best ripple channel in delta band
         deltachan, _, _ = myinfo.spindle.best_chan_lfp()
         t = np.linspace(0, len(deltachan) / lfpsRate, len(deltachan))
-        delta_sig = filt.filter_delta(deltachan, ax=-1)
+        delta_sig = signal_process.filter_sig.bandpass(deltachan, lf=0.5, hf=4)
         delta = stats.zscore(delta_sig)  # normalization w.r.t session
         delta = -delta  # flipping as this is in sync with cortical slow wave
 
@@ -286,7 +308,7 @@ class Ripple:
         if artifact.time is not None:
             noisy_intervals = (artifact.time * SampFreq).astype(int)
             noisy_frames = [np.arange(beg, end) for (beg, end) in noisy_intervals]
-            zscsignal[:, noisy_frames] = 0
+            zscsignal[:, np.concatenate(noisy_frames)] = 0
 
         # ------hilbert transform --> binarize by > than lowthreshold
         maxPower = np.max(zscsignal, axis=0)
@@ -390,6 +412,7 @@ class Ripple:
         np.save(self.files.ripples, ripples)
         print(f"{self.files.ripples} created")
         self._load()
+        return ripples
 
     def export2Neuroscope(self):
         with self.files.neuroscope.open("w") as a:
@@ -595,7 +618,7 @@ class Spindle:
         spindlelfp, _, _ = self.best_chan_lfp()
         signal = np.asarray(spindlelfp, dtype=np.float)
 
-        yf = filt.filter_spindle(signal, ax=-1)
+        yf = signal_process.filter_sig.bandpass(signal, lf=8, hf=16, ax=-1)
         hilbertfast = lambda x: sg.hilbert(x, fftpack.next_fast_len(len(x)))[: len(x)]
         amplitude_envelope = np.abs(hilbertfast(yf))
         zscsignal = stats.zscore(amplitude_envelope, axis=-1)
@@ -1146,6 +1169,8 @@ class Theta:
 
 
 class Gamma:
+    """Events and analysis related to gamma oscillations"""
+
     def __init__(self, basepath):
 
         if isinstance(basepath, Recinfo):
