@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pingouin as pg
+from scipy.ndimage.interpolation import shift
 import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
@@ -68,10 +69,10 @@ basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
     "/data/Clustering/SleepDeprivation/RatK/Day4/",
     "/data/Clustering/SleepDeprivation/RatN/Day4/",
-    "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
+    # "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
 sessions = [processData(_) for _ in basePath]
 
@@ -142,6 +143,61 @@ for sub, sess in enumerate(sessions):
 
     ax.set_title()
 
+# endregion
+
+#%% Schematic --> Theta phase specific extraction method
+# region
+
+figure = Fig()
+fig, gs = figure.draw(grid=(5, 3))
+fig.suptitle("Phase specfic extraction schematic")
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    thetachan = sess.theta.bestchan
+    eeg = sess.recinfo.geteeg(chans=thetachan, timeRange=maze)
+    strong_theta = stats.zscore(sess.theta.getstrongTheta(eeg)[0])
+    rand_start = np.random.randint(0, len(strong_theta), 1)[0]
+    theta_sample = strong_theta[rand_start : rand_start + 1 * eegSrate]
+    thetaparams = sess.theta.getParams(theta_sample)
+    gamma_lfp = signal_process.filter_sig.highpass(theta_sample, cutoff=25)
+
+    # ----- dividing 360 degress into non-overlapping 5 bins ------------
+    angle_bin = np.linspace(0, 360, 6)  # 5 bins so each bin=25ms
+    angle_centers = angle_bin + np.diff(angle_bin).mean() / 2
+    bin_ind = np.digitize(thetaparams.angle, bins=angle_bin)
+    df = {}
+    ax = plt.subplot(gs[0, :])
+    cmap = mpl.cm.get_cmap("RdPu")
+    for phase in range(1, len(angle_bin)):
+        df[phase] = gamma_lfp[np.where(bin_ind == phase)[0]]
+
+        ax.fill_between(
+            np.arange(len(theta_sample)),
+            np.min(theta_sample),
+            theta_sample,
+            where=(bin_ind == phase),
+            # interpolate=False,
+            color=cmap((phase + 1) / 10),
+            # alpha=0.3,
+            zorder=1,
+        )
+        # theta_atphase = theta_sample[np.where(bin_ind == phase)[0]]
+        # ax.plot(theta_atphase)
+    ax.plot(theta_sample, "k", zorder=2)
+    ax.plot(thetaparams.lfp_filtered, "r", zorder=3)
+    ax.plot(gamma_lfp - 3, color="#3b1641", zorder=3)
+    ax.set_xlim([0, len(theta_sample)])
+    ax.axis("off")
+
+    axphase = plt.subplot(gs[1, :2])
+    y_shift = 0.2
+    for i in range(1, 6):
+        axphase.plot(df[i] + y_shift, color=cmap((i + 1) / 10))
+        axphase.axis("off")
+        y_shift += 0.9
+        axphase.set_ylim([-3.5, 4.8])
+# figure.savefig("schematic_theta_phase_extraction", __file__)
 # endregion
 
 #%%* theta phase specific extraction of lfp during strong theta MAZE with different binning techiques
