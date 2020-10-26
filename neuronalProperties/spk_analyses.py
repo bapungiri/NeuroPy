@@ -5,22 +5,19 @@ import warnings
 
 # import ipywidgets as widgets
 import matplotlib as mpl
-import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
-from matplotlib.widgets import Button, RadioButtons, Slider
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from ccg import correlograms
 from callfunc import processData
-from mathutil import threshPeriods
 import signal_process
 from plotUtil import Fig
 
-warnings.simplefilter(action="default")
+# warnings.simplefilter(action="default")
 
 #%% ====== functions needed for some computation ============
 # region
@@ -63,16 +60,70 @@ def stability(spikes, period):
 
 #%% Subjects to choose from
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 sessions = [processData(_) for _ in basePath]
 
+#%% Example raster plot during theta cycle and ripple events
+# region
+"""
+good periods for raster plots for some sessions
+    RatNDay2: 
+        [12672, 12679] (both theta and ripples)
+        [13348, 13360] (both theta and ripples)
+        [12426, 12436] (theta only)
+
+"""
+figure = Fig()
+fig, gs = figure.draw(grid=(6, 1), size=(8, 5))
+for sess in sessions:
+    maze = sess.epochs.maze
+    # period = maze
+    period = [12672, 12679]
+    ripples = sess.ripple.events
+    ripples = ripples[(ripples.start > period[0]) & (ripples.start < period[1])]
+    lfpmaze = sess.recinfo.geteeg(chans=sess.theta.bestchan, timeRange=period)
+    ripple_lfp = sess.recinfo.geteeg(chans=sess.ripple.bestchans[4], timeRange=period)
+    ripple_lfp = signal_process.filter_sig.ripple(ripple_lfp)
+    lfp_t = np.linspace(period[0], period[1], len(lfpmaze)) - period[0]
+
+    # ----- lfp plot --------------
+    ax = plt.subplot(gs[0])
+    ax.plot(lfp_t, lfpmaze, "k")
+    ax.plot(
+        ripples.peaktime - period[0], 2600 * np.ones(len(ripples)), "*", color="#f4835d"
+    )
+    ax.plot([0, 0], [0, 2500], "k", lw=3)  # lfp scale bar 2.5 mV
+    ax.axis("off")
+    ax.set_title("Raw LFP", loc="left")
+    ax.annotate("Ripple events", xy=(0, 0.9), xycoords="axes fraction", color="#f4835d")
+
+    # ------ ripple band plot -----------
+    axripple = plt.subplot(gs[1], sharex=ax)
+    axripple.plot(lfp_t, stats.zscore(ripple_lfp), "gray", lw=0.8)
+    axripple.set_ylim([-12, 12])
+    axripple.axis("off")
+    axripple.set_title("Ripple band (150-250 Hz)", loc="left")
+
+    # ----- raster plot -----------
+    axraster = plt.subplot(gs[2:], sharex=ax)
+    sess.spikes.plot_raster(
+        # spikes=sess.spikes.pyr,
+        period=period,
+        ax=axraster,
+        tstart=period[0],
+        # color="hot_r",
+        # sort_by_frate=True,
+    )
+
+# figure.savefig("raster_example", __file__)
+# endregion
 
 #%% Pairwise correlation change during SD
 # region
@@ -789,4 +840,3 @@ axfr.set_xlabel("Time (h)")
 
 figure.savefig("firing_maze_sd", __file__)
 # endregion
-
