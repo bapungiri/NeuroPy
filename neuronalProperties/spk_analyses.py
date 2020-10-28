@@ -81,11 +81,11 @@ good periods for raster plots for some sessions
 
 """
 figure = Fig()
-fig, gs = figure.draw(grid=(6, 1), size=(8, 5))
+fig, gs = figure.draw(grid=(5, 1), size=(6, 5))
 for sess in sessions:
     maze = sess.epochs.maze
     # period = maze
-    period = [12672, 12679]
+    period = [12674, 12678.5]
     ripples = sess.ripple.events
     ripples = ripples[(ripples.start > period[0]) & (ripples.start < period[1])]
     lfpmaze = sess.recinfo.geteeg(chans=sess.theta.bestchan, timeRange=period)
@@ -97,22 +97,29 @@ for sess in sessions:
     ax = plt.subplot(gs[0])
     ax.plot(lfp_t, lfpmaze, "k")
     ax.plot(
-        ripples.peaktime - period[0], 2600 * np.ones(len(ripples)), "*", color="#f4835d"
+        ripples.peaktime - period[0], 4200 * np.ones(len(ripples)), "*", color="#f4835d"
     )
     ax.plot([0, 0], [0, 2500], "k", lw=3)  # lfp scale bar 2.5 mV
     ax.axis("off")
-    ax.set_title("Raw LFP", loc="left")
-    ax.annotate("Ripple events", xy=(0, 0.9), xycoords="axes fraction", color="#f4835d")
+    ax.set_title("CA1 local field potential", loc="left")
+    ax.annotate(
+        "Sharp-wave ripple events",
+        xy=(0, 0.9),
+        xycoords="axes fraction",
+        color="#f4835d",
+    )
+    ax.set_xlim(left=0)
+    ax.set_ylim([-5000, 5000])
 
     # ------ ripple band plot -----------
-    axripple = plt.subplot(gs[1], sharex=ax)
-    axripple.plot(lfp_t, stats.zscore(ripple_lfp), "gray", lw=0.8)
-    axripple.set_ylim([-12, 12])
-    axripple.axis("off")
-    axripple.set_title("Ripple band (150-250 Hz)", loc="left")
+    # axripple = plt.subplot(gs[1], sharex=ax)
+    # axripple.plot(lfp_t, stats.zscore(ripple_lfp), "gray", lw=0.8)
+    # axripple.set_ylim([-12, 12])
+    # axripple.axis("off")
+    # axripple.set_title("Ripple band (150-250 Hz)", loc="left")
 
     # ----- raster plot -----------
-    axraster = plt.subplot(gs[2:], sharex=ax)
+    axraster = plt.subplot(gs[1:], sharex=ax)
     sess.spikes.plot_raster(
         # spikes=sess.spikes.pyr,
         period=period,
@@ -121,8 +128,10 @@ for sess in sessions:
         # color="hot_r",
         # sort_by_frate=True,
     )
+    axraster.plot([1, 2], [50, 50], "k", lw=3)  # lfp scale bar 2.5 mV
+    axraster.axis("off")
 
-# figure.savefig("raster_example", __file__)
+figure.savefig("raster_example", __file__)
 # endregion
 
 #%% Pairwise correlation change during SD
