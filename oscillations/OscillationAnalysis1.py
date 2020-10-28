@@ -30,7 +30,8 @@ basePath = [
     "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
+    "/data/Clustering/SleepDeprivation/RatK/Day4/",
+    "/data/Clustering/SleepDeprivation/RatN/Day4/",
 ]
 
 
@@ -84,11 +85,13 @@ figure.savefig("pxx_MAZE", __file__)
 
 colmap = Colormap().dynamic2()
 
-for sub, sess in enumerate(sessions[3:4]):
-
+figure = Fig()
+fig, gs = figure.draw(grid=(5, 2))
+for sub, sess in enumerate(sessions[7:8]):
     eegSrate = sess.recinfo.lfpSrate
     ripples = sess.ripple.events
-    chans = sess.ripple.bestchans[0]
+    # chans = sess.ripple.bestchans
+    chans = sess.recinfo.channelgroups[0][::2]
     rippleframes = np.concatenate(
         [
             np.arange(rpl.start * eegSrate, rpl.end * eegSrate).astype(int)
@@ -97,36 +100,19 @@ for sub, sess in enumerate(sessions[3:4]):
     )
     ripple_lfp = sess.recinfo.geteeg(chans=chans, frames=rippleframes)
     # ripple_lfp = signal_process.filter_sig.bandpass(ripple_lfp, lf=130, hf=260)
-    # ripple_lfp = ripple_lfp[::2]
-    # savemat("ripple_data.mat", {'data':np.asarray(ripple_lfp)})
     # lfpripple = np.asarray(lfpripple)
-    bicoh = signal_process.bicoherence(
-        flow=1, fhigh=250, fs=625, window=10 * 625, overlap=2 * 625
-    )
+    bicoh = signal_process.bicoherence(flow=1, fhigh=250)
     bicoh.compute(ripple_lfp)
-    bicoh.plot(cmap=colmap)
 
-    # bicohsmth = gaussian_filter(bicoh, sigma=3)
-    # bicoh = np.where(bicoh > 0.05, bicoh, 0)
-    # plt.clf()
-    # fig = plt.figure(1, figsize=(10, 15))
-    # gs = gridspec.GridSpec(1, 2, figure=fig)
-    # fig.subplots_adjust(hspace=0.3)
-    # ax = fig.add_subplot(gs[0, 1])
-    # ax.clear()
-    # im = ax.pcolorfast(
-    #     freq, freq, np.sqrt(bicohsmth), cmap=colmap, vmax=0.5, vmin=0.018
-    # )
-    # # ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
-    # ax.set_ylim([1, max(freq) / 2])
-    # ax.set_xlabel("Frequency (Hz)")
-    # ax.set_ylabel("Frequency (Hz)")
-    # # cax = fig.add_axes([0.3, 0.8, 0.5, 0.05])
-    # # cax.clear()
+    for i, chan in enumerate(chans):
+        ax = plt.subplot(gs[i + 2])
+        bicoh.plot(cmap=colmap, index=i, ax=ax, smooth=4)
+        ax.set_xlim(left=1)
+        ax.set_title(f"channel = {chan}", loc="left")
 
-    # # ax.contour(freq, freq, bicoh, levels=[0.1, 0.2, 0.3], colors="k", linewidths=1)
-    # fig.colorbar(im, ax=ax, orientation="horizontal")
-
+ax = plt.subplot(gs[0])
+sess.recinfo.probemap.plot(chans=chans, ax=ax)
+figure.savefig("ripple_bicoherence_shank", __file__)
 # endregion
 
 #%% Gamma across SD
