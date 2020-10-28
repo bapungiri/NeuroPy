@@ -1,17 +1,13 @@
 # %%
-import os
-import random
 import warnings
 from typing import Dict
 
-# import ipywidgets as widgets
 import matplotlib as mpl
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pingouin as pg
-from scipy.ndimage.interpolation import shift
 import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
@@ -19,10 +15,7 @@ import signal_process
 from callfunc import processData
 from mathutil import threshPeriods
 from plotUtil import Colormap, Fig
-from scipy import fft, interpolate
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
-from signal_process import bicoherence
-from sklearn import linear_model
 from joblib import Parallel, delayed
 
 # warnings.simplefilter(action="default")
@@ -220,89 +213,54 @@ bin2Data = pd.DataFrame()
 slideData = pd.DataFrame()
 cmap = mpl.cm.get_cmap("Set3")
 
-for sub, sess in enumerate(sessions[8:9]):
+for sub, sess in enumerate(sessions[7:8]):
 
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
     maze = sess.epochs.maze
 
-    lfpmaze = sess.recinfo.geteeg(chans=112, timeRange=maze)
-    lfpmaze_t = np.linspace(maze[0], maze[1], len(lfpmaze))
+    lfpmaze = sess.recinfo.geteeg(chans=11, timeRange=maze)
+    strong_theta = sess.theta.getstrongTheta(lfpmaze)[0]
 
-    # ---- filtering --> zscore --> threshold --> strong theta periods ----
-    thetalfp = signal_process.filter_sig.bandpass(lfpmaze, lf=4, hf=10)
-    hil_theta = signal_process.hilbertfast(thetalfp)
-    theta_amp = np.abs(hil_theta)
-
-    zsc_theta = stats.zscore(theta_amp)
-    thetaevents = threshPeriods(
-        zsc_theta, lowthresh=0, highthresh=0.5, minDistance=300, minDuration=1250
-    )
-
-    strong_theta, theta_indices = [], []
-    for (beg, end) in thetaevents:
-        strong_theta.extend(lfpmaze[beg:end])
-        theta_indices.extend(np.arange(beg, end))
-    strong_theta = np.asarray(strong_theta)
-    theta_indices = np.asarray(theta_indices)
-    non_theta = np.delete(lfpmaze, theta_indices)
-
-    # ---- filtering strong theta periods into theta and gamma band ------
-    theta_lfp = stats.zscore(
-        signal_process.filter_sig.bandpass(strong_theta, lf=1, hf=25)
-    )
     gamma_lfp = stats.zscore(
         signal_process.filter_sig.highpass(strong_theta, cutoff=25, order=3)
     )
-
-    # ----- phase detection for theta band -----------
-    # filt_theta = signal_process.filter_sig.filter_cust(theta_lfp, lf=20, hf=60)
-    hil_theta = signal_process.hilbertfast(theta_lfp)
-    theta_amp = np.abs(hil_theta)
-    theta_angle = np.angle(hil_theta, deg=True) + 180  # range from 0 to 360
 
     """
     phase specific extraction of highpass filtered strong theta periods (>25 Hz) and concatenating similar phases across multiple theta cycles
     """
 
     # ----- dividing 360 degress into non-overlapping 5 bins ------------
-    angle_bin = np.linspace(0, 360, 6)  # 5 bins so each bin=25ms
-    angle_centers = angle_bin + np.diff(angle_bin).mean() / 2
-    bin_ind = np.digitize(theta_angle, bins=angle_bin)
+    gamma_5bin, _, angle_centers = sess.theta.phase_specfic_extraction(
+        strong_theta, gamma_lfp, window=72
+    )
     df1 = pd.DataFrame()
-    for phase in range(1, len(angle_bin)):
-        strong_theta_atphase = gamma_lfp[np.where(bin_ind == phase)[0]]
-        f_, pxx = sg.welch(strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250)
+    for lfp, center in zip(gamma_5bin, angle_centers):
+        f_, pxx = sg.welch(lfp, nperseg=1250, noverlap=625, fs=1250)
         df1["freq"] = f_
-        df1[str(angle_centers[phase - 1])] = pxx
+        df1[center] = np.log10(pxx)
     bin1Data = bin1Data.append(df1)
 
     # ----- dividing 360 degress into non-overlapping 9 bins ------------
-    angle_bin = np.linspace(0, 360, 10)  # 9 bins
-    angle_centers = angle_bin + np.diff(angle_bin).mean() / 2
-    bin_ind = np.digitize(theta_angle, bins=angle_bin)
+    gamma_9bin, _, angle_centers = sess.theta.phase_specfic_extraction(
+        strong_theta, gamma_lfp, window=40
+    )
     df2 = pd.DataFrame()
-    for phase in range(1, len(angle_bin)):
-        strong_theta_atphase = gamma_lfp[np.where(bin_ind == phase)[0]]
-        f_, pxx = sg.welch(strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250)
+    for lfp, center in zip(gamma_9bin, angle_centers):
+        f_, pxx = sg.welch(lfp, nperseg=1250, noverlap=625, fs=1250)
         df2["freq"] = f_
-        df2[str(angle_centers[phase - 1])] = pxx
+        df2[center] = np.log10(pxx)
     bin2Data = bin2Data.append(df2)
 
     # ----- dividing 360 degress into sliding windows ------------
-    window = 40  # degress
-    slideby = 5  # degress
-    angle_bin = np.arange(0, 360 - 40, slideby)  # divide into 5 bins so each bin=25ms
-    angle_centers = angle_bin + window / 2
-    bin_ind = np.digitize(theta_angle, bins=angle_bin)
+    gamma_slide, _, angle_centers = sess.theta.phase_specfic_extraction(
+        strong_theta, gamma_lfp, window=40, slideby=5
+    )
     df3 = pd.DataFrame()
-    for phase in angle_bin:
-        strong_theta_atphase = gamma_lfp[
-            np.where((theta_angle > phase) & (theta_angle < phase + window))[0]
-        ]
-        f_, pxx = sg.welch(strong_theta_atphase, nperseg=1250, noverlap=625, fs=1250)
+    for lfp, center in zip(gamma_slide, angle_centers):
+        f_, pxx = sg.welch(lfp, nperseg=1250, noverlap=625, fs=1250)
         df3["freq"] = f_
-        df3[str(phase + window / 2)] = pxx
+        df3[center] = np.log10(pxx)
     slideData = slideData.append(df3)
 
 
@@ -310,24 +268,51 @@ mean_bin1 = bin1Data.groupby(level=0).mean()
 mean_bin2 = bin2Data.groupby(level=0).mean()
 mean_slide = slideData.groupby(level=0).mean()
 
-mean_bin1.plot(x="freq", ax=axbin1, legend=False, linewidth=1)
-mean_bin2.plot(x="freq", ax=axbin2, legend=False, linewidth=1)
-mean_slide.plot(x="freq", ax=axslide, legend=False, linewidth=1)
+mean_bin1 = mean_bin1[mean_bin1.freq < 200]
+mean_bin2 = mean_bin2[mean_bin2.freq < 200]
+mean_slide = mean_slide[mean_slide.freq < 200]
 
 a1 = mean_bin1.set_index("freq")
 a2 = mean_bin2.set_index("freq")
 a3 = mean_slide.set_index("freq")
 
-sns.heatmap(a1, ax=axbin1)
-sns.heatmap(a2, ax=axbin2)
-sns.heatmap(a3, ax=axslide)
+
+sns.heatmap(
+    a1,
+    ax=axbin1,
+    yticklabels=25,
+    cmap="Spectral_r",
+    vmin=-3,
+    vmax=-2,
+    # cbar=None,
+)
+sns.heatmap(
+    a2,
+    ax=axbin2,
+    yticklabels=25,
+    cmap="Spectral_r",
+    vmin=-3,
+    vmax=-2,
+    # cbar=None,
+)
+sns.heatmap(
+    a3,
+    ax=axslide,
+    # shading="gouraud",
+    cmap="Spectral_r",
+    xticklabels=10,
+    yticklabels=25,
+    vmin=-3,
+    vmax=-2,
+)
 axbin1.set_ylim([0, 200])
 axbin2.set_ylim([0, 200])
+# axslide.set_yscale("log")
 axslide.set_ylim([0, 200])
 
 # ---- figure properties ----------
 [
-    [ax.set_xlabel("Frequency (Hz)"), ax.set_ylabel("Power"), ax.set_xlim([0, 200])]
+    [ax.set_xlabel("Frequency (Hz)"), ax.set_ylabel("Power")]
     for ax in [axbin1, axbin2, axslide]
 ]
 [
@@ -336,11 +321,11 @@ axslide.set_ylim([0, 200])
         [axbin1, axbin2, axslide], ["5 bins", "9 bins", "sliding window"]
     )
 ]
-axbin1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-axbin2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-axslide.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-axbin1.set_title("Linear Probe, channel = 112")
-figure.savefig("phase_specific_slowgamma_linearprobe", __file__)
+# axbin1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+# axbin2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+# axslide.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+# axbin1.set_title("Linear Probe, channel = 112")
+# figure.savefig("phase_specific_slowgamma_openfield", __file__)
 
 
 # endregion
@@ -981,7 +966,7 @@ for sub, sess in enumerate(sessions[:3]):
 gamma_expvar = pd.DataFrame()
 harmonic_expvar = pd.DataFrame()
 
-for sub, sess in enumerate(sessions):
+for sub, sess in enumerate(sessions[7:8]):
     sess.trange = np.array([])
     maze = sess.epochs.maze
     speed = sess.position.speed
@@ -989,7 +974,7 @@ for sub, sess in enumerate(sessions):
 
     deadtime = sess.artifact.time
 
-    lfpmaze = sess.utils.geteeg(sess.theta.bestchan, timeRange=maze)
+    lfpmaze = sess.recinfo.geteeg(sess.theta.bestchan, timeRange=maze)
     lfpmaze_t = np.linspace(maze[0], maze[1], len(lfpmaze))
     speed = np.interp(lfpmaze_t, t_position, speed)
 
@@ -1002,6 +987,10 @@ for sub, sess in enumerate(sessions):
         )
         lfpmaze = np.delete(lfpmaze, dead_indx)
         speed = np.delete(speed, dead_indx)
+
+    # ---- only selecting strong theta ------------
+    lfpmaze, _, indices = sess.theta.getstrongTheta(lfpmaze)
+    speed = speed[indices]
 
     # --- calculating theta parameters ---------
     thetaparams = sess.theta.getParams(lfpmaze)
@@ -1115,7 +1104,7 @@ figure = Fig()
 fig, gs = figure.draw(grid=[4, 3])
 ax1 = plt.subplot(gs[0, 0])
 figure.panel_label(ax1, "c")
-ax2 = plt.subplot(gs[0, 1], sharey=ax1)
+ax2 = plt.subplot(gs[0, 1])
 
 mean_gamma_expvar.plot.bar(
     yerr=sem_gamma_expvar, ax=ax1, capsize=1.2, rot=90, edgecolor="k", width=0.8
@@ -1159,7 +1148,7 @@ ax2.set_xticklabels(
     ]
 )
 
-# figure.savefig("gamma_bands_expvar", __file__)
+figure.savefig("gamma_bands_expvar2", __file__)
 
 
 # endregion
@@ -1253,5 +1242,62 @@ ax.set_title("fast gamma \n (0 degree = theta trough)")
 ax.set_xlabel(r"$\theta$ Phase (degree)")
 ax.set_ylabel("channels")
 
-figure.savefig("fastgamma_thetaphase", __file__)
+# figure.savefig("fastgamma_thetaphase", __file__)
+# endregion
+
+#%% Compare various methods of slow gamma detection during theta activity: wavelet, phase amplitude coupling, bicoherence
+# region
+"""For RatNDay4 (openfield), 
+    chosen channel = 11 (pyramidal layer) 
+"""
+figure = Fig()
+fig, gs = figure.draw(grid=(4, 3))
+axwav = plt.subplot(gs[0])
+axpac = plt.subplot(gs[1])
+axbicoh = plt.subplot(gs[2])
+for sub, sess in enumerate(sessions[7:8]):
+    maze = sess.epochs.maze
+    channels = 11
+    phase_bin = np.linspace(0, 360, 21)
+    phase_centers = phase_bin[:-1] + np.diff(phase_bin).mean() / 2
+    lfpmaze = sess.recinfo.geteeg(chans=channels, timeRange=maze)
+    strong_theta = sess.theta.getstrongTheta(lfpmaze)[0]
+
+    # ----- wavelet power for gamma oscillations----------
+    frgamma = np.arange(25, 150, 1)
+    wavdec = signal_process.wavelet_decomp(strong_theta, freqs=frgamma)
+    wav = wavdec.colgin2009()
+    wav = stats.zscore(wav, axis=1)
+
+    # ----segmenting gamma wavelet at theta phases ----------
+    theta_params = sess.theta.getParams(strong_theta)
+    bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+    bin_ind = np.digitize(theta_params.angle, bin_angle)
+
+    gamma_at_theta = pd.DataFrame()
+    for i in np.unique(bin_ind):
+        find_where = np.where(bin_ind == i)[0]
+        gamma_at_theta[bin_angle[i - 1]] = np.mean(wav[:, find_where], axis=1)
+    gamma_at_theta.insert(0, column="freq", value=frgamma)
+
+    gamma_at_theta = gamma_at_theta.set_index("freq")
+    sns.heatmap(gamma_at_theta, ax=axwav, cmap="Spectral_r")
+    axwav.invert_yaxis()
+
+    # ------ PAC (phase amplitude coupling)---------------
+    pac = signal_process.PAC(fphase=(4, 12), famp=(25, 50), binsz=20)
+    pac.compute(lfpmaze)
+    pac.plot(ax=axpac, color="gray", edgecolor="k")
+    axpac.set_xlabel(r"$\theta$ phase")
+    axpac.set_xlabel("Gamma amplitude")
+    axpac.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+
+    # ------ bicoherence plot ------------
+    colmap = Colormap().dynamic2()
+    bicoh = signal_process.bicoherence(flow=1, fhigh=150)
+    bicoh.compute(signal=lfpmaze)
+    bicoh.plot(ax=axbicoh, cmap=colmap, smooth=2, vmax=0.1)
+
+figure.savefig("different_slow_gamma", __file__)
+
 # endregion
