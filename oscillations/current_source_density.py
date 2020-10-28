@@ -74,88 +74,35 @@ figure.savefig('csd_slow gamma_MAZE',__file__)
 
 #%% CSD locked to ripple peak time
 # region
-plt.close("all")
 
-for sub, sess in enumerate(sessions):
+for sub, sess in enumerate(sessions[7:8]):
 
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
     maze = sess.epochs.maze
-    changrp = np.concatenate(sess.recinfo.channelgroups[:8])
-    ripples = sess.ripple.time
-    peaktime = sess.ripple.peaktime
-    peakshrpwv = sess.ripple.peakSharpWave
+    changrp = sess.recinfo.goodchangrp[0]
+    peaktime = sess.ripple.events.peakSharpWave
     peakframe = (peaktime * eegSrate).astype(int)
-    startframe = (ripples[:, 0] * eegSrate).astype(int)
 
     # ------selecting time points around a subset of ripples ---------
     nfrm = 250
-    nripples = 10
+    nripples = 1
     rippleFrm = np.concatenate(
-        [np.arange(_ - nfrm, _ + nfrm) for _ in peakshrpwv][:nripples]
+        [np.arange(_ - nfrm, _ + nfrm) for _ in peakframe][:nripples]
     )
-    lfpripple = sess.utils.geteeg(chans=changrp, frames=rippleFrm)
+    lfpripple = sess.recinfo.geteeg(chans=changrp, frames=rippleFrm)
     lfpripple = lfpripple - np.mean(lfpripple)
 
     nChans = lfpripple.shape[0]
-    filtrpl = signal_process.filter_sig.filter_cust(lfpripple, lf=2, hf=50)
+    filtrpl = signal_process.filter_sig.bandpass(lfpripple, lf=1, hf=50)
+    # filtrpl = lfpripple
     analytic_signal = signal_process.hilbertfast(filtrpl, ax=-1)
     amplitude_envelope = np.abs(analytic_signal)
     mean_rpl = np.reshape(lfpripple, (nChans, 2 * nfrm, nripples)).mean(axis=2)
 
-    nshanks = sess.recinfo.nShanks
-    changrp = np.concatenate(sess.recinfo.channelgroups[:8])
-    sess.csd = []
-    for sh_id, shank in enumerate(sess.recinfo.channelgroups[:8]):
-
-        chan_where = np.argwhere(np.isin(changrp, shank)).squeeze()
-        rpl_lfp = filtrpl[chan_where, :]
-        badchans = sess.recinfo.badchans
-        badchan_indx = np.argwhere(np.isin(shank, badchans))
-        ycoord = np.arange(16 * 20, 0, -20)
-        if badchan_indx.shape[0]:
-            rpl_lfp = np.delete(rpl_lfp, badchan_indx, axis=0)
-            ycoord = np.delete(ycoord, badchan_indx)
-        ycoord = ycoord.reshape(-1, 1) * pq.um
-
-        sigarr = AnalogSignal(rpl_lfp.T, units="uV", sampling_rate=1250 * pq.Hz)
-        sess.csd.append(csd2d.estimate_csd(sigarr, coords=ycoord, method="KCSD1D"))
-
-# -----Plotting---------
-plt.clf()
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(1, 8, figure=fig)
-fig.subplots_adjust(hspace=0.3)
-for sub, sess in enumerate(sessions):
-
-    for sh_id, shank in enumerate(sess.recinfo.channelgroups[:8]):
-        csd_data = sess.csd[sh_id]
-        ypos = csd_data.annotations["x_coords"]
-        t = np.linspace(-nfrm / eegSrate, nfrm / eegSrate, 2 * nfrm * 10)
-        chan_where = np.argwhere(np.isin(changrp, shank)).squeeze()
-        rpl_lfp = mean_rpl[chan_where, :]
-        # rpl_lfp = np.flipud(rpl_lfp)
-
-        ax = fig.add_subplot(gs[sh_id])
-        im = ax.pcolormesh(
-            t, ypos, np.asarray(csd_data).T, cmap="jet", zorder=1, shading="nearest"
-        )
-        ax2 = ax.twinx()
-        # ax2.plot(
-        #     t,
-        #     rpl_lfp.T / 60000 + np.linspace(ypos[0], ypos[-1], rpl_lfp.shape[0]),
-        #     zorder=2,
-        #     color="#616161",
-        # )
-
-        ax.set_ylim([0, 0.35])
-        ax2.axes.get_yaxis().set_visible(False)
-        ax.axes.get_yaxis().set_visible(False)
-        ax.set_xlabel("Time (s)")
-        ax.set_title(f"Shank{sh_id+1}")
-
-        fig.colorbar(im, ax=ax, orientation="horizontal")
-    fig.suptitle("Neptune Day1 - CSD (around ripple peaktime)")
+    csd = signal_process.Csd(mean_rpl,coords= np.linspace(1,100,16))
+    csd.classic()
+    csd.plot()
 # endregion
 
 #%% CSD locked to epsilon band peak (Fast gamma band > 100 Hz)
