@@ -67,7 +67,8 @@ class Recinfo:
 
         self.goodchans = np.setdiff1d(self.channels, self.badchans, assume_unique=True)
         self.goodchangrp = [
-            list(np.setdiff1d(_, self.badchans).astype(int)) for _ in self.channelgroups
+            list(np.setdiff1d(_, self.badchans, assume_unique=True).astype(int))
+            for _ in self.channelgroups
         ]
 
     @property
@@ -210,7 +211,6 @@ class files:
         self.epochs = Path(str(filePrefix) + "_epochs.npy")
         self.spindle_evt = Path(str(filePrefix) + "_spindles.npy")
         self.spindlelfp = Path(str(filePrefix) + "_BestSpindleChan.npy")
-        self.theta_evt = Path(str(filePrefix) + "_thetaevents.npy")
         self.sessionepoch = Path(str(filePrefix) + "_epochs.npy")
         self.hwsa_ripple = Path(str(filePrefix) + "_hswa_ripple.npy")
         self.slow_wave = Path(str(filePrefix) + "_hswa.npy")
