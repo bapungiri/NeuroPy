@@ -1257,7 +1257,7 @@ axpac = plt.subplot(gs[1])
 axbicoh = plt.subplot(gs[2])
 for sub, sess in enumerate(sessions[7:8]):
     maze = sess.epochs.maze
-    channels = 11
+    channels = 111
     phase_bin = np.linspace(0, 360, 21)
     phase_centers = phase_bin[:-1] + np.diff(phase_bin).mean() / 2
     lfpmaze = sess.recinfo.geteeg(chans=channels, timeRange=maze)
@@ -1296,8 +1296,73 @@ for sub, sess in enumerate(sessions[7:8]):
     colmap = Colormap().dynamic2()
     bicoh = signal_process.bicoherence(flow=1, fhigh=150)
     bicoh.compute(signal=lfpmaze)
-    bicoh.plot(ax=axbicoh, cmap=colmap, smooth=2, vmax=0.1)
+    bicoh.plot(ax=axbicoh, cmap=colmap, smooth=3, vmax=0.05)
 
-figure.savefig("different_slow_gamma", __file__)
+# figure.savefig("different_slow_gamma", __file__)
+
+# endregion
+
+#%% Wavelet --> theta-gamma coupling at multiple sites on a shank or across shanks
+# region
+"""For RatNDay4 (openfield), 
+    chosen channel = 11 (pyramidal layer) 
+"""
+figure = Fig()
+fig, gs = figure.draw(grid=(8, 8))
+
+for sub, sess in enumerate(sessions[7:8]):
+    maze = sess.epochs.maze
+
+    for shank in range(1):
+        channels = sess.recinfo.goodchangrp[shank][::2]
+        bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+        phase_centers = bin_angle[:-1] + np.diff(bin_angle).mean() / 2
+        lfpmaze = sess.recinfo.geteeg(chans=channels, timeRange=maze)
+
+        frgamma = np.arange(25, 150, 1)
+
+        def wavlet_(chan, lfp):
+            strong_theta = sess.theta.getstrongTheta(lfp)[0]
+            highpass_theta = signal_process.filter_sig.highpass(strong_theta, cutoff=25)
+
+            # ----- wavelet power for gamma oscillations----------
+            wavdec = signal_process.wavelet_decomp(highpass_theta, freqs=frgamma)
+            wav = wavdec.colgin2009()
+            wav = stats.zscore(wav, axis=1)
+
+            # ----segmenting gamma wavelet at theta phases ----------
+            theta_params = sess.theta.getParams(strong_theta)
+            bin_ind = np.digitize(theta_params.angle, bin_angle)
+
+            gamma_at_theta = pd.DataFrame()
+            for i in np.unique(bin_ind):
+                find_where = np.where(bin_ind == i)[0]
+                gamma_at_theta[bin_angle[i - 1]] = np.mean(wav[:, find_where], axis=1)
+            gamma_at_theta.insert(0, column="freq", value=frgamma)
+            gamma_at_theta.insert(0, column="chan", value=chan)
+
+            return gamma_at_theta
+
+        gamma_all_chan = pd.concat(
+            [wavlet_(chan, lfp) for (chan, lfp) in zip(channels, lfpmaze)]
+        ).groupby("chan")
+
+        for i, chan in enumerate(channels):
+            spect = (
+                gamma_all_chan.get_group(chan).drop(columns="chan").set_index("freq")
+            )
+            ax = plt.subplot(gs[i, shank])
+            sns.heatmap(
+                spect, ax=ax, cmap="jet", cbar=None, xticklabels=5, rasterized=True
+            )
+            # ax.pcolormesh(phase_centers, frgamma, spect, shading="auto")
+            ax.set_title(f"channel = {chan}", loc="left")
+            ax.invert_yaxis()
+            if i < len(channels) - 1:
+                ax.get_xaxis().set_visible([])
+            if shank > 0:
+                ax.get_yaxis().set_visible([])
+
+    # figure.savefig(f"wavelet_slgamma", __file__)
 
 # endregion
