@@ -7,6 +7,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas.core.groupby.generic import DataFrameGroupBy
 import pingouin as pg
 import scipy.signal as sg
 import scipy.stats as stats
@@ -197,21 +198,7 @@ for sub, sess in enumerate(sessions):
 # region
 
 figure = Fig()
-fig, gs = figure.draw(grid=[4, 3])
-
-axbin1 = plt.subplot(gs[1, 0])
-axbin1.clear()
-figure.panel_label(axbin1, "b")
-axbin2 = plt.subplot(gs[1, 1])
-axbin2.clear()
-axslide = plt.subplot(gs[1, 2])
-axslide.clear()
-
-all_theta = []
-bin1Data = pd.DataFrame()
-bin2Data = pd.DataFrame()
-slideData = pd.DataFrame()
-cmap = mpl.cm.get_cmap("Set3")
+fig, gs = figure.draw(grid=[4, 3], wspace=0.4)
 
 for sub, sess in enumerate(sessions[7:8]):
 
@@ -230,103 +217,37 @@ for sub, sess in enumerate(sessions[7:8]):
     phase specific extraction of highpass filtered strong theta periods (>25 Hz) and concatenating similar phases across multiple theta cycles
     """
 
-    # ----- dividing 360 degress into non-overlapping 5 bins ------------
-    gamma_5bin, _, angle_centers = sess.theta.phase_specfic_extraction(
-        strong_theta, gamma_lfp, window=72
-    )
-    df1 = pd.DataFrame()
-    for lfp, center in zip(gamma_5bin, angle_centers):
-        f_, pxx = sg.welch(lfp, nperseg=1250, noverlap=625, fs=1250)
-        df1["freq"] = f_
-        df1[center] = np.log10(pxx)
-    bin1Data = bin1Data.append(df1)
+    def getPxxData(**kwargs):
 
-    # ----- dividing 360 degress into non-overlapping 9 bins ------------
-    gamma_9bin, _, angle_centers = sess.theta.phase_specfic_extraction(
-        strong_theta, gamma_lfp, window=40
-    )
-    df2 = pd.DataFrame()
-    for lfp, center in zip(gamma_9bin, angle_centers):
-        f_, pxx = sg.welch(lfp, nperseg=1250, noverlap=625, fs=1250)
-        df2["freq"] = f_
-        df2[center] = np.log10(pxx)
-    bin2Data = bin2Data.append(df2)
+        gamma_bin, _, angle_centers = sess.theta.phase_specfic_extraction(
+            strong_theta, gamma_lfp, **kwargs
+        )
+        df = pd.DataFrame()
+        f_ = None
+        for lfp, center in zip(gamma_bin, angle_centers):
+            f_, pxx = sg.welch(lfp, nperseg=1250, noverlap=625, fs=1250)
+            df[center] = np.log10(pxx)
+        df.insert(0, "freq", f_)
+        return df
 
-    # ----- dividing 360 degress into sliding windows ------------
-    gamma_slide, _, angle_centers = sess.theta.phase_specfic_extraction(
-        strong_theta, gamma_lfp, window=40, slideby=5
-    )
-    df3 = pd.DataFrame()
-    for lfp, center in zip(gamma_slide, angle_centers):
-        f_, pxx = sg.welch(lfp, nperseg=1250, noverlap=625, fs=1250)
-        df3["freq"] = f_
-        df3[center] = np.log10(pxx)
-    slideData = slideData.append(df3)
+    # ----- dividing 360 degress into multiple bins ------------
+    binconfig = [[72, None], [40, None], [40, 5]]  # degree, degree
+    binData = [getPxxData(window=wind, slideby=sld) for (wind, sld) in binconfig]
 
+    bin_names = ["5bin", "9bin", "slide"]
+    for i, df in enumerate(binData):
+        ax = plt.subplot(gs[sub, i])
+        data = df[df.freq < 200].set_index("freq")  # .transform(stats.zscore, axis=1)
+        ax.pcolormesh(data.columns, data.index, data, cmap="jet", shading="auto")
+        ax.set_xlabel(r"$\theta$ phase")
+        ax.set_ylabel("Frequency (Hz)")
+        ax.set_title(bin_names[i])
+        # ax.set_xticks([0, data.shape[1] // 2, data.shape[1]])
+        # ax.set_xticklabels(["0", "180", "360"])
+        # ax.locator_params(axis="x", nbins=4)
 
-mean_bin1 = bin1Data.groupby(level=0).mean()
-mean_bin2 = bin2Data.groupby(level=0).mean()
-mean_slide = slideData.groupby(level=0).mean()
-
-mean_bin1 = mean_bin1[mean_bin1.freq < 200]
-mean_bin2 = mean_bin2[mean_bin2.freq < 200]
-mean_slide = mean_slide[mean_slide.freq < 200]
-
-a1 = mean_bin1.set_index("freq")
-a2 = mean_bin2.set_index("freq")
-a3 = mean_slide.set_index("freq")
-
-
-sns.heatmap(
-    a1,
-    ax=axbin1,
-    yticklabels=25,
-    cmap="Spectral_r",
-    vmin=-3,
-    vmax=-2,
-    # cbar=None,
-)
-sns.heatmap(
-    a2,
-    ax=axbin2,
-    yticklabels=25,
-    cmap="Spectral_r",
-    vmin=-3,
-    vmax=-2,
-    # cbar=None,
-)
-sns.heatmap(
-    a3,
-    ax=axslide,
-    # shading="gouraud",
-    cmap="Spectral_r",
-    xticklabels=10,
-    yticklabels=25,
-    vmin=-3,
-    vmax=-2,
-)
-axbin1.set_ylim([0, 200])
-axbin2.set_ylim([0, 200])
-# axslide.set_yscale("log")
-axslide.set_ylim([0, 200])
-
-# ---- figure properties ----------
-[
-    [ax.set_xlabel("Frequency (Hz)"), ax.set_ylabel("Power")]
-    for ax in [axbin1, axbin2, axslide]
-]
-[
-    ax.set_title(title)
-    for (ax, title) in zip(
-        [axbin1, axbin2, axslide], ["5 bins", "9 bins", "sliding window"]
-    )
-]
 # axbin1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-# axbin2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-# axslide.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-# axbin1.set_title("Linear Probe, channel = 112")
 # figure.savefig("phase_specific_slowgamma_openfield", __file__)
-
 
 # endregion
 
@@ -1364,5 +1285,59 @@ for sub, sess in enumerate(sessions[7:8]):
                 ax.get_yaxis().set_visible([])
 
     # figure.savefig(f"wavelet_slgamma", __file__)
+
+# endregion
+
+#%% Theta phase specific extraction (MAZE) --> apply Colgin et al.2009 wavelet on extracted lfp
+# region
+
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 3])
+
+binData = None
+for sub, sess in enumerate(sessions[7:8]):
+
+    sess.trange = np.array([])
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+
+    lfpmaze = sess.recinfo.geteeg(chans=111, timeRange=maze)
+    strong_theta = sess.theta.getstrongTheta(lfpmaze)[0]
+
+    gamma_lfp = stats.zscore(
+        signal_process.filter_sig.highpass(strong_theta, cutoff=25, order=3)
+    )
+
+    """
+    phase specific extraction of highpass filtered strong theta periods (>25 Hz) and concatenating similar phases across multiple theta cycles
+    """
+    frgamma = np.arange(25, 150, 1)
+
+    def getwavData(**kwargs):
+
+        gamma_bin, _, angle_centers = sess.theta.phase_specfic_extraction(
+            strong_theta, gamma_lfp, **kwargs
+        )
+        df = pd.DataFrame()
+        df["freq"] = frgamma
+        for lfp, center in zip(gamma_bin, angle_centers):
+            wavdec = signal_process.wavelet_decomp(lfp, freqs=frgamma, sampfreq=1250)
+            wav = wavdec.colgin2009()
+            df[center] = np.mean(wav, axis=1)
+        return df
+
+    # ----- dividing 360 degress into multiple bins ------------
+    binconfig = [[72, None], [40, None], [40, 5]]  # degree, degree
+    binData = [getwavData(window=wind, slideby=sld) for (wind, sld) in binconfig]
+
+    for i, df in enumerate(binData):
+        ax = plt.subplot(gs[sub, i])
+        data = df.set_index("freq")  # .transform(stats.zscore, axis=1)
+        sns.heatmap(data, ax=ax, cmap="Spectral_r", cbar=None)
+        # ax.set_xticks([0, data.shape[1] // 2, data.shape[1]])
+        # ax.set_xticklabels(["0", "180", "360"])
+        # ax.locator_params(axis="x", nbins=4)
+        ax.invert_yaxis()
+
 
 # endregion
