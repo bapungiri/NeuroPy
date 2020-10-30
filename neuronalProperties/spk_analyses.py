@@ -849,3 +849,30 @@ axfr.set_xlabel("Time (h)")
 
 figure.savefig("firing_maze_sd", __file__)
 # endregion
+
+
+#%% MUA activity during high gamma (slow/fast) periods
+# region
+"""Did not fing any interesting difference 
+"""
+
+for sub, sess in enumerate(sessions[5:6]):
+
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    instfiring = sess.spikes.instfiring
+    instfiring = instfiring[(instfiring.time > maze[0]) & (instfiring.time < maze[1])]
+
+    lfpmaze = sess.recinfo.geteeg(chans=sess.theta.bestchan, timeRange=maze)
+    peakgamma_periods = sess.gamma.get_peak_intervals(lfpmaze, band=(25, 50))
+    peakgamma_periods = (peakgamma_periods / eegSrate) + maze[0]
+
+    gamma_frate = []
+    for epoch in peakgamma_periods:
+        gamma_frate.extend(
+            instfiring[
+                (instfiring.time > epoch[0]) & (instfiring.time < epoch[1])
+            ].frate
+        )
+
+# endregion
