@@ -105,6 +105,12 @@ class Recinfo:
 
         return metadata
 
+    def __str__(self) -> str:
+        return f"Name: {self.session.name} with {self.nChans} channels"
+
+    # def __repr__(self) -> str:
+    #     return "I am an animal"
+
     def makerecinfo(self):
         """Reads recording parameter from xml file"""
 
