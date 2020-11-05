@@ -1,7 +1,17 @@
+import cupyx
+import scipy.fft
 import numpy as np
-from test import check
+import cupy
+import time
+
+a = cupy.arange(510000).astype(float)
 
 
-new_inst = check(np.array([10, 2, 3, 4]))
-new_inst2 = check(np.array([1, 7]))
-new_inst3 = check(np.array([2, 3, 8]))
+t = time.time()
+b = cupy.convolve(a, a)
+print(time.time() - t)
+
+
+t = time.time()
+b1 = np.convolve(a, a)
+print(time.time() - t)

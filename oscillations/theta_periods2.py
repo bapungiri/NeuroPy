@@ -1333,11 +1333,14 @@ for sub, sess in enumerate(sessions[7:8]):
     for i, df in enumerate(binData):
         ax = plt.subplot(gs[sub, i])
         data = df.set_index("freq")  # .transform(stats.zscore, axis=1)
-        sns.heatmap(data, ax=ax, cmap="Spectral_r", cbar=None)
+        data = data.mul(frgamma, axis=0)
+        sns.heatmap(data, ax=ax, cmap="Spectral_r", cbar=None, rasterized=True)
         # ax.set_xticks([0, data.shape[1] // 2, data.shape[1]])
         # ax.set_xticklabels(["0", "180", "360"])
         # ax.locator_params(axis="x", nbins=4)
+        ax.set_xlabel(r"$\theta$ phase")
+        ax.set_ylabel("Frequency (Hz)")
         ax.invert_yaxis()
 
-
+figure.savefig("phase_specific_wavelet_scaled", __file__)
 # endregion
