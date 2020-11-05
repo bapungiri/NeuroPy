@@ -24,14 +24,15 @@ cmap = matplotlib.cm.get_cmap("hot_r")
 
 #%% Subjects
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day4/",
-    "/data/Clustering/SleepDeprivation/RatN/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
 
 
@@ -75,7 +76,34 @@ ax.invert_yaxis()
 ax.set_ylabel("channels")
 ax.set_xlabel("Frequency (Hz)")
 
-figure.savefig("pxx_MAZE", __file__)
+# figure.savefig("pxx_MAZE", __file__)
+
+# endregion
+
+#%% Power in interested frequency ranges using pxx across all channels
+# region
+df = pd.DataFrame()
+for sub, sess in enumerate(sessions):
+
+    maze = sess.epochs.pre
+    chans = [12, 50, 100, 120]
+    freq = [1, 10]
+
+    f = None
+    for chan_ind, chan in enumerate(chans):
+        lfp = sess.recinfo.geteeg(chans=chan, timeRange=maze)
+        f, pxx = sg.welch(lfp, fs=1250, nperseg=5 * 1250, noverlap=1250)
+        f_ind = np.where((f > freq[0]) & (f < freq[1]))[0]
+        f = f[f_ind]
+        df[chan] = pxx[f_ind]
+
+    df.insert(0, "freq", f)
+
+
+group = df.set_index("freq")
+group.plot()
+
+# figure.savefig("pxx_MAZE", __file__)
 
 # endregion
 
@@ -696,3 +724,4 @@ ax.set_title("Spindle probability")
 figure.panel_label(ax, "a")
 figure.savefig("spindle_delta_coupling", __file__)
 # endregion
+

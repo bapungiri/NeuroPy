@@ -25,7 +25,7 @@ cmap = matplotlib.cm.get_cmap("hot_r")
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
@@ -408,4 +408,62 @@ for sub, sess in enumerate(sessions):
     ax = fig.add_subplot(gs[sub])
     sess.eventpsth.plot(ax=ax)
 
+# endregion
+
+#%% Gamma oscillation power vs velocity/position of animal
+# region
+
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 2])
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    posdata = sess.position.data
+    posdata = posdata[(posdata.time > maze[0]) & (posdata.time < maze[1])]
+    chan = sess.theta.bestchan
+    lfpmaze = sess.recinfo.geteeg(chans=chan, timeRange=maze)
+    gamma_lfp = signal_process.filter_sig.bandpass(lfp, lf=25, hf=100)
+    gamma_amp = np.abs(signal_process.hilbertfast(gamma_lfp))
+    gamma_t = np.linspace(maze[0], maze[1], len(gamma_lfp))
+
+    peakgamma = sess.gamma.get_peak_intervals(
+        lfpmaze, band=(25, 100), lowthresh=1, highthresh=2
+    )
+    peakgamma = peakgamma / eegSrate + maze[0]
+
+    gamma_pow = stats.binned_statistic(
+        gamma_t, gamma_amp, bins=np.concatenate(peakgamma)
+    )[0][::2]
+
+    gamma_pos = stats.binned_statistic(
+        posdata.time,
+        [posdata.x, posdata.y, posdata.time],
+        bins=np.concatenate(peakgamma),
+    )[0]
+
+    x_gamma, y_gamma, t_gamma = gamma_pos[0][::2], gamma_pos[1][::2], gamma_pos[2][::2]
+
+    # plt.plot(posdata.time, posdata.y)
+    # plt.plot(t_gamma, y_gamma, "r.")
+
+    x_grid = np.linspace(np.min(posdata.x), np.max(posdata.x), 100)
+    y_grid = np.linspace(np.min(posdata.y), np.max(posdata.y), 100)
+
+    hist2 = stats.binned_statistic_2d(
+        x_gamma, y_gamma, gamma_pow, bins=[x_grid, y_grid]
+    )
+    hist_pow = hist2[0]
+    hist_pow = np.nan_to_num(hist_pow, nan=0)
+
+    ax = plt.subplot(gs[sub])
+    ax.pcolormesh(
+        hist2.x_edge,
+        hist2.y_edge,
+        gaussian_filter(hist_pow, sigma=2),
+        cmap="jet",
+        rasterized=True,
+    )
+    ax.axis("off")
+
+figure.savefig("gamma_power_track", __file__)
 # endregion
