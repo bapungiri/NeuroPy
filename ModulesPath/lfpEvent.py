@@ -1,4 +1,3 @@
-import typing
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -1157,6 +1156,7 @@ class Theta:
         csd : dataclass,
             a dataclass return from signal_process module
         """
+        eegSrate = self._obj.lfpSrate
         lfp_period = self._obj.geteeg(chans=chans, timeRange=period)
         lfp_period = signal_process.filter_sig.bandpass(lfp_period, lf=5, hf=12)
 
@@ -1181,7 +1181,9 @@ class Theta:
 
         _, ycoord = self._obj.probemap.get(chans=chans)
 
-        csd = signal_process.Csd(lfp=avg_theta, coords=ycoord, chan_label=chans)
+        csd = signal_process.Csd(
+            lfp=avg_theta, coords=ycoord, chan_label=chans, fs=eegSrate
+        )
         csd.classic()
 
         return csd

@@ -48,10 +48,10 @@ class Recinfo:
         self.session = sessionname(filePrefix)
         self.files = files(filePrefix)
         self.recfiles = recfiles(filePrefix)
-        self.probemap = Probemap(self)
 
         if self.files.basics.is_file():
             self._intialize()
+        self.probemap = Probemap(self)
 
     def _intialize(self):
 
@@ -249,6 +249,9 @@ class Probemap:
             data = np.load(self._obj.files.probe, allow_pickle=True).item()
             self.x = data["x"]
             self.y = data["y"]
+            self.coords = pd.DataFrame(
+                {"chan": self._obj.channels, "x": self.x, "y": self.y}
+            )
 
     def create(self, probetype="diagbio"):
         changroup = self._obj.channelgroups
@@ -295,14 +298,10 @@ class Probemap:
 
         if isinstance(chans, int):
             chans = [chans]
-        channels_indx = [
-            _ for _ in range(self._obj.nChans) if self._obj.channels[_] in chans
-        ]
 
-        xcoord = [self.x[_] for _ in channels_indx]
-        ycoord = [self.y[_] for _ in channels_indx]
+        reqchans = self.coords[self.coords.chan.isin(chans)]
 
-        return xcoord, ycoord
+        return reqchans.x.values, reqchans.y.values
 
     def plot(self, chans=None, ax=None, colors=None):
 
