@@ -168,6 +168,9 @@ class ExtractPosition:
     def _load(self, posfile):
         return np.load(posfile, allow_pickle=True)
 
+    def __getitem__(self, epochs):
+        pass
+
     def getPosition(self):
         sRate = self._obj.sampfreq  # .dat file sampling frequency
         basePath = Path(self._obj.basePath)
