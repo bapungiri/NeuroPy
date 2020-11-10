@@ -422,7 +422,7 @@ for sub, sess in enumerate(sessions):
     posdata = posdata[(posdata.time > maze[0]) & (posdata.time < maze[1])]
     chan = sess.theta.bestchan
     lfpmaze = sess.recinfo.geteeg(chans=chan, timeRange=maze)
-    gamma_lfp = signal_process.filter_sig.bandpass(lfp, lf=25, hf=100)
+    gamma_lfp = signal_process.filter_sig.bandpass(lfpmaze, lf=25, hf=100)
     gamma_amp = np.abs(signal_process.hilbertfast(gamma_lfp))
     gamma_t = np.linspace(maze[0], maze[1], len(gamma_lfp))
 
@@ -465,5 +465,5 @@ for sub, sess in enumerate(sessions):
     )
     ax.axis("off")
 
-figure.savefig("gamma_power_track", __file__)
+# figure.savefig("gamma_power_track", __file__)
 # endregion
