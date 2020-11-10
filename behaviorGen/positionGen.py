@@ -1,45 +1,46 @@
+#%%
+import warnings
+
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.signal as sg
 import scipy.stats as stats
-from matplotlib.gridspec import GridSpec
+from scipy.stats.stats import pointbiserialr
+import seaborn as sns
 from scipy.ndimage import gaussian_filter
-from getPosition import posfromFBX
-from mathutil import getICA_Assembly
-from callfunc import processData
 
+import signal_process
+from callfunc import processData
+from plotUtil import Colormap, Fig
+
+cmap = matplotlib.cm.get_cmap("hot_r")
+# warnings.simplefilter(action="default")
+
+
+#%% Subjects
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
     "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day3/",
-    "/data/Clustering/SleepDeprivation/RatK/Day3/",
-    "/data/Clustering/SleepDeprivation/RatK/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
 ]
 
 
 sessions = [processData(_) for _ in basePath]
 
-# a = np.arange(16).reshape(4, 4)
-# V, W = getICA_Assembly(a)
+#%% Running epochs and direction of movement
+# region
 
 for sub, sess in enumerate(sessions):
-    # sess.makePrmPrb.makePrbCircus("diagbio")
-    sess.trange = np.array([])
-    # sess.recinfo.makerecinfo()
-    # sess.spikes.fromCircus(fileformat="diff_folder")
-    # sess.placefield.pf2d.compute()
-    # # # sess.placefield.pf2d.plotRaw()
-    # sess.placefield.pf2d.plotMap()
 
-    # sess.position.getPosition()
+    maze = sess.epochs.maze
+    position = sess.position.data
+    maze_pos = position[(position.time > maze[0]) & (position.time < maze[1])]
 
 
-# file = "/data/Clustering/SleepDeprivation/RatK/Day3/RatK_Day3_2019-08-10_04-33-10_timestamps.npy"
-
-# fg = pd.read_csv(file, index_col=0)
-# fg = np.load(file)
-# fg = np.memmap(file, dtype="int16", mode="r")
+# endregion
