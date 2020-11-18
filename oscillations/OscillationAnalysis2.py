@@ -150,6 +150,7 @@ for sub, sess in enumerate(sessions):
     plt.ylabel("duration")
 
 plt.suptitle("Ripples during Sleep deprivation period")
+
 # endregion
 
 #%% Ripple distribution during sleep deprivation
