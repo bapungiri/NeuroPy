@@ -107,6 +107,28 @@ group.plot()
 
 # endregion
 
+#%% Power spectrum normalization using mean across all time
+# region
+df = pd.DataFrame()
+for sub, sess in enumerate(sessions):
+
+    maze = sess.epochs.maze
+    chan = sess.theta.bestchan
+    eeg_allsess = sess.recinfo.geteeg(chans=chan)
+    eeg_maze = sess.recinfo.geteeg(chans=chan, timeRange=maze)
+
+    f_sess, pxx_sess = sg.welch(eeg_allsess, fs=1250, nperseg=5 * 1250, noverlap=1250)
+    f_maze, pxx_maze = sg.welch(eeg_maze, fs=1250, nperseg=5 * 1250, noverlap=1250)
+
+    plt.plot(f_sess, pxx_sess, "k")
+    plt.plot(f_maze, pxx_maze, "r")
+    plt.yscale("log")
+    plt.xscale("log")
+
+# figure.savefig("pxx_MAZE", __file__)
+
+# endregion
+
 
 #%% Bicoherence analysis on ripples
 # region
@@ -724,4 +746,3 @@ ax.set_title("Spindle probability")
 figure.panel_label(ax, "a")
 figure.savefig("spindle_delta_coupling", __file__)
 # endregion
-

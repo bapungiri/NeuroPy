@@ -57,19 +57,37 @@ def getPxx(lfp):
 
 #%% Subjects to choose from
 basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
-    "/data/Clustering/SleepDeprivation/RatK/Day4/",
-    "/data/Clustering/SleepDeprivation/RatN/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatK/Day4/",
+    # "/data/Clustering/SleepDeprivation/RatN/Day4/",
     # "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
 ]
 sessions = [processData(_) for _ in basePath]
 
+#%% Example figure of power spectral density and changes w.r.t speed
+# region
+
+figure = Fig()
+fig, gs = figure.draw(grid=(2, 2))
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    chan = sess.theta.bestchan
+    eeg = sess.recinfo.geteeg(chans=chan, timeRange=maze)
+    f, pxx = sg.welch(eeg, fs=eegSrate, nperseg=5 * 1250, noverlap=1250)
+
+    ax = plt.subplot(gs[0])
+    ax.plot(f, pxx)
+    ax.set_yscale("log")
+    ax.set_xscale("log")
+
+# endregion
 
 #%% Phase-amplitude comodulogram for multiple frequencies
 # region
