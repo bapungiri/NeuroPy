@@ -86,6 +86,8 @@ for sub, sess in enumerate(sessions):
     ax.plot(f, pxx)
     ax.set_yscale("log")
     ax.set_xscale("log")
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Power")
 
 # endregion
 
