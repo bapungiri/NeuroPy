@@ -4,40 +4,20 @@ import warnings
 import matplotlib
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import grid
 import numpy as np
 import pandas as pd
-from scipy.io.matlab.mio import savemat
 import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
-from scipy.ndimage import gaussian_filter
-
 import signal_process
-from callfunc import processData
 from ccg import correlograms
 from plotUtil import Colormap, Fig
+from scipy.ndimage import gaussian_filter
 
 cmap = matplotlib.cm.get_cmap("hot_r")
 # warnings.simplefilter(action="default")
 
-
-#%% Subjects
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day4/",
-    # "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
-]
-
-
-sessions = [processData(_) for _ in basePath]
-
+from subjects import sessions
 
 #%% PowerSpectrum across all channels
 # region

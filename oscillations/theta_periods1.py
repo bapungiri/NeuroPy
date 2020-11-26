@@ -11,8 +11,8 @@ import seaborn as sns
 import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 import random
-from callfunc import processData
 import signal_process
+import subjects
 from mathutil import threshPeriods
 from plotUtil import Fig
 import warnings
@@ -52,18 +52,6 @@ def getPxx(lfp):
 
 
 # endregion
-
-#%% Subjects to choose from
-basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-]
-sessions = [processData(_) for _ in basePath]
 
 
 # %% Example plots for brief periods 10s on maze using Wavelets
