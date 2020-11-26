@@ -26,7 +26,7 @@ cmap = matplotlib.cm.get_cmap("hot_r")
 basePath = [
     # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
     # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    "/data/Clustering/SleepDeprivation/RatN/Day1/",
     # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
     # "/data/Clustering/SleepDeprivation/RatK/Day2/",
     "/data/Clustering/SleepDeprivation/RatN/Day2/",
@@ -511,6 +511,53 @@ axspndl.tick_params(axis="x", labelrotation=45)
 
 figure.savefig("ripple_delta_spindle_recoverysleep", __file__)
 # endregion
+
+#%% Spindle density comparison between recovery sleep and normal sleep
+# region
+figure = Fig()
+fig, gs = figure.draw(grid=[5, 5])
+
+data = []
+for sub, sess in enumerate(sessions):
+    tag = sess.recinfo.animal.tag
+    post = sess.epochs.post
+    spndl = sess.spindle.time
+
+    states = sess.brainstates.states
+
+    start_time = post[0]
+    if tag is "sd":
+        start_time = post[0] + 5 * 3600
+
+    recslp_nrem = states.loc[
+        (states.start > start_time) & (states.name == "nrem") & (states.duration > 240),
+        ["start", "end", "duration"],
+    ]
+
+    nrem_dur = np.asarray(recslp_nrem.duration)
+    nrem_bins = recslp_nrem.to_numpy()[:, :2].flatten()
+    spndl_nrem = np.histogram(spndl, bins=nrem_bins)[0][::2] / nrem_dur
+
+    window = [nrem_ind + 1 for nrem_ind in range(len(nrem_dur))]
+    data.append(
+        pd.DataFrame(
+            {
+                "group": tag,
+                "nrem": window,
+                "spindle": spndl_nrem,
+            }
+        )
+    )
+
+density = pd.concat(data)
+axspndl = plt.subplot(gs[0, :])
+sns.barplot(x="nrem", y="spindle", data=density, hue="group")
+axspndl.set_ylabel("spindle / s")
+axspndl.tick_params(axis="x", labelrotation=45)
+
+# figure.savefig("ripple_delta_spindle_recoverysleep", __file__)
+# endregion
+
 
 #%%* Hourly delta ripple coupling over SD and comparing with chance level
 # region
