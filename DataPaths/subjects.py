@@ -2,6 +2,7 @@ from callfunc import processData
 
 
 def allsess():
+    """all data folders together """
     paths = [
         "/data/Clustering/SleepDeprivation/RatJ/Day1/",
         "/data/Clustering/SleepDeprivation/RatK/Day1/",
@@ -21,6 +22,8 @@ def allsess():
 
 
 def sd():
+    """Sleep deprivation sessions"""
+
     paths = [
         "/data/Clustering/SleepDeprivation/RatJ/Day1/",
         "/data/Clustering/SleepDeprivation/RatK/Day1/",
@@ -30,6 +33,7 @@ def sd():
 
 
 def nsd():
+    """Control sessions for sleep deprivation """
     paths = [
         "/data/Clustering/SleepDeprivation/RatJ/Day2/",
         "/data/Clustering/SleepDeprivation/RatK/Day2/",

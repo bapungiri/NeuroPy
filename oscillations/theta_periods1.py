@@ -69,7 +69,7 @@ axlfp = fig.add_subplot(gs[3, :], sharex=axgamma)
 axpos = fig.add_subplot(gs[4:6, 0])
 
 colband = ["#CE93D8", "#1565C0", "#E65100"]
-
+sessions = subjects.sd()
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
@@ -812,7 +812,8 @@ fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
 #%% during Sleep deprivation compare theta phase-gamma amplitude relationship
 # region
 group = pd.DataFrame()
-for sub, sess in enumerate(sessions[:3]):
+sessions = subjects.sd()
+for sub, sess in enumerate(sessions):
     chan = sess.ripple.bestchans[0]
     post = sess.epochs.post
     maze = sess.epochs.maze

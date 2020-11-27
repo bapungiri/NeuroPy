@@ -13,28 +13,12 @@ import seaborn as sns
 from scipy.ndimage import gaussian_filter
 
 import signal_process
-from callfunc import processData
+import subjects
 from ccg import correlograms
 from plotUtil import Colormap, Fig
 
 cmap = matplotlib.cm.get_cmap("hot_r")
 # warnings.simplefilter(action="default")
-
-
-#%% Subjects
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-]
-
-
-sessions = [processData(_) for _ in basePath]
-
 
 #%% Hourly delta-ripple coupling over recovery sleep
 # region
