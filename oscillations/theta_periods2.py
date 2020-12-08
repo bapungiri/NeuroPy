@@ -1,4 +1,5 @@
 # %%
+from posix import ST_RDONLY
 import warnings
 from typing import Dict
 
@@ -13,7 +14,7 @@ import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
 import signal_process
-from subjects import sessions
+import subjects
 from mathutil import threshPeriods
 from plotUtil import Colormap, Fig
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
@@ -1299,6 +1300,7 @@ for sub, sess in enumerate(sessions[7:8]):
 figure = Fig()
 fig, gs = figure.draw(grid=[4, 3])
 
+sessions = subjects.sd()
 binData = None
 for sub, sess in enumerate(sessions[7:8]):
 
@@ -1348,4 +1350,61 @@ for sub, sess in enumerate(sessions[7:8]):
         ax.invert_yaxis()
 
 figure.savefig("phase_specific_wavelet_scaled", __file__)
+# endregion
+
+
+#%% Compare before and after of theta phase specific extraction of various sub-gamma bands observing analyses e.g, wavelet, fourier, bicoherence
+# region
+
+figure = Fig()
+fig, gs = figure.draw(grid=(4, 3))
+axwav = plt.subplot(gs[0])
+axpac = plt.subplot(gs[1])
+axbicoh = plt.subplot(gs[2])
+
+sessions = subjects.nsd([2])
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    channels = 111
+    phase_bin = np.linspace(0, 360, 21)
+    phase_centers = phase_bin[:-1] + np.diff(phase_bin).mean() / 2
+    lfpmaze = sess.recinfo.geteeg(chans=channels, timeRange=maze)
+    strong_theta = sess.theta.getstrongTheta(lfpmaze)[0]
+
+    """ Before phase specific extraction """
+    # ----- wavelet power for gamma oscillations----------
+    frgamma = np.arange(25, 150, 1)
+    wavdec = signal_process.wavelet_decomp(strong_theta, freqs=frgamma)
+    wav = wavdec.colgin2009()
+    wav = stats.zscore(wav, axis=1)
+
+    theta_params = sess.theta.getParams(strong_theta)
+    bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+    bin_ind = np.digitize(theta_params.angle, bin_angle)
+
+    gamma_at_theta = pd.DataFrame()
+    for i in np.unique(bin_ind):
+        find_where = np.where(bin_ind == i)[0]
+        gamma_at_theta[bin_angle[i - 1]] = np.mean(wav[:, find_where], axis=1)
+    gamma_at_theta.insert(0, column="freq", value=frgamma)
+
+    gamma_at_theta = gamma_at_theta.set_index("freq")
+    sns.heatmap(gamma_at_theta, ax=axwav, cmap="Spectral_r")
+    axwav.invert_yaxis()
+
+    # ------ PAC (phase amplitude coupling)---------------
+    pac = signal_process.PAC(fphase=(4, 12), famp=(25, 50), binsz=20)
+    pac.compute(lfpmaze)
+    pac.plot(ax=axpac, color="gray", edgecolor="k")
+    axpac.set_xlabel(r"$\theta$ phase")
+    axpac.set_xlabel("Gamma amplitude")
+    axpac.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+
+    # ------ bicoherence plot ------------
+    colmap = Colormap().dynamic2()
+    bicoh = signal_process.bicoherence(flow=1, fhigh=150)
+    bicoh.compute(signal=lfpmaze)
+    bicoh.plot(ax=axbicoh, cmap=colmap, smooth=3, vmax=0.05)
+
+    """After phase specific extraction """
 # endregion

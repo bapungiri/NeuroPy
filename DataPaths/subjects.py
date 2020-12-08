@@ -21,7 +21,7 @@ def allsess():
     return [processData(_) for _ in paths]
 
 
-def sd():
+def sd(indx=None):
     """Sleep deprivation sessions"""
 
     paths = [
@@ -29,16 +29,21 @@ def sd():
         "/data/Clustering/SleepDeprivation/RatK/Day1/",
         "/data/Clustering/SleepDeprivation/RatN/Day1/",
     ]
+    if indx is not None:
+        paths = [paths[_] for _ in indx]
     return [processData(_) for _ in paths]
 
 
-def nsd():
+def nsd(indx=None):
     """Control sessions for sleep deprivation """
     paths = [
         "/data/Clustering/SleepDeprivation/RatJ/Day2/",
         "/data/Clustering/SleepDeprivation/RatK/Day2/",
         "/data/Clustering/SleepDeprivation/RatN/Day2/",
     ]
+    if indx is not None:
+        paths = [paths[_] for _ in indx]
+
     return [processData(_) for _ in paths]
 
 
