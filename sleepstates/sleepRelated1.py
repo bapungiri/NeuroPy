@@ -9,14 +9,12 @@ import numpy as np
 import pandas as pd
 import scipy.signal as sg
 import scipy.stats as stats
-from scipy.stats.stats import gstd
 import seaborn as sns
-
 import signal_process
-from callfunc import processData
 from plotUtil import Fig
+import subjects
 
-warnings.simplefilter(action="default")
+# warnings.simplefilter(action="default")
 
 
 #%% functions
@@ -33,7 +31,11 @@ def getPxx(lfp):
     window = 5 * 1250
 
     freq, Pxx = sg.welch(
-        lfp, fs=1250, nperseg=window, noverlap=window / 6, detrend="linear",
+        lfp,
+        fs=1250,
+        nperseg=window,
+        noverlap=window / 6,
+        detrend="linear",
     )
     noise = np.where(
         ((freq > 59) & (freq < 61)) | ((freq > 119) & (freq < 121)) | (freq > 220)
@@ -46,30 +48,29 @@ def getPxx(lfp):
 
 # endregion
 
-
-basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
-]
-
-
-sessions = [processData(_) for _ in basePath]
-
-
-#%% Spectrogram example
+#%% Spectrogram only
 # region
 figure = Fig()
 fig, gs = figure.draw(grid=[4, 4])
 
 axstate = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs[0, :], hspace=0.2)
+sessions = subjects.sd([3])
+for sub, sess in enumerate(sessions):
+    axspec = fig.add_subplot(axstate[1:4])
+    sess.viewdata.specgram(ax=axspec)
+    axspec.axes.get_xaxis().set_visible(False)
 
-for sub, sess in enumerate(sessions[2:3]):
+# figure.savefig("spectrogram_example_sd", __file__)
+# endregion
 
-    sess.trange = np.array([])
+#%% Spectrogram example for figure panel
+# region
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 4])
+
+axstate = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs[0, :], hspace=0.2)
+sessions = subjects.sd([3])
+for sub, sess in enumerate(sessions):
     t_start = sess.epochs.post[0] + 5 * 3600
     t = sess.brainstates.params.time
     emg = sess.brainstates.params.emg
@@ -537,4 +538,3 @@ for sub, sess in enumerate(sessions):
 
 fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
 # endregion
-
