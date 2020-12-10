@@ -5,34 +5,21 @@ import pandas as pd
 import scipy.stats as stats
 from matplotlib.gridspec import GridSpec
 from scipy.ndimage import gaussian_filter
-
-from callfunc import processData
-
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day4/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day4/",
-    "/data/Clustering/SleepDeprivation/RatA14d1LP/Rollipram/",
-]
-
-
-sessions = [processData(_) for _ in basePath]
+import subjects
 
 
 #%% Generate _basics.npy files
 # region
-
+sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
 
     # sess.trange = np.array([])
     # badchans = [0]
-    sess.recinfo.makerecinfo()
+    # openephys_settingspath = (
+    #     "/data/Clustering/SleepDeprivation/RatS/Day3SD/openEphysSettings/settings.xml"
+    # )
+    # sess.recinfo.generate_xml(settingsPath=openephys_settingspath)
+    sess.recinfo.makerecinfo(nShanks=8, skulleeg=[51], motion=[192, 193, 194])
 # endregion
 
 #%% Generate .prb for spyking circus
@@ -84,4 +71,3 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     sess.theta.detectBestChan()
 # endregion
-
