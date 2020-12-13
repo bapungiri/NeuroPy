@@ -28,6 +28,7 @@ def sd(indx=None):
         "/data/Clustering/SleepDeprivation/RatJ/Day1/",
         "/data/Clustering/SleepDeprivation/RatK/Day1/",
         "/data/Clustering/SleepDeprivation/RatN/Day1/",
+        "/data/Clustering/SleepDeprivation/RatS/Day3SD/",
     ]
     if indx is not None:
         paths = [paths[_] for _ in indx]
@@ -63,3 +64,19 @@ def openfield():
         "/data/Clustering/SleepDeprivation/RatN/Day4/",
     ]
     return [processData(_) for _ in paths]
+
+
+class sleepDep:
+    paths = [
+        "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+        "/data/Clustering/SleepDeprivation/RatK/Day1/",
+        "/data/Clustering/SleepDeprivation/RatN/Day1/",
+    ]
+
+    @property
+    def allsess(self):
+        return [processData(_) for _ in self.paths]
+
+    @property
+    def ratnday2(self):
+        return [processData(self.paths[2])]

@@ -1,5 +1,4 @@
 # %%
-from posix import ST_RDONLY
 import warnings
 from typing import Dict
 
@@ -1407,4 +1406,17 @@ for sub, sess in enumerate(sessions):
     bicoh.plot(ax=axbicoh, cmap=colmap, smooth=3, vmax=0.05)
 
     """After phase specific extraction """
+    slgamma_highpass = signal_process.filter_sig.highpass(strong_theta, cutoff=25)
+    gamma_bin, _, angle_centers = sess.theta.phase_specfic_extraction(
+        strong_theta, slgamma_highpass, window=72, slideby=None
+    )
+
+    df = pd.DataFrame()
+    df["freq"] = frgamma
+    for lfp, center in zip(gamma_bin, angle_centers):
+        wavdec = signal_process.wavelet_decomp(lfp, freqs=frgamma, sampfreq=1250)
+        wav = wavdec.colgin2009()
+        df[center] = np.mean(wav, axis=1)
+
+
 # endregion

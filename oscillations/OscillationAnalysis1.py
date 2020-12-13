@@ -13,11 +13,11 @@ import signal_process
 from ccg import correlograms
 from plotUtil import Colormap, Fig
 from scipy.ndimage import gaussian_filter
+import subjects
 
 cmap = matplotlib.cm.get_cmap("hot_r")
 # warnings.simplefilter(action="default")
 
-from subjects import sessions
 
 #%% PowerSpectrum across all channels
 # region

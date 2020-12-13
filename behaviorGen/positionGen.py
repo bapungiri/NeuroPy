@@ -18,7 +18,8 @@ from plotUtil import Colormap, Fig
 
 #%% Running epochs and direction of movement
 # region
-
+sessions = subjects.sd([2])
+# se = subjects.sleepDep().allsess
 for sub, sess in enumerate(sessions):
 
     maze = sess.epochs.maze
