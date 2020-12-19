@@ -22,19 +22,21 @@ cmap = matplotlib.cm.get_cmap("hot_r")
 #%% PowerSpectrum across all channels
 # region
 df = pd.DataFrame()
+sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
 
-    maze = sess.epochs.maze
-    lfp = sess.recinfo.geteeg(chans=sess.recinfo.goodchans, timeRange=maze)
+    maze = None
+    chans = [1, 2, 3, 4]
+    lfp = sess.recinfo.geteeg(chans=chans, timeRange=maze)
 
     f = None
-    for chan_ind, chan in enumerate(sess.recinfo.goodchans):
+    for chan_ind, chan in enumerate(chans):
         f, pxx = sg.welch(lfp[chan_ind], fs=1250, nperseg=2 * 1250, noverlap=1250)
         f_ind = np.where((f > 1) & (f < 150))[0]
         f = f[f_ind]
-        df[chan] = np.log10(pxx[f_ind])
+        df[chan] = pxx[f_ind]
 
-    df["freq"] = np.log10(f)
+    df["freq"] = f
 
 
 group = df.set_index("freq")
@@ -258,10 +260,11 @@ gs = gridspec.GridSpec(1, 2, figure=fig)
 fig.subplots_adjust(hspace=0.3)
 
 rplrt, nrem_dur = [], []
+sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     states = sess.brainstates.states
-    ripples = sess.ripple.time
+    ripples = sess.ripple.events.start
     post = sess.epochs.post
     states_recvslp = states.loc[
         (states.name == "nrem") & (states.start > post[0] + 5 * 3600)

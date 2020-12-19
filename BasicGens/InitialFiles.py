@@ -10,16 +10,16 @@ import time
 
 #%% Generate _basics.npy files
 # region
-sessions = subjects.sd([3])
+sessions = subjects.nsd([2])
 for sub, sess in enumerate(sessions):
 
     # sess.trange = np.array([])
-    # badchans = [0]
     # openephys_settingspath = (
     #     "/data/Clustering/SleepDeprivation/RatS/Day3SD/openEphysSettings/settings.xml"
     # )
     # sess.recinfo.generate_xml(settingsPath=openephys_settingspath)
-    sess.recinfo.makerecinfo(nShanks=[6, 8], skulleeg=[51], motion=[192, 193, 194])
+    # sess.recinfo.makerecinfo(nShanks=[6, 8], skulleeg=[51], motion=[192, 193, 194])
+    sess.recinfo.makerecinfo(nShanks=8)
 # endregion
 
 #%% Generate .prb for spyking circus
@@ -44,18 +44,29 @@ for sub, sess in enumerate(sessions):
 
 #%% Generate position files
 # region
+sessions = subjects.nsd([2])
 for sub, sess in enumerate(sessions):
-    sess.trange = np.array([])
-    sess.position.getPosition()
+    sess.placefield.pf2d.plotMap(speed_thresh=True)
+    # sess.position.getPosition()
     # sess.position.export2Neuroscope()
 
 # endregion
 
-#%% epochs from csv
+#%% create epochs
 # region
+sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
-    sess.epochs.getfromCSV()
+    epochs = {
+        "pre": [0, 3 * 3600],
+        "maze1": [3 * 3600, 4.1 * 3600],
+        "sd": [4.15 * 3600, 4.15 * 3600 + 5 * 3600],
+        "post": [4.15 * 3600, 4.15 * 3600 + 9 * 3600],
+        "maze2": [4.15 * 3600 + 5 * 3600, 14.34 * 3600],
+    }
+    sess.epochs.make_epochs(new_epochs=epochs)
+    # sess.epochs.getfromCSV()
+
 # endregion
 
 #%% Gen instantenous firing rate

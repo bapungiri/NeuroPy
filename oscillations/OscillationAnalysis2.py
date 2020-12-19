@@ -70,18 +70,57 @@ ax.set_ylabel("Counts")
 ax.set_title("Ripple probability \n during recovery sleep", fontsize=titlesize)
 # endregion
 
+#%% Ripple on spectrogram with delta
+# region
+figure = Fig()
+fig, gs = figure.draw(grid=[4, 4])
+
+axstate = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs[0, :], hspace=0.2)
+sessions = subjects.nsd([2])
+for sub, sess in enumerate(sessions):
+    # t_start = sess.epochs.post[0] + 5 * 3600
+    rpls = sess.ripple.events.start.values
+    rpl_bin = np.arange(rpls[0], rpls[-1], 5 * 60)
+    rpl_hist = np.histogram(rpls, bins=rpl_bin)[0]
+    t = sess.brainstates.params.time
+    emg = sess.brainstates.params.emg
+    delta = sess.brainstates.params.delta
+
+    axspec = fig.add_subplot(axstate[1:4])
+    sess.viewdata.specgram(chan=135, ax=axspec)
+    axspec.axes.get_xaxis().set_visible(False)
+    axrpl = axspec.twinx()
+    axrpl.plot(rpl_bin[:-1], rpl_hist / 10, color="white")
+    axrpl.set_ylabel("# ripples / 5 min")
+
+    axdelta = fig.add_subplot(axstate[4], sharex=axspec)
+    axdelta.fill_between(t, 0, delta, color="#9E9E9E")
+    axdelta.axes.get_xaxis().set_visible(True)
+    axdelta.set_xlabel("Time (s)")
+
+    # axhypno = fig.add_subplot(axstate[0], sharex=axspec)
+    # sess.brainstates.hypnogram(ax1=axhypno)
+    # figure.panel_label(axhypno, "a")
+
+    # axemg = fig.add_subplot(axstate[-1], sharex=axspec)
+    # axemg.plot(t, emg, "#4a4e68", lw=0.8)
+    # axemg.set_ylabel("EMG")
+
+
+# endregion
 
 #%% Ripple stats during sleep deprivation
 # region
 plt.clf()
 group = []
+sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
 
     ripples = sess.ripple.time
     duration = np.diff(ripples, axis=1).squeeze()
-    peakpower = sess.ripple.peakpower
+    peakpower = sess.ripple.events.peakNormalizedPower
     tstart = sess.epochs.post[0]
     tend = sess.epochs.post[0] + 5 * 3600
     nbin = 5

@@ -9,10 +9,14 @@ import numpy as np
 import pandas as pd
 import scipy.signal as sg
 import scipy.stats as stats
+from scipy.ndimage import gaussian_filter1d
 import seaborn as sns
 import signal_process
 from plotUtil import Fig
 import subjects
+import time
+from joblib import Parallel, delayed
+
 
 # warnings.simplefilter(action="default")
 
@@ -48,6 +52,14 @@ def getPxx(lfp):
 
 # endregion
 
+#%% Detect sleep states
+# region
+sessions = subjects.sd([3])
+for sess in sessions:
+    # sess.brainstates.detect(emgfile=False)
+    ax = sess.brainstates.hypnogram()
+# endregion
+
 #%% Spectrogram only
 # region
 figure = Fig()
@@ -57,7 +69,7 @@ axstate = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs[0, :], hspace=0
 sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
     axspec = fig.add_subplot(axstate[1:4])
-    sess.viewdata.specgram(ax=axspec)
+    sess.viewdata.specgram(chan=135, ax=axspec)
     axspec.axes.get_xaxis().set_visible(False)
 
 # figure.savefig("spectrogram_example_sd", __file__)
@@ -71,7 +83,7 @@ fig, gs = figure.draw(grid=[4, 4])
 axstate = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs[0, :], hspace=0.2)
 sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
-    t_start = sess.epochs.post[0] + 5 * 3600
+    # t_start = sess.epochs.post[0] + 5 * 3600
     t = sess.brainstates.params.time
     emg = sess.brainstates.params.emg
     delta = sess.brainstates.params.delta
@@ -86,16 +98,52 @@ for sub, sess in enumerate(sessions):
     axdelta.set_ylabel("Delta")
 
     axhypno = fig.add_subplot(axstate[0], sharex=axspec)
-    sess.viewdata.hypnogram(ax1=axhypno)
+    sess.brainstates.hypnogram(ax1=axhypno)
     figure.panel_label(axhypno, "a")
 
     axemg = fig.add_subplot(axstate[-1], sharex=axspec)
     axemg.plot(t, emg, "#4a4e68", lw=0.8)
     axemg.set_ylabel("EMG")
 
-figure.savefig("spectrogram_example_sd", __file__)
+# figure.savefig("spectrogram_example_sd", __file__)
 # endregion
 
+#%% EMG from lfp compare in case of 2 probes
+# region
+sessions = subjects.sd([3])
+for sess in sessions:
+
+    chan1 = np.concatenate(sess.recinfo.goodchangrp[:6]).astype(int)
+    chan2 = np.concatenate(sess.recinfo.goodchangrp[6:]).astype(int)
+
+    eegdata = sess.recinfo.geteeg(chans=0)
+    total_duration = len(eegdata) / 1250
+    window, overlap = 1, 0.2
+    timepoints = np.arange(0, total_duration - window, window - overlap)
+
+    def corrchan(chans, start):
+        lfp_req = np.asarray(
+            sess.recinfo.geteeg(chans=chans, timeRange=[start, start + window])
+        )
+        yf = signal_process.filter_sig.bandpass(lfp_req, lf=300, hf=600, fs=1250)
+        ltriang = np.tril_indices(len(chans), k=-1)
+        return np.corrcoef(yf)[ltriang].mean()
+
+    corr_chan1 = Parallel(n_jobs=8, require="sharedmem")(
+        delayed(corrchan)(chan1, start) for start in timepoints
+    )
+    corr_chan2 = Parallel(n_jobs=8, require="sharedmem")(
+        delayed(corrchan)(chan2, start) for start in timepoints
+    )
+
+    corr_chan1 = gaussian_filter1d(corr_chan1, sigma=10)
+    corr_chan2 = gaussian_filter1d(corr_chan2, sigma=10)
+
+    plt.plot(corr_chan1)
+    plt.plot(corr_chan2)
+
+
+# endregion
 
 #%% NREM,REM Duration compare between SD and control
 # region
