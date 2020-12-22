@@ -5,23 +5,8 @@ import pandas as pd
 import scipy.stats as stats
 import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter
-
+import subjects
 from callfunc import processData
-
-
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/"
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-    "/data/Clustering/SleepDeprivation/RatN/Day4/"
-]
-
-
-sessions = [processData(_) for _ in basePath]
 
 
 #%% 1D place field in openfield arena
@@ -78,6 +63,21 @@ for sub, sess in enumerate(sessions):
         pfmap_linear = np.ravel(pfmap)
         ax = fig.add_subplot(gs[cell])
         ax.plot(pfmap_linear)
+
+
+# endregion
+
+#%%  Plot place fields
+# region
+sessions = subjects.sd([3])
+for sub, sess in enumerate(sessions):
+    period = sess.epochs.maze1
+    sess.placefield.pf2d.compute(period=period, speed_thresh=10)
+    sess.placefield.pf2d.plotRaw(subplots=(10, 8), speed_thresh=False)
+
+    period = sess.epochs.maze2
+    sess.placefield.pf2d.compute(period=period, speed_thresh=5)
+    sess.placefield.pf2d.plotRaw(subplots=(10, 8), speed_thresh=False)
 
 
 # endregion
