@@ -22,15 +22,14 @@ for sub, sess in enumerate(sessions):
     # sess.ripple.detect()
     # ripples = sess.ripple.events
     # sess.ripple.export2Neuroscope()
-    # sess.ripple.plot()
+    sess.ripple.plot()
 #
 # ax.set_xlim([-5, 10])
 # endregion
 
 #%% Spindles
 # region
-plt.clf()
-
+sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])

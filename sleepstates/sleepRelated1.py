@@ -69,7 +69,8 @@ axstate = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs[0, :], hspace=0
 sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
     axspec = fig.add_subplot(axstate[1:4])
-    sess.viewdata.specgram(chan=135, ax=axspec)
+    chan = sess.recinfo.skulleeg[0]
+    sess.viewdata.specgram(chan=chan, ax=axspec)
     axspec.axes.get_xaxis().set_visible(False)
 
 # figure.savefig("spectrogram_example_sd", __file__)

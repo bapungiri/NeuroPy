@@ -16,6 +16,7 @@ from ccg import correlograms
 from callfunc import processData
 import signal_process
 from plotUtil import Fig
+import subjects
 
 # warnings.simplefilter(action="default")
 
@@ -56,19 +57,6 @@ def stability(spikes, period):
 
 
 # endregion
-
-
-#%% Subjects to choose from
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-]
-sessions = [processData(_) for _ in basePath]
 
 #%% Example raster plot during theta cycle and ripple events
 # region
@@ -790,9 +778,10 @@ axfr = plt.subplot(gs[0, 0])
 figure.panel_label(axfr, "a")
 
 spk_all = pd.DataFrame()
+sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions[:3]):
     sess.trange = np.array([])
-    maze = sess.epochs.maze
+    maze = sess.epochs.maze1
     pre = sess.epochs.pre
     post = sess.epochs.post
     spks = sess.spikes.times
@@ -825,7 +814,7 @@ for sub, sess in enumerate(sessions[:3]):
             {
                 "time": (sd_bin[:-1] - post[0]) / 3600,
                 "spikes": gaussian_filter(norm_spkcnt, sigma=1),
-                "subject": sess.sessinfo.session.sessionName,
+                "subject": sess.recinfo.session.sessionName,
             }
         )
     )
@@ -847,7 +836,7 @@ axfr.text(2.5, 0.0055, "SD", ha="center")
 axfr.set_ylabel("Normalized \n spike counts")
 axfr.set_xlabel("Time (h)")
 
-figure.savefig("firing_maze_sd", __file__)
+# figure.savefig("firing_maze_sd", __file__)
 # endregion
 
 
