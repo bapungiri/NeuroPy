@@ -4,14 +4,15 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 import matplotlib.gridspec as gridspec
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter1d, gaussian_filter
 import subjects
-from callfunc import processData
-
+from plotUtil import Fig
+from mathutil import threshPeriods, hmmfit1d
+from typing import Annotated
 
 #%% 1D place field in openfield arena
 # region
-plt.close("all")
+sessions = subjects.openfield()
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
@@ -19,7 +20,7 @@ for sub, sess in enumerate(sessions):
     sess.placefield.pf1d.compute()
     sess.placefield.pf1d.plot(pad=0.5, normalize=True)
     # sess.placefield.pf1d.plotRaw()
-
+# endregion
 
 #%% 2D place field in openfield arena
 # region
@@ -67,7 +68,7 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
-#%%  Plot place fields
+#%%  Plot 2D place fields in linear type tracks
 # region
 sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
@@ -79,5 +80,152 @@ for sub, sess in enumerate(sessions):
     sess.placefield.pf2d.compute(period=period, speed_thresh=5)
     sess.placefield.pf2d.plotRaw(subplots=(10, 8), speed_thresh=False)
 
+# endregion
+
+#%%  Plot 1D place fields in linear type tracks
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(1, 2))
+sessions = subjects.sd([3])
+for sub, sess in enumerate(sessions):
+    # period = sess.epochs.maze1
+    ax = plt.subplot(gs[0])
+    sess.placefield.pf1d.compute(track_name="maze1", direction="forward")
+    sess.placefield.pf1d.plot(ax=ax, speed_thresh=True, normalize=True)
+    # sess.placefield.pf1d.plot_raw(speed_thresh=True, subplots=None)
+    ax.set_title("Maze1")
+
+    ratemaps = sess.placefield.pf1d.thresh["ratemaps"]
+    cell_order = np.argsort(np.argmax(np.asarray(ratemaps), axis=1))
+
+    ax = plt.subplot(gs[1])
+    sess.placefield.pf1d.compute(track_name="maze1", direction=None)
+    sess.placefield.pf1d.plot(
+        ax=ax, speed_thresh=True, normalize=True, sortby=cell_order
+    )
+    ax.set_title("Maze2")
+    # sess.placefield.pf1d.plot_raw(speed_thresh=True, subplots=None)
+
+# endregion
+
+#%% Theta-precession in linear type tracks
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 2), size=(5, 12))
+sessions = subjects.sd([3])
+for sub, sess in enumerate(sessions):
+    track_name = "maze1"
+    maze = sess.epochs[track_name]
+    sess.placefield.pf1d.compute(track_name, run_dir="forward", grid_bin=5, smooth=1)
+    # sess.placefield.pf1d.plot(normalize=True)
+    sess.placefield.pf1d.phase_precession(theta_chan=64)
+    # sess.placefield.pf1d.plot_with_phase(subplots=(7, 10))
+
+    pf1d = sess.placefield.pf1d
+    cells = [28, 31, 58, 61]
+    ratemaps = pf1d.no_thresh["ratemaps"]
+    phases = pf1d.no_thresh["phases"]
+    position = pf1d.no_thresh["pos"]
+    bin_cntr = pf1d.bin[:-1] + np.diff(pf1d.bin).mean() / 2
+
+    for i, cell in enumerate(cells):
+        ax = plt.subplot(gs[i, 0])
+        ax.fill_between(bin_cntr, 0, ratemaps[cell], color="k", alpha=0.1)
+        ax.plot(bin_cntr, ratemaps[cell], color="k", alpha=0.4)
+        ax.set_ylabel("Firing rate")
+        ax.spines["right"].set_visible(True)
+        axphase = ax.twinx()
+        axphase.scatter(position[cell], phases[cell], c="k", s=0.5)
+        axphase.set_ylabel(r"$\theta$ phase")
+
+    ax.set_xlabel("Positon (cm)")
+    # states = sess.brainstates.states
+    # lfpmaze = sess.recinfo.geteeg(chans=64, timeRange=maze)
+    # lfpt = np.linspace(maze[0], maze[1], len(lfpmaze))
+    # thetaparam = sess.theta.getParams(lfpmaze)
+    # spikes = sess.spikes.pyr
+    # position = sess.tracks[track_name]
+    # run = sess.tracks.laps[track_name]
+    # run = run[run.direction == "forward"]
+    # pos_bin = np.arange(np.min(position.linear), np.max(position.linear), 10)
+    # phase_bin = np.linspace(0, 360, 37)
+
+    # for cell_id, cell in enumerate(spikes):
+    #     spk = np.concatenate(
+    #         [cell[(cell > epc.start) & (cell < epc.end)] for epc in run.itertuples()]
+    #     )
+    #     spk_pos = np.interp(spk, position.time, position.linear)
+    #     spk_spd = np.interp(spk, position.time, position.speed)
+    #     spk_phase = np.interp(spk, lfpt, thetaparam.angle)
+
+    #     # speed threshold
+    #     # spd_ind = np.where(spk_spd > 5)[0]
+    #     # spk_pos = spk_pos[spd_ind]
+    #     # spk_phase = spk_phase[spd_ind]
+
+    #     precess = np.histogram2d(spk_pos, spk_phase, bins=[pos_bin, phase_bin])[0]
+    #     precess = gaussian_filter(precess, sigma=1)
+    #     ax = plt.subplot(gs[cell_id])
+    #     ax.scatter(spk_pos, spk_phase, s=0.3)
+    # ax.pcolormesh(pos_bin, phase_bin, precess.T, cmap="Spectral_r")
+
+# endregion
+
+#%% Detect run laps scratchpad
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(3, 1), size=(20, 7))
+sessions = subjects.sd([3])
+for sub, sess in enumerate(sessions):
+    position = sess.tracks["maze1"]
+    x = position.linear
+    speed = gaussian_filter1d(position.speed, sigma=50)
+    high_speed = threshPeriods(
+        speed, lowthresh=10, highthresh=10, minDistance=80, minDuration=200
+    )
+    run_dir = np.diff(x)
+    run_dir = np.where(run_dir > 0, 1, -1)
+
+    val = []
+    for epoch in high_speed:
+        displacement = x[epoch[1]] - x[epoch[0]]
+        distance = np.abs(np.diff(x[epoch[0] : epoch[1]])).sum()
+
+        if np.abs(displacement) > 50:
+            if displacement < 0:
+                val.append(-1)
+
+            elif displacement > 0:
+                val.append(1)
+
+        else:
+            val.append(0)
+
+    val = np.asarray(val)
+    high_speed = np.delete(high_speed, np.where(val == 0)[0], axis=0)
+    val = np.delete(val, np.where(val == 0)[0])
+
+    forward = high_speed[val == 1, :]
+    backward = high_speed[val == -1, :]
+
+    ax = plt.subplot(gs[0])
+    ax.plot(x)
+    for epoch in forward:
+        ax.axvspan(
+            epoch[0], epoch[1], ymax=np.diff(epoch), facecolor="green", alpha=0.3
+        )
+    for epoch in backward:
+        ax.axvspan(epoch[0], epoch[1], ymax=np.diff(epoch), facecolor="blue", alpha=0.3)
+
+    ax = plt.subplot(gs[1], sharex=ax)
+    # ax.fill_between(
+    #     np.arange(len(speed)), 0, 50, where=speed > 10, facecolor="green", alpha=0.5
+    # )
+    ax.plot(speed, color="gray")
+    for epoch in high_speed:
+        ax.axvspan(epoch[0], epoch[1], ymax=np.diff(epoch), facecolor="gray", alpha=0.3)
+
+    ax = plt.subplot(gs[2], sharex=ax)
+    ax.plot(np.diff(x))
 
 # endregion
