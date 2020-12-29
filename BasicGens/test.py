@@ -42,6 +42,7 @@ import csv
 # a = np.asarray(a)
 
 
-file = "/home/bapung/Documents/ClusteringHub/spykcirc/RatS/Day3SD/AllSession/RatS_Day3SD_2020-11-29_07-53-30-1.GUI/spike_templates.npy"
+file = "/data/Clustering/SleepDeprivation/RatN/Day2/RatN_Day2_2019-10-11_03-58-54_position.npy"
 
-data = np.load(file, allow_pickle=True)
+data = np.load(file, allow_pickle=True).item()
+# data = pd.read_csv(file, header=5)

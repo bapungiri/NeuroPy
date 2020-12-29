@@ -13,12 +13,12 @@ import time
 sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
 
-    # sess.trange = np.array([])
+    sess.trange = np.array([])
     # openephys_settingspath = (
     #     "/data/Clustering/SleepDeprivation/RatS/Day3SD/openEphysSettings/settings.xml"
     # )
     # sess.recinfo.generate_xml(settingsPath=openephys_settingspath)
-    sess.recinfo.makerecinfo(nShanks=[6, 8], skulleeg=[51], motion=[192, 193, 194])
+    # sess.recinfo.makerecinfo(nShanks=[6, 8], skulleeg=[51], motion=[192, 193, 194])
     # sess.recinfo.makerecinfo(nShanks=8)
 # endregion
 
@@ -43,10 +43,11 @@ for sub, sess in enumerate(sessions):
 
 #%% Generate position files
 # region
-sessions = subjects.sd([3])
+sessions = subjects.nsd([2])
 for sub, sess in enumerate(sessions):
-    # sess.position.getPosition(method="from_metadata")
-    sess.position.export2Neuroscope()
+    sess.trange = []
+    sess.position.getPosition(method="from_metadata", scale=4.0)
+    # sess.position.export2Neuroscope()
 
 # endregion
 
@@ -66,6 +67,19 @@ for sub, sess in enumerate(sessions):
     # sess.epochs.getfromCSV()
 
 # endregion
+
+#%% create Track
+# region
+sessions = subjects.nsd([2])
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    # sess.tracks.create(epoch_names=["maze"])
+    # sess.tracks.linearize_position()
+    sess.tracks.estimate_run_laps("maze", speedthresh=(20, 30))
+    # sess.epochs.getfromCSV()
+
+# endregion
+
 
 #%% Gen spikes or instantenous firing rate
 # region
