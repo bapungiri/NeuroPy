@@ -865,3 +865,42 @@ for sub, sess in enumerate(sessions[5:6]):
         )
 
 # endregion
+
+#%% Theta phase preference during REM sleep
+# region
+figure = Fig()
+fig, gs = figure.draw(grid=(7, 10))
+sessions = subjects.sd([3])
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze1
+    states = sess.brainstates.states
+    rems = states[(states.name == "rem") & (states.duration > 5)]
+    pyr = sess.spikes.pyr
+
+    phase_all = []
+    for cell in pyr:
+        phase_cell = []
+        for rem in rems.itertuples():
+            spks_rem = cell[(cell > rem.start) & (cell < rem.end)]
+            lfp = sess.recinfo.geteeg(chans=135, timeRange=[rem.start, rem.end])
+            t = np.linspace(rem.start, rem.end, len(lfp))
+            thetaparam = sess.theta.getParams(lfp)
+
+            phase_cell.extend(np.interp(spks_rem, t, thetaparam.angle))
+        phase_all.append(phase_cell)
+
+    angle_bin = np.linspace(0, 360, 37)
+    angle_center = angle_bin[:-1] + np.mean(np.diff(angle_bin)) / 2
+    phase_hist_df = pd.DataFrame()
+    phase_hist_df["phase"] = angle_center
+    for cell_id, cell in enumerate(phase_all):
+        histcell = np.histogram(cell, bins=angle_bin)[0]
+        phase_hist_df[cell_id] = histcell  # / np.sum(histcell)
+        phase_prefer = angle_center[np.argmax(histcell)]
+
+        ax = plt.subplot(gs[cell_id], projection="polar")
+        ax.bar(phase_hist_df["phase"], histcell)
+        # ax.plot(cell, ".")
+
+
+# endregion
