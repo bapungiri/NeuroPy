@@ -2,9 +2,7 @@
 import warnings
 
 import matplotlib
-import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import grid
 import numpy as np
 import pandas as pd
 import scipy.signal as sg
@@ -14,10 +12,8 @@ from scipy.ndimage import gaussian_filter
 
 import signal_process
 import subjects
-from ccg import correlograms
-from plotUtil import Colormap, Fig
+from plotUtil import Fig
 
-cmap = matplotlib.cm.get_cmap("hot_r")
 # warnings.simplefilter(action="default")
 
 #%% Hourly delta-ripple coupling over recovery sleep
@@ -113,12 +109,12 @@ for sub, sess in enumerate(sessions):
 # region
 plt.clf()
 group = []
-sessions = subjects.sd([3])
+sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
 
-    ripples = sess.ripple.time
+    ripples = sess.ripple.events
     duration = np.diff(ripples, axis=1).squeeze()
     peakpower = sess.ripple.events.peakNormalizedPower
     tstart = sess.epochs.post[0]
@@ -176,32 +172,126 @@ plt.suptitle("Ripples during Sleep deprivation period")
 
 # endregion
 
-#%% Ripple distribution during sleep deprivation
+#%%* Ripple rate sleep deprivation vs recovery and normal sleep
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 3))
+sessions = subjects.Sd().allsess
+df_all = []
+for sub, sess in enumerate(sessions):
+    rpls = sess.ripple.events.start.values
+    post = sess.epochs.post
+    sd_period = [post[0], post[0] + 5 * 3600]
+    # sd_bins = np.arange(sd_period[0], sd_period[1], 180)
+    sd_bins = [
+        sd_period[0],
+        # sd_period[0] + np.diff(sd_period) / 2 - 1800,
+        sd_period[1] - 3600,
+    ]
+
+    df = pd.DataFrame()
+    nrpls = []
+    for start in sd_bins:
+        nrpls.append(len(np.where((rpls > start) & (rpls < start + 3600))[0]))
+    df["hour"] = ["first", "last"]
+    df["nRipples"] = np.array(nrpls)
+    df["condition"] = "sd"
+
+    rec_period = [sd_period[1], post[1]]
+    # rec_bins = np.arange(rec_period[0], rec_period[1], 180)
+    rec_bins = [
+        rec_period[0],
+        # rec_period[0] + np.diff(rec_period) / 2 - 1800,
+        rec_period[1] - 3600,
+    ]
+
+    nrpls = []
+    for start in rec_bins:
+        nrpls.append(len(np.where((rpls > start) & (rpls < start + 3600))[0]))
+    df = df.append(
+        pd.DataFrame(
+            {
+                "hour": ["first", "last"],
+                "nRipples": np.array(nrpls),
+                "condition": "rec",
+            }
+        )
+    )
+    df_all.append(df)
+
+
+df_all = pd.concat(df_all)
+ax = plt.subplot(gs[0])
+sns.boxplot(
+    x="hour",
+    y="nRipples",
+    hue="condition",
+    data=df_all,
+    ax=ax,
+    palette=["#ff928a", "#4ccdc4"],
+    width=0.5,
+)
+ax.set_title("SD session (POST)")
+
+sessions = subjects.nsd()
+df_all = []
+for sub, sess in enumerate(sessions):
+    rpls = sess.ripple.events.start.values
+    post = sess.epochs.post
+    sd_period = [post[0], post[1]]
+    sd_bins = [
+        sd_period[0],
+        sd_period[1] - 3600,
+    ]
+
+    df = pd.DataFrame()
+    nrpls = []
+    for start in sd_bins:
+        nrpls.append(len(np.where((rpls > start) & (rpls < start + 3600))[0]))
+    df["hour"] = ["first", "last"]
+    df["nRipples"] = np.array(nrpls)
+
+    df_all.append(df)
+
+
+df_all = pd.concat(df_all)
+ax = plt.subplot(gs[1], sharey=ax)
+sns.boxplot(
+    x="hour",
+    y="nRipples",
+    data=df_all,
+    ax=ax,
+    palette=["#8e9aaf"],
+    width=0.2,
+)
+ax.set_title("NSD session (POST)")
+
+figure.savefig("Ripple_SD_normal", __file__)
+
+# endregion
+#%% Ripple Power distribution during sleep deprivation
 # region
 plt.clf()
-group = []
+sessions = subjects.sd([3])
+cmap = matplotlib.cm.get_cmap("hot_r")
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
 
-    ripples = sess.ripple.time
-    peakpower = sess.ripple.peakpower
-    tstart = sess.epochs.post[0]
-    tend = sess.epochs.post[0] + 5 * 3600
+    ripples = sess.ripple.events
+    peakpower = sess.ripple.events.peakNormalizedPower
+    sd_period = sess.epochs["sd"]
     nbin = 5
-    tbin = np.linspace(tstart, tend, nbin + 1)
+    tbin = np.linspace(sd_period[0], sd_period[1], nbin + 1)
     colors = [cmap(_) for _ in np.linspace(0, 1, nbin)]
     for i in range(nbin):
         binstart = tbin[i]
         binend = tbin[i + 1]
 
-        ripple_ind = np.where((ripples[:, 0] > binstart) & (ripples[:, 0] < binend))[0]
+        ripple_ind = np.where((ripples.start > binstart) & (ripples.end < binend))[0]
         peakpowerbin = peakpower[ripple_ind]
         # powerbinning = np.logspace(np.log10(1.2), np.log10(60), 50)
-        powerbinning = np.linspace(
-            5,
-            40,
-        )
+        powerbinning = np.linspace(5, 40)
         peakhist, _ = np.histogram(peakpowerbin, bins=powerbinning)
         peakhist = peakhist / np.sum(peakhist)
         plt.subplot(1, 3, sub + 1)
@@ -209,8 +299,8 @@ for sub, sess in enumerate(sessions):
         plt.ylabel("fraction")
         plt.xlabel("zscore value")
 
-    subname = sess.sessinfo.session.name
-    day = sess.sessinfo.session.day
+    subname = sess.recinfo.session.name
+    day = sess.recinfo.session.day
 
     # plt.yscale("log")
     plt.title(f"{subname} {day} SD")
