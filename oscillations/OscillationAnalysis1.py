@@ -12,7 +12,7 @@ import seaborn as sns
 import signal_process
 from ccg import correlograms
 from plotUtil import Colormap, Fig
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter1d
 import subjects
 
 cmap = matplotlib.cm.get_cmap("hot_r")
@@ -185,43 +185,71 @@ for sub, sess in enumerate(sessions[:3]):
 
 # endregion
 
-#%% PSD during sleep deprivation from first to last hour to observe gamma reduction
+#%%* PSD during sleep deprivation from first to last hour to observe gamma reduction
 # region
-plt.clf()
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(1, 3, figure=fig)
-fig.subplots_adjust(hspace=0.3)
-
+sessions = subjects.Sd().allsess
+df = pd.DataFrame()
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
-    channel = sess.theta.bestchan
+    channel = sess.ripple.bestchans[3]
     post = sess.epochs.post
-    eeg = sess.utils.geteeg(chans=channel, timeRange=[post[0], post[0] + 5 * 3600])
-    nfrms_hour = eegSrate * 3600
-    lfp1st = eeg[:nfrms_hour]
-    lfp5th = eeg[-nfrms_hour:]
+    lfp1st = sess.recinfo.geteeg(chans=channel, timeRange=[post[0], post[0] + 3600])
+    lfp5th = sess.recinfo.geteeg(
+        chans=channel, timeRange=[post[0] + 4 * 3600, post[0] + 5 * 3600]
+    )
 
     psd = lambda sig: sg.welch(
-        sig, fs=eegSrate, nperseg=10 * eegSate, noverlap=5 * eegSrate
+        sig, fs=eegSrate, nperseg=5 * eegSrate, noverlap=2 * eegSrate
     )
-    multitaper = lambda sig: signal_process.mtspect(
-        sig, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate
+    # multitaper = lambda sig: signal_process.mtspect(
+    #     sig, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate
+    # )
+
+    _, psd1st = psd(lfp1st)
+    f, psd5th = psd(lfp5th)
+
+    # smoothing
+    psd1st = gaussian_filter1d(psd1st, sigma=5)
+    psd5th = gaussian_filter1d(psd5th, sigma=5)
+    norm = np.sum(psd1st) + np.sum(psd5th)  # normalize
+
+    df = df.append(pd.DataFrame({"freq": f, "psd": psd1st / norm, "hour": "first"}))
+    df = df.append(pd.DataFrame({"freq": f, "psd": psd5th / norm, "hour": "last"}))
+
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 3))
+ax = plt.subplot(gs[0])
+
+colors = ["#f67e7e", "#d70427"]
+for h, color in zip(["first", "last"], colors):
+    df_ = df.groupby("hour").get_group(h).groupby("freq")
+    f = df_.mean().index.values
+    psd_mean = df_.mean().psd.values
+    psd_sem = df_.sem(ddof=0).psd.values
+    ax.fill_between(
+        f,
+        psd_mean - psd_sem,
+        psd_mean + psd_sem,
+        color=color,
+        alpha=0.5,
+        ec=None,
+        label=h,
     )
+    ax.plot(f, psd_mean, color=color)
+    # ax.set_xlim([60, 120])
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    # ax.set_ylim([0.5 * 10e-6, 0.5 * 10e-5])
 
-    _, psd1st = multitaper(lfp1st)
-    f, psd5th = multitaper(lfp5th)
+ax.set_xlabel("Frequency (Hz)")
+ax.set_ylabel("Power (a.u.)")
+ax.legend()
+ax.set_title("Power in ripple band")
 
-    ax = fig.add_subplot(gs[sub])
-    ax.loglog(f, psd1st, "k", label="ZT1")
-    ax.loglog(f, psd5th, "r", label="ZT5")
-    ax.set_xlim([1, 120])
-    ax.set_ylim([10, 10e5])
-    ax.set_title(sess.sessinfo.session.sessionName)
-    ax.set_xlabel("Frequency (Hz)")
-    ax.set_ylabel("Power (A.U.)")
-    ax.legend()
-
+figure.panel_label(ax, "a")
+# figure.savefig("ripple_power_sd", __file__)
 
 # endregion
 
