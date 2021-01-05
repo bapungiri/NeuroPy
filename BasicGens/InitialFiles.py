@@ -70,12 +70,12 @@ for sub, sess in enumerate(sessions):
 
 #%% create Track
 # region
-sessions = subjects.nsd([2])
+sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     # sess.tracks.create(epoch_names=["maze"])
-    # sess.tracks.linearize_position()
-    sess.tracks.estimate_run_laps("maze", speedthresh=(20, 30))
+    # sess.tracks.linearize_position(track_name=["maze2"], sample_sec=3)
+    # sess.tracks.estimate_run_laps("maze", speedthresh=(20, 30))
     # sess.epochs.getfromCSV()
 
 # endregion

@@ -21,18 +21,18 @@ def allsess():
     return [processData(_) for _ in paths]
 
 
-def sd(indx=None):
-    """Sleep deprivation sessions"""
+# def sd(indx=None):
+#     """Sleep deprivation sessions"""
 
-    paths = [
-        "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-        "/data/Clustering/SleepDeprivation/RatK/Day1/",
-        "/data/Clustering/SleepDeprivation/RatN/Day1/",
-        "/data/Clustering/SleepDeprivation/RatS/Day3SD/",
-    ]
-    if indx is not None:
-        paths = [paths[_] for _ in indx]
-    return [processData(_) for _ in paths]
+#     paths = [
+#         "/data/Clustering/SleepDeprivation/RatJ/Day1/",
+#         "/data/Clustering/SleepDeprivation/RatK/Day1/",
+#         "/data/Clustering/SleepDeprivation/RatN/Day1/",
+#         "/data/Clustering/SleepDeprivation/RatS/Day3SD/",
+#     ]
+#     if indx is not None:
+#         paths = [paths[_] for _ in indx]
+#     return [processData(_) for _ in paths]
 
 
 def nsd(indx=None):
@@ -66,17 +66,28 @@ def openfield():
     return [processData(_) for _ in paths]
 
 
-class sleepDep:
-    paths = [
-        "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-        "/data/Clustering/SleepDeprivation/RatK/Day1/",
-        "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    ]
-
+class Sd:
     @property
     def allsess(self):
-        return [processData(_) for _ in self.paths]
+        pipelines = self.ratJday1 + self.ratKday1 + self.ratNday1 + self.ratSday3
+        return pipelines
 
     @property
-    def ratnday2(self):
-        return [processData(self.paths[2])]
+    def ratJday1(self):
+        path = "/data/Clustering/SleepDeprivation/RatJ/Day1/"
+        return [processData(path)]
+
+    @property
+    def ratKday1(self):
+        path = "/data/Clustering/SleepDeprivation/RatK/Day1/"
+        return [processData(path)]
+
+    @property
+    def ratNday1(self):
+        path = "/data/Clustering/SleepDeprivation/RatN/Day1/"
+        return [processData(path)]
+
+    @property
+    def ratSday3(self):
+        path = "/data/Clustering/SleepDeprivation/RatS/Day3SD/"
+        return [processData(path)]
