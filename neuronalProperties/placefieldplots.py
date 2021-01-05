@@ -90,16 +90,16 @@ sessions = subjects.sd([3])
 for sub, sess in enumerate(sessions):
     # period = sess.epochs.maze1
     ax = plt.subplot(gs[0])
-    sess.placefield.pf1d.compute(track_name="maze1", direction="forward")
+    sess.placefield.pf1d.compute(track_name="maze1", run_dir="foward")
     sess.placefield.pf1d.plot(ax=ax, speed_thresh=True, normalize=True)
     # sess.placefield.pf1d.plot_raw(speed_thresh=True, subplots=None)
     ax.set_title("Maze1")
 
-    ratemaps = sess.placefield.pf1d.thresh["ratemaps"]
+    ratemaps = sess.placefield.pf1d.no_thresh["ratemaps"]
     cell_order = np.argsort(np.argmax(np.asarray(ratemaps), axis=1))
 
     ax = plt.subplot(gs[1])
-    sess.placefield.pf1d.compute(track_name="maze1", direction=None)
+    sess.placefield.pf1d.compute(track_name="maze2", run_dir="forward")
     sess.placefield.pf1d.plot(
         ax=ax, speed_thresh=True, normalize=True, sortby=cell_order
     )
@@ -139,36 +139,6 @@ for sub, sess in enumerate(sessions):
         axphase.set_ylabel(r"$\theta$ phase")
 
     ax.set_xlabel("Positon (cm)")
-    # states = sess.brainstates.states
-    # lfpmaze = sess.recinfo.geteeg(chans=64, timeRange=maze)
-    # lfpt = np.linspace(maze[0], maze[1], len(lfpmaze))
-    # thetaparam = sess.theta.getParams(lfpmaze)
-    # spikes = sess.spikes.pyr
-    # position = sess.tracks[track_name]
-    # run = sess.tracks.laps[track_name]
-    # run = run[run.direction == "forward"]
-    # pos_bin = np.arange(np.min(position.linear), np.max(position.linear), 10)
-    # phase_bin = np.linspace(0, 360, 37)
-
-    # for cell_id, cell in enumerate(spikes):
-    #     spk = np.concatenate(
-    #         [cell[(cell > epc.start) & (cell < epc.end)] for epc in run.itertuples()]
-    #     )
-    #     spk_pos = np.interp(spk, position.time, position.linear)
-    #     spk_spd = np.interp(spk, position.time, position.speed)
-    #     spk_phase = np.interp(spk, lfpt, thetaparam.angle)
-
-    #     # speed threshold
-    #     # spd_ind = np.where(spk_spd > 5)[0]
-    #     # spk_pos = spk_pos[spd_ind]
-    #     # spk_phase = spk_phase[spd_ind]
-
-    #     precess = np.histogram2d(spk_pos, spk_phase, bins=[pos_bin, phase_bin])[0]
-    #     precess = gaussian_filter(precess, sigma=1)
-    #     ax = plt.subplot(gs[cell_id])
-    #     ax.scatter(spk_pos, spk_phase, s=0.3)
-    # ax.pcolormesh(pos_bin, phase_bin, precess.T, cmap="Spectral_r")
-
 # endregion
 
 #%% Detect run laps scratchpad
@@ -227,5 +197,31 @@ for sub, sess in enumerate(sessions):
 
     ax = plt.subplot(gs[2], sharex=ax)
     ax.plot(np.diff(x))
+
+# endregion
+
+#%% write to .clu file in specific order
+# region
+sessions = subjects.Sd().ratSday3
+for sess in sessions:
+    sess.placefield.pf1d.compute("maze1", run_dir="forward")
+    ratemaps = sess.placefield.pf1d.no_thresh["ratemaps"]
+    cell_order = np.argsort(np.argmax(np.asarray(ratemaps), axis=1))
+    spikes = sess.spikes.pyr
+    new_order_spks = [spikes[_] for _ in cell_order[::-1]]
+    sess.spikes.export2neuroscope(new_order_spks)
+
+# endregion
+#%% Bayesian estimation in 1d linear type track
+# region
+sessions = subjects.Sd().ratSday3
+for sess in sessions:
+    sess.placefield.pf1d.compute("maze1", grid_bin=5, speed_thresh=10)
+    sess.decode.bayes1d.estimate_behavior(
+        sess.placefield.pf1d, binsize=0.25, speed_thresh=True
+    )
+
+    # plt.plot(gaussian_filter1d(sess.decode.bayes1d.decodedPos, sigma=1))
+    # plt.plot(sess.decode.bayes1d.actualpos, sess.decode.bayes1d.decodedPos, ".")
 
 # endregion
