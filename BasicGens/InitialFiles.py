@@ -10,7 +10,7 @@ import time
 
 #%% Generate _basics.npy files
 # region
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
@@ -18,7 +18,7 @@ for sub, sess in enumerate(sessions):
     #     "/data/Clustering/SleepDeprivation/RatS/Day3SD/openEphysSettings/settings.xml"
     # )
     # sess.recinfo.generate_xml(settingsPath=openephys_settingspath)
-    # sess.recinfo.makerecinfo(nShanks=[6, 8], skulleeg=[51], motion=[192, 193, 194])
+    sess.recinfo.makerecinfo(nShanks=[6, 8], skulleeg=[51], motion=[192, 193, 194])
     # sess.recinfo.makerecinfo(nShanks=8)
 # endregion
 
@@ -35,15 +35,17 @@ for sub, sess in enumerate(sessions):
 
 #%% artifacts file gen
 # region
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
-    zsc = sess.artifact.usingZscore(chans=10, thresh=4.5)
-    # sess.artifact.plot(chan=10)
+    # lfp = sess.recinfo.geteeg(chans=64)
+    # plt.plot(np.linspace(0, len(lfp) / (1250 * 60), len(lfp)), lfp)
+    zsc = sess.artifact.usingZscore(chans=64, thresh=6)
+    sess.artifact.plot(chan=64)
 # endregion
 
 #%% Generate position files
 # region
-sessions = subjects.nsd([2])
+sessions = subjects.Nsd()
 for sub, sess in enumerate(sessions):
     sess.trange = []
     sess.position.getPosition(method="from_metadata", scale=4.0)

@@ -66,10 +66,10 @@ figure = Fig()
 fig, gs = figure.draw(grid=[4, 4])
 
 axstate = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs[0, :], hspace=0.2)
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
     axspec = fig.add_subplot(axstate[1:4])
-    chan = sess.recinfo.skulleeg[0]
+    chan = 77
     sess.viewdata.specgram(chan=chan, ax=axspec)
     axspec.axes.get_xaxis().set_visible(False)
 
