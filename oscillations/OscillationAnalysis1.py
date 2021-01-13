@@ -423,17 +423,18 @@ for sub, sess in enumerate(sessions):
 #%%* Ripple and delta waves density during Sleep deprivation
 # region
 figure = Fig()
-fig, gs = figure.draw(grid=[5, 5])
+fig, gs = figure.draw(num=1, grid=[5, 5])
 axripple = plt.subplot(gs[0, 0])
 figure.panel_label(axripple, "a")
-axdelta = plt.subplot(gs[1, 0])
+# axdelta = plt.subplot(gs[1, 0])
 
 data = []
-for sub, sess in enumerate(sessions[:3]):
+sessions = subjects.Sd().allsess
+for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     post = sess.epochs.post
-    rpls = sess.ripple.time
-    swa = sess.swa.time
+    rpls = sess.ripple.events.start
+    swa = sess.swa.events
 
     sd = np.linspace(post[0], post[0] + 5 * 3600, 6)
     rpls_sd = np.histogram(rpls, bins=sd)[0] / 3600
@@ -443,7 +444,7 @@ for sub, sess in enumerate(sessions[:3]):
     data.append(pd.DataFrame({"hour": window, "ripple": rpls_sd, "delta": swa_sd}))
 
 density = pd.concat(data)
-sns.barplot(x="hour", y="ripple", data=density, ci="sd", ax=axripple)
+sns.barplot(x="hour", y="ripple", data=density, ci="sd", ax=axripple, color="#d93a3a")
 axripple.set_ylabel("Ripples/s")
 axripple.tick_params(axis="x", labelrotation=45)
 
@@ -452,21 +453,22 @@ axdelta.set_ylabel("delta/min")
 axdelta.set_xlabel("")
 axdelta.tick_params(axis="x", labelrotation=45)
 
-figure.savefig("ripple_delta_density_sd", __file__)
+# figure.savefig("ripple_delta_density_sd", __file__)
 # endregion
 
 #%%* Ripple, delta and spindle density during recovery sleep
 # region
 figure = Fig()
-fig, gs = figure.draw(grid=[5, 5])
+fig, gs = figure.draw(num=1, grid=[5, 5])
 
+sessions = subjects.Sd().allsess
 data = []
-for sub, sess in enumerate(sessions[:3]):
+for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     post = sess.epochs.post
-    rpls = sess.ripple.time
-    swa = sess.swa.time
-    spndl = sess.spindle.time
+    rpls = sess.ripple.events.start
+    # swa = sess.ripple.events.start
+    # spndl = sess.ripple.events.start
 
     states = sess.brainstates.states
     recslp_nrem = states.loc[
@@ -479,8 +481,8 @@ for sub, sess in enumerate(sessions[:3]):
     nrem_dur = np.asarray(recslp_nrem.duration)
     nrem_bins = recslp_nrem.to_numpy()[:, :2].flatten()
     rpls_nrem = np.histogram(rpls, bins=nrem_bins)[0][::2] / nrem_dur
-    swa_nrem = np.histogram(swa, bins=nrem_bins)[0][::2] / nrem_dur
-    spndl_nrem = np.histogram(spndl, bins=nrem_bins)[0][::2] / nrem_dur
+    # swa_nrem = np.histogram(swa, bins=nrem_bins)[0][::2] / nrem_dur
+    # spndl_nrem = np.histogram(spndl, bins=nrem_bins)[0][::2] / nrem_dur
 
     window = [nrem_ind + 1 for nrem_ind in range(len(nrem_dur))]
     data.append(
@@ -488,8 +490,8 @@ for sub, sess in enumerate(sessions[:3]):
             {
                 "nrem": window,
                 "ripple": rpls_nrem,
-                "delta": swa_nrem,
-                "spindle": spndl_nrem,
+                # "delta": swa_nrem,
+                # "spindle": spndl_nrem,
             }
         )
     )
@@ -497,30 +499,63 @@ for sub, sess in enumerate(sessions[:3]):
 density = pd.concat(data)
 # order = np.unique(density.nrem)
 
-axripple = plt.subplot(gs[0, 1:3])
+axripple = plt.subplot(gs[0, 1:3], sharey=axripple)
 axripple.clear()
-sns.barplot(
-    x="nrem",
-    y="ripple",
-    data=density,
-    ci="sd",
-    ax=axripple,
-)
+sns.barplot(x="nrem", y="ripple", data=density, ci="sd", ax=axripple, color="#69c")
 axripple.set_ylabel("Ripples / s")
 axripple.tick_params(axis="x", labelrotation=45)
-figure.panel_label(axripple, "b")
+# figure.panel_label(axripple, "b")
 
-axdelta = plt.subplot(gs[1, 1:3])
-sns.barplot(x="nrem", y="delta", data=density, ci="sd")
-axdelta.set_ylabel("delta / s")
-axdelta.tick_params(axis="x", labelrotation=45)
+# axdelta = plt.subplot(gs[1, 1:3])
+# sns.barplot(x="nrem", y="delta", data=density, ci="sd")
+# axdelta.set_ylabel("delta / s")
+# axdelta.tick_params(axis="x", labelrotation=45)
 
-axspndl = plt.subplot(gs[0, 3:])
-sns.barplot(x="nrem", y="spindle", data=density, ci="sd")
-axspndl.set_ylabel("spindle / s")
-axspndl.tick_params(axis="x", labelrotation=45)
+# axspndl = plt.subplot(gs[0, 3:])
+# sns.barplot(x="nrem", y="spindle", data=density, ci="sd")
+# axspndl.set_ylabel("spindle / s")
+# axspndl.tick_params(axis="x", labelrotation=45)
 
 figure.savefig("ripple_delta_spindle_recoverysleep", __file__)
+# endregion
+
+#%%* Ripple density during normal sleep
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=[5, 5])
+
+sessions = subjects.Nsd().allsess
+data = []
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    post = sess.epochs.post
+    rpls = sess.ripple.events.start
+
+    states = sess.brainstates.states
+    recslp_nrem = states.loc[
+        (states.start > post[0]) & (states.name == "nrem") & (states.duration > 240),
+        ["start", "end", "duration"],
+    ]
+
+    nrem_dur = np.asarray(recslp_nrem.duration)
+    nrem_bins = recslp_nrem.to_numpy()[:, :2].flatten()
+    rpls_nrem = np.histogram(rpls, bins=nrem_bins)[0][::2] / nrem_dur
+
+    window = [nrem_ind + 1 for nrem_ind in range(len(nrem_dur))]
+    data.append(pd.DataFrame({"nrem": window, "ripple": rpls_nrem}))
+
+density = pd.concat(data)
+# order = np.unique(density.nrem)
+
+axripple = plt.subplot(gs[0, 1:3], sharey=axripple)
+axripple.clear()
+sns.barplot(x="nrem", y="ripple", data=density, ci="sd", ax=axripple, color="#69c")
+axripple.set_ylabel("Ripples / s")
+axripple.tick_params(axis="x", labelrotation=45)
+axripple.set_titile("Normal sleep")
+# figure.panel_label(axripple, "b")
+
+# figure.savefig("ripple_normal_sleep", __file__)
 # endregion
 
 #%% Spindle density comparison between recovery sleep and normal sleep
