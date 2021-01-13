@@ -60,7 +60,7 @@ class Sd:
 class Nsd:
     @property
     def allsess(self):
-        pipelines = self.ratJday2 + self.ratKday2 + self.ratNday2 + self.ratSday2
+        pipelines = self.ratJday2 + self.ratKday2 + self.ratNday2
         return pipelines
 
     @property
@@ -78,10 +78,10 @@ class Nsd:
         path = "/data/Clustering/SleepDeprivation/RatN/Day2/"
         return [processData(path)]
 
-    @property
-    def ratSday2(self):
-        path = "/data/Clustering/SleepDeprivation/RatS/Day2NSD/"
-        return [processData(path)]
+    # @property
+    # def ratSday2(self):
+    #     path = "/data/Clustering/SleepDeprivation/RatS/Day2NSD/"
+    #     return [processData(path)]
 
 
 class Two_novel:

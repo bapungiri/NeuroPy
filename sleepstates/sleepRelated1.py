@@ -70,7 +70,7 @@ sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
     axspec = fig.add_subplot(axstate[1:4])
     chan = 77
-    sess.viewdata.specgram(chan=chan, ax=axspec)
+    sess.viewdata.specgram(chan=chan, ax=axspec, window=10, overlap=2)
     axspec.axes.get_xaxis().set_visible(False)
 
 # figure.savefig("spectrogram_example_sd", __file__)

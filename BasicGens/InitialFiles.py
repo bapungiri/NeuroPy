@@ -22,14 +22,15 @@ for sub, sess in enumerate(sessions):
     # sess.recinfo.makerecinfo(nShanks=8)
 # endregion
 
-#%% Generate .prb for spyking circus
+#%% Generate probemap and .prb for spyking circus
 # region
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
 
-    sess.trange = np.array([])
+    # sess.trange = np.array([])
     # sess.recinfo.probemap.create(xypitch=((16.5, 15), (16, 15)))
-    sess.recinfo.probemap.for_spyking_circus(rmv_badchans=True, shanksCombine=1)
+    # sess.recinfo.probemap.plot()
+    sess.recinfo.probemap.for_spyking_circus(rmv_badchans=True, shanksCombine=True)
 
 # endregion
 
