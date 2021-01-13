@@ -214,14 +214,47 @@ for sess in sessions:
 # endregion
 #%% Bayesian estimation in 1d linear type track
 # region
-sessions = subjects.Sd().ratSday3
+sessions = subjects.nsd([2])
 for sess in sessions:
-    sess.placefield.pf1d.compute("maze1", grid_bin=5, speed_thresh=10)
+    sess.placefield.pf1d.compute("maze", grid_bin=8, speed_thresh=5)
     sess.decode.bayes1d.estimate_behavior(
-        sess.placefield.pf1d, binsize=0.25, speed_thresh=True
+        sess.placefield.pf1d, binsize=0.2, speed_thresh=True, smooth=2
     )
 
     # plt.plot(gaussian_filter1d(sess.decode.bayes1d.decodedPos, sigma=1))
     # plt.plot(sess.decode.bayes1d.actualpos, sess.decode.bayes1d.decodedPos, ".")
+
+# endregion
+
+#%% Decode pbe events
+# region
+
+figure = Fig()
+sessions = subjects.nsd([2])
+for sess in sessions:
+    sess.placefield.pf1d.compute("maze", grid_bin=8, speed_thresh=5)
+    sd_period = sess.epochs["post"]
+    rpls = sess.pbe.events
+    rpls = rpls[
+        (rpls.start > sd_period[0])
+        & (rpls.start < sd_period[0] + 2 * 3600)
+        & (rpls.duration > 0.15)
+    ]
+    a, b, c = sess.decode.bayes1d.decode_events(
+        sess.placefield.pf1d, rpls, speed_thresh=True
+    )
+
+    ind_ = np.arange(0, 1400, 200)
+    for fig_wind in range(10):
+        p = ind_[fig_wind]
+        fig, gs = figure.draw(num=fig_wind, grid=(10, 20))
+        for ind, i in enumerate(range(p, p + 200)):
+            ax = plt.subplot(gs[ind])
+            posterior = b[i]  # / np.max(b[i])
+            ax.imshow(
+                posterior, aspect="auto", cmap="hot", interpolation=None, origin="lower"
+            )
+        # ax.xticks([])
+
 
 # endregion
