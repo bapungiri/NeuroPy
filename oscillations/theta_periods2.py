@@ -237,7 +237,7 @@ for sub, sess in enumerate(sessions[7:8]):
 
     # ----- dividing 360 degress into multiple bins ------------
     binconfig = [[72, None], [40, None], [40, 5]]  # degree, degree
-    binData = [getPxxData(window=wind, slideby=sld) for (wind, sld) in binconfig]
+    binData = [getPxxData(binsize=wind, slideby=sld) for (wind, sld) in binconfig]
 
     bin_names = ["5bin", "9bin", "slide"]
     for i, df in enumerate(binData):
@@ -1235,7 +1235,7 @@ for sub, sess in enumerate(sessions[7:8]):
 """
 figure = Fig()
 fig, gs = figure.draw(grid=(8, 8))
-
+sessions = subjects.Openfield().ratNday4
 for sub, sess in enumerate(sessions[7:8]):
     maze = sess.epochs.maze
 
@@ -1288,6 +1288,67 @@ for sub, sess in enumerate(sessions[7:8]):
                 ax.get_xaxis().set_visible([])
             if shank > 0:
                 ax.get_yaxis().set_visible([])
+
+    # figure.savefig(f"wavelet_slgamma", __file__)
+
+# endregion
+
+#%% Phase specific extraction --> theta-gamma coupling at multiple sites on a shank or across shanks
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(8, 8))
+sessions = subjects.Openfield().ratNday4
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+
+    for shank in range(8):
+        channels = sess.recinfo.goodchangrp[shank][::2]
+        bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+        phase_centers = bin_angle[:-1] + np.diff(bin_angle).mean() / 2
+        lfpmaze = sess.recinfo.geteeg(chans=channels, timeRange=maze)
+
+        frgamma = np.arange(25, 150, 1)
+
+        def phase_(chan, lfp):
+            strong_theta = sess.theta.getstrongTheta(lfp)[0]
+            highpass_theta = signal_process.filter_sig.highpass(strong_theta, cutoff=25)
+            gamma, _, angle = sess.theta.phase_specfic_extraction(
+                strong_theta, highpass_theta, binsize=40, slideby=10
+            )
+            df = pd.DataFrame()
+            f_ = None
+            for gamma_bin, center in zip(gamma, angle):
+                f_, pxx = sg.welch(gamma_bin, nperseg=1250, noverlap=625, fs=eegSrate)
+                df[center] = np.log10(pxx)
+            df.insert(0, "freq", f_)
+            df.insert(0, "chan", chan)
+            return df
+
+        gamma_all_chan = pd.concat(
+            [phase_(chan, lfp) for (chan, lfp) in zip(channels, lfpmaze)]
+        ).groupby("chan")
+
+        for i, chan in enumerate(channels):
+            spect = (
+                gamma_all_chan.get_group(chan).drop(columns="chan").set_index("freq")
+            )
+            spect = spect[(spect.index > 25) & (spect.index < 150)].transform(
+                stats.zscore, axis=1
+            )
+            ax = plt.subplot(gs[i, shank])
+            sns.heatmap(
+                spect, ax=ax, cmap="jet", cbar=None, xticklabels=5, rasterized=True
+            )
+            # ax.pcolormesh(phase_centers, frgamma, spect, shading="auto")
+            ax.set_title(f"channel = {chan}", loc="left")
+            ax.invert_yaxis()
+            if i < len(channels) - 1:
+                ax.get_xaxis().set_visible([])
+            if shank > 0:
+                ax.get_yaxis().set_visible([])
+
+            # ax.set_ylim([25, 150])
 
     # figure.savefig(f"wavelet_slgamma", __file__)
 
@@ -1361,7 +1422,7 @@ axwav = plt.subplot(gs[0])
 axpac = plt.subplot(gs[1])
 axbicoh = plt.subplot(gs[2])
 
-sessions = subjects.nsd([2])
+sessions = subjects.Nsd().ratNday2
 for sub, sess in enumerate(sessions):
     maze = sess.epochs.maze
     channels = 111
