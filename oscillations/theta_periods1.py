@@ -812,7 +812,7 @@ fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
 #%% during Sleep deprivation compare theta phase-gamma amplitude relationship
 # region
 group = pd.DataFrame()
-sessions = subjects.sd()
+sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
     chan = sess.ripple.bestchans[0]
     post = sess.epochs.post
