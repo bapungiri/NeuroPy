@@ -21,13 +21,16 @@ def allsess():
     return [processData(_) for _ in paths]
 
 
-def openfield():
-    paths = [
-        "/data/Clustering/SleepDeprivation/RatJ/Day4/",
-        "/data/Clustering/SleepDeprivation/RatK/Day4/",
-        "/data/Clustering/SleepDeprivation/RatN/Day4/",
-    ]
-    return [processData(_) for _ in paths]
+class Openfield:
+    @property
+    def ratJday4(self):
+        path = "/data/Clustering/SleepDeprivation/RatJ/Day4/"
+        return [processData(path)]
+
+    @property
+    def ratNday4(self):
+        path = "/data/Clustering/SleepDeprivation/RatN/Day4/"
+        return [processData(path)]
 
 
 class Sd:
@@ -60,7 +63,7 @@ class Sd:
 class Nsd:
     @property
     def allsess(self):
-        pipelines = self.ratJday2 + self.ratKday2 + self.ratNday2
+        pipelines = self.ratJday2 + self.ratKday2 + self.ratNday2 + self.ratSday2
         return pipelines
 
     @property
@@ -78,10 +81,10 @@ class Nsd:
         path = "/data/Clustering/SleepDeprivation/RatN/Day2/"
         return [processData(path)]
 
-    # @property
-    # def ratSday2(self):
-    #     path = "/data/Clustering/SleepDeprivation/RatS/Day2NSD/"
-    #     return [processData(path)]
+    @property
+    def ratSday2(self):
+        path = "/data/Clustering/SleepDeprivation/RatS/Day2NSD/"
+        return [processData(path)]
 
 
 class Two_novel:

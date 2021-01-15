@@ -56,15 +56,15 @@ for sub, sess in enumerate(sessions):
 
 #%% create epochs
 # region
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     epochs = {
-        "pre": [0, 10818],
-        "maze1": [10819, 14817],
-        "sd": [14818, 14818 + 5 * 3600],
-        "post": [14818, 14818 + 33600],
-        "maze2": [48419, 52055],
+        "pre": [0, 2358],
+        "maze1": [2360, 6031],
+        # "sd": [6033, 14818 + 5 * 3600],
+        "post": [6033, 36899],
+        "maze2": [36902, 40233],
     }
     sess.epochs.make_epochs(new_epochs=epochs)
     # sess.epochs.getfromCSV()
@@ -86,7 +86,7 @@ for sub, sess in enumerate(sessions):
 
 #%% Gen spikes or instantenous firing rate
 # region
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
     # sess.trange = np.array([])
     sess.spikes.from_Phy(fileformat="same_folder")

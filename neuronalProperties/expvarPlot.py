@@ -14,22 +14,23 @@ from plotUtil import Fig
 """Only found stable units for 3 sessions
 """
 figure = Fig()
-fig, gs = figure.draw(num=1, grid=(1, 1))
-sessions = subjects.sd([3])
+fig, gs = figure.draw(num=1, grid=(2, 1))
+sessions = subjects.Nsd().ratSday2 + subjects.Sd().ratSday3
 
 for sub, sess in enumerate(sessions):
 
-    sess.trange = np.array([])
     pre = sess.epochs.pre
-    maze = sess.epochs.maze1
+    maze1 = sess.epochs.maze1
+    maze2 = sess.epochs.maze2
     post = sess.epochs.post
     bins = [
-        # pre,
-        maze,
+        pre,
+        maze1,
         # [post[0] + 0 * 3600, post[0] + 1 * 3600],
-        [post[0] + 4 * 3600, post[0] + 5 * 3600],
-        [post[0] + 5 * 3600, post[0] + 10 * 4600],
+        # [post[0] + 4 * 3600, post[0] + 5 * 3600],
+        # [post[0] + 5 * 3600, post[0] + 10 * 4600],
         # post,
+        [post[0], maze2[1]]
         # [post[0] + 5 * 3600, post[0] + 8 * 3600],
     ]
     sess.spikes.stability.firingRate(bins=bins)
@@ -40,17 +41,17 @@ for sub, sess in enumerate(sessions):
     axstate = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[sub], hspace=0.2)
 
     ax1 = fig.add_subplot(axstate[1:])
-    sess.replay.expvar.plot(ax=ax1, tstart=bins[0][0])
+    sess.replay.expvar.plot(ax=ax1, tstart=bins[2][0])
     ax1.set_xlim(left=0)
     # ax1.spines["right"].set_visible("False")
     # ax1.spines["top"].set_visible("False")
 
     axhypno = fig.add_subplot(axstate[0], sharex=ax1)
-    sess.brainstates.hypnogram(ax1=axhypno, tstart=bins[0][0], unit="h")
+    sess.brainstates.hypnogram(ax1=axhypno, tstart=bins[2][0], unit="h")
     # panel_label(axhypno, "a")
     # ax1.set_ylim([0, 11])
 
-
+figure.savefig("RatS_EV", __file__)
 # endregion
 
 #%% Explained variance during recovery sleep while controlling for MAZE correlations
