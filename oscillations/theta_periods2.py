@@ -1314,7 +1314,7 @@ for sub, sess in enumerate(sessions):
             strong_theta = sess.theta.getstrongTheta(lfp)[0]
             highpass_theta = signal_process.filter_sig.highpass(strong_theta, cutoff=25)
             gamma, _, angle = sess.theta.phase_specfic_extraction(
-                strong_theta, highpass_theta, binsize=40, slideby=10
+                strong_theta, highpass_theta, binsize=40, slideby=5
             )
             df = pd.DataFrame()
             f_ = None
@@ -1336,9 +1336,17 @@ for sub, sess in enumerate(sessions):
             spect = spect[(spect.index > 25) & (spect.index < 150)].transform(
                 stats.zscore, axis=1
             )
+            spect = spect.transform(gaussian_filter1d, axis=0, sigma=2)
+            spect = spect.transform(gaussian_filter1d, axis=1, sigma=2)
             ax = plt.subplot(gs[i, shank])
             sns.heatmap(
-                spect, ax=ax, cmap="jet", cbar=None, xticklabels=5, rasterized=True
+                spect,
+                ax=ax,
+                cmap="jet",
+                cbar=None,
+                xticklabels=10,
+                rasterized=True,
+                shading="gouraud",
             )
             # ax.pcolormesh(phase_centers, frgamma, spect, shading="auto")
             ax.set_title(f"channel = {chan}", loc="left")
@@ -1350,7 +1358,8 @@ for sub, sess in enumerate(sessions):
 
             # ax.set_ylim([25, 150])
 
-    # figure.savefig(f"wavelet_slgamma", __file__)
+
+figure.savefig(f"phase_specific_fourier_slgamma", __file__)
 
 # endregion
 

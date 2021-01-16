@@ -9,6 +9,7 @@ import subjects
 from plotUtil import Fig
 from mathutil import threshPeriods, hmmfit1d
 from typing import Annotated
+import copy
 
 #%% 1D place field in openfield arena
 # region
@@ -86,7 +87,7 @@ for sub, sess in enumerate(sessions):
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(1, 2))
-sessions = subjects.sd([3])
+sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
     # period = sess.epochs.maze1
     ax = plt.subplot(gs[0])
@@ -112,7 +113,7 @@ for sub, sess in enumerate(sessions):
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(4, 2), size=(5, 12))
-sessions = subjects.sd([3])
+sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
     track_name = "maze1"
     maze = sess.epochs[track_name]
@@ -214,7 +215,7 @@ for sess in sessions:
 # endregion
 #%% Bayesian estimation in 1d linear type track
 # region
-sessions = subjects.nsd([2])
+sessions = subjects.Nsd().ratSday2
 for sess in sessions:
     sess.placefield.pf1d.compute("maze", grid_bin=8, speed_thresh=5)
     sess.decode.bayes1d.estimate_behavior(

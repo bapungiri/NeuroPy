@@ -54,9 +54,9 @@ def getPxx(lfp):
 
 #%% Detect sleep states
 # region
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratSday2
 for sess in sessions:
-    # sess.brainstates.detect(emgfile=False)
+    # sess.brainstates.detect(emgfile=True)
     ax = sess.brainstates.hypnogram()
 # endregion
 
