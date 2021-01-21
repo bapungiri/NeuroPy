@@ -79,34 +79,38 @@ for sub, sess in enumerate(sessions):
 #%% Spectrogram example for figure panel
 # region
 figure = Fig()
-fig, gs = figure.draw(grid=[4, 4])
+fig, gs = figure.draw(num=1, grid=[8, 3])
 
-axstate = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs[0, :], hspace=0.2)
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratNday2 + subjects.Sd().ratNday1
 for sub, sess in enumerate(sessions):
     # t_start = sess.epochs.post[0] + 5 * 3600
     t = sess.brainstates.params.time
     emg = sess.brainstates.params.emg
     delta = sess.brainstates.params.delta
+    period = sess.epochs.post
 
-    axspec = fig.add_subplot(axstate[1:4])
-    sess.viewdata.specgram(ax=axspec)
-    axspec.axes.get_xaxis().set_visible(False)
+    axstate = gridspec.GridSpecFromSubplotSpec(
+        5, 1, subplot_spec=gs[sub, :2], hspace=0.2
+    )
+    axspec = fig.add_subplot(axstate[1:])
+    sess.viewdata.specgram(ax=axspec, period=period)
+    # axspec.axes.get_xaxis().set_visible(False)
 
-    axdelta = fig.add_subplot(axstate[4], sharex=axspec)
-    axdelta.fill_between(t, 0, delta, color="#9E9E9E")
-    axdelta.axes.get_xaxis().set_visible(False)
-    axdelta.set_ylabel("Delta")
+    # axdelta = fig.add_subplot(axstate[4], sharex=axspec)
+    # axdelta.fill_between(t, 0, delta, color="#9E9E9E")
+    # axdelta.axes.get_xaxis().set_visible(False)
+    # axdelta.set_ylabel("Delta")
 
     axhypno = fig.add_subplot(axstate[0], sharex=axspec)
-    sess.brainstates.hypnogram(ax1=axhypno)
+    sess.brainstates.hypnogram(ax=axhypno, tstart=period[0])
+    # sess.brainstates.addBackgroundtoPlots(ax=axhypno, tstart=period[0])
     figure.panel_label(axhypno, "a")
 
-    axemg = fig.add_subplot(axstate[-1], sharex=axspec)
-    axemg.plot(t, emg, "#4a4e68", lw=0.8)
-    axemg.set_ylabel("EMG")
+    # axemg = fig.add_subplot(axstate[-1], sharex=axspec)
+    # axemg.plot(t, emg, "#4a4e68", lw=0.8)
+    # axemg.set_ylabel("EMG")
 
-# figure.savefig("spectrogram_example_sd", __file__)
+# figure.savefig("spectrogram_example_sd_nsd", __file__)
 # endregion
 
 #%% EMG from lfp compare in case of 2 probes
@@ -586,4 +590,43 @@ for sub, sess in enumerate(sessions):
     # ax.set_ylim([1, 75])
 
 fig.suptitle("fourier and bicoherence analysis of strong theta during MAZE")
+# endregion
+
+
+#%%* Sleep proportion --> sleep deprivation vs control
+# region
+sessions = subjects.Nsd().allsess + subjects.Sd().allsess
+sd_prop, nsd_prop = [], []
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    tag = sess.recinfo.animal.tag
+    post = sess.epochs.post
+
+    period = [post[0], post[0] + 5 * 3600]
+    states_prop = sess.brainstates.proportion(period=period)
+    if tag == "sd":
+        sd_prop.append(states_prop)
+    else:
+        nsd_prop.append(states_prop)
+
+sd_prop = pd.concat(sd_prop).groupby("name").sum() / 4
+nsd_prop = pd.concat(nsd_prop).groupby("name").sum() / 4
+
+sd_prop = sd_prop.rename(columns={"duration": "sd"})
+nsd_prop = nsd_prop.rename(columns={"duration": "nsd"})
+
+all_grp = pd.concat([sd_prop, nsd_prop], axis=1)
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 3))
+ax = plt.subplot(gs[0])
+all_grp.T.plot.bar(
+    stacked=True, color=sess.brainstates.colors, alpha=0.5, ax=ax, legend=None, rot=45
+)
+
+ax.set_ylabel("Proportion")
+ax.set_title("first 5 hours")
+
+# figure.savefig("sleep_propotion", __file__)
+
 # endregion

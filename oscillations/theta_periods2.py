@@ -1320,7 +1320,7 @@ for sub, sess in enumerate(sessions):
             f_ = None
             for gamma_bin, center in zip(gamma, angle):
                 f_, pxx = sg.welch(gamma_bin, nperseg=1250, noverlap=625, fs=eegSrate)
-                df[center] = np.log10(pxx)
+                df[center] = pxx
             df.insert(0, "freq", f_)
             df.insert(0, "chan", chan)
             return df
@@ -1333,11 +1333,9 @@ for sub, sess in enumerate(sessions):
             spect = (
                 gamma_all_chan.get_group(chan).drop(columns="chan").set_index("freq")
             )
-            spect = spect[(spect.index > 25) & (spect.index < 150)].transform(
-                stats.zscore, axis=1
-            )
-            spect = spect.transform(gaussian_filter1d, axis=0, sigma=2)
-            spect = spect.transform(gaussian_filter1d, axis=1, sigma=2)
+            # spect = spect[(spect.index > 25) & (spect.index < 150)]
+            spect = spect[(spect.index > 25) & (spect.index < 150)]
+            # spect = spect.transform(gaussian_filter1d, axis=1, sigma=2)
             ax = plt.subplot(gs[i, shank])
             sns.heatmap(
                 spect,
@@ -1359,7 +1357,7 @@ for sub, sess in enumerate(sessions):
             # ax.set_ylim([25, 150])
 
 
-figure.savefig(f"phase_specific_fourier_slgamma", __file__)
+# figure.savefig(f"phase_specific_fourier_slgamma", __file__)
 
 # endregion
 

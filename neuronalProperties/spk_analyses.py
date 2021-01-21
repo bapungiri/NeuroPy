@@ -853,6 +853,7 @@ for sub, sess in enumerate(sessions):
     stability = sess.spikes.stability.info
     stable_pyr = np.where((stability.q < 4) & (stability.stable == 1))[0]
     pyr = [spks[cell_id] for cell_id in stable_pyr]
+
     pyr = sess.spikes.pyr
 
     window_sz = 600

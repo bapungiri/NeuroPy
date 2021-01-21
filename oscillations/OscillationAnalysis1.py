@@ -185,7 +185,7 @@ for sub, sess in enumerate(sessions[:3]):
 
 # endregion
 
-#%%* PSD during sleep deprivation from first to last hour to observe gamma reduction
+#%%* PSD during sleep deprivation from first to last hour to observe ripple power
 # region
 sessions = subjects.Sd().allsess
 df = pd.DataFrame()
