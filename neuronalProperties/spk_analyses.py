@@ -1,10 +1,4 @@
 # %%
-
-import random
-import warnings
-
-# import ipywidgets as widgets
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -13,7 +7,6 @@ import scipy.stats as stats
 import seaborn as sns
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from ccg import correlograms
-from callfunc import processData
 import signal_process
 from plotUtil import Fig
 import subjects
@@ -337,18 +330,17 @@ axdistcorr.set_ylabel("cdf")
 #%% Number of spike during ripples over the course of sleep deprivation
 # region
 
-plt.clf()
-fig = plt.figure(1, figsize=(10, 15))
-gs = gridspec.GridSpec(3, 1, figure=fig)
-fig.subplots_adjust(hspace=0.3)
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
 fig.suptitle("Change in interspike interval during Sleep Deprivaton")
+sessions = subjects.Sd().allsess
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     post = sess.epochs.post
     eegSrate = sess.recinfo.lfpSrate
-    spikes = sess.spikes.times
+    spikes = sess.spikes.pyr
     sd_period = [post[0], post[0] + 5 * 3600]
-    ripples = sess.ripple.time
+    ripples = sess.ripple.events[["start", "end"]].to_numpy()
     ripples_sd = ripples[
         (ripples[:, 0] > sd_period[0]) & (ripples[:, 0] < sd_period[1])
     ].ravel()
@@ -770,26 +762,22 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
-#%%* firing rate over SD and recovery of place cells stable from MAZE to POST
+#%%* firing rate over SD and recovery sleep of place cells stable from MAZE to POST
 # region
-figure = Fig()
-fig, gs = figure.draw(grid=[4, 3])
-axfr = plt.subplot(gs[0, 0])
-figure.panel_label(axfr, "a")
 
 spk_all = pd.DataFrame()
-sessions = subjects.sd([3])
-for sub, sess in enumerate(sessions[:3]):
+sessions = subjects.Sd().allsess
+for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
-    maze = sess.epochs.maze1
-    pre = sess.epochs.pre
+    # maze = sess.epochs.maze
+    # pre = sess.epochs.pre
     post = sess.epochs.post
     spks = sess.spikes.times
 
     # --- stability (firing rate) from maze to end of sleep deprivation ------
-    sd_period = [maze[0], post[0] + 5 * 3600]
+    sd_period = [post[0], post[0] + 5 * 3600]
     intervals = sess.utils.getinterval(period=sd_period, nwindows=5)
-    sess.spikes.stability.firingRate(bins=intervals)
+    sess.spikes.stability.firingRate(periods=intervals)
     stability = sess.spikes.stability.info
     stable_pyr = np.where((stability.q < 4) & (stability.stable == 1))[0]
     pyr = [spks[cell_id] for cell_id in stable_pyr]
@@ -820,15 +808,24 @@ for sub, sess in enumerate(sessions[:3]):
     )
 
 mean_fr = spk_all.groupby("time").mean()
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=[4, 3])
+axfr = plt.subplot(gs[0, 0])
+figure.panel_label(axfr, "a")
 sns.lineplot(
     x="time",
     y="spikes",
-    hue="subject",
+    # hue="subject",
     data=spk_all,
     ax=axfr,
     ci=None,
     style="subject",
     legend=None,
+    color="gray",
+    ls="--",
+    dashes=False,
+    alpha=0.5,
 )
 mean_fr.plot(ax=axfr, color="k", linewidth=2, alpha=0.7, legend=None)
 axfr.plot([0, 5], [0.005, 0.005], color="#f14646", linewidth=5)
@@ -836,7 +833,85 @@ axfr.text(2.5, 0.0055, "SD", ha="center")
 axfr.set_ylabel("Normalized \n spike counts")
 axfr.set_xlabel("Time (h)")
 
-# figure.savefig("firing_maze_sd", __file__)
+# figure.savefig("firing_sd", __file__)
+# endregion
+
+#%%* Mean correlaion across POST
+# region
+
+mean_corr_all = pd.DataFrame()
+sessions = subjects.Sd().allsess + subjects.Nsd().allsess
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    post = sess.epochs.post
+    spks = sess.spikes.times
+
+    # --- stability (firing rate) from maze to end of sleep deprivation ------
+    sd_period = [post[0], post[0] + 5 * 3600]
+    intervals = sess.utils.getinterval(period=sd_period, nwindows=5)
+    sess.spikes.stability.firingRate(periods=intervals)
+    stability = sess.spikes.stability.info
+    stable_pyr = np.where((stability.q < 4) & (stability.stable == 1))[0]
+    pyr = [spks[cell_id] for cell_id in stable_pyr]
+    pyr = sess.spikes.pyr
+
+    window_sz = 600
+    slideby = 300
+    windows = np.arange(post[0], post[0] + 8 * 3600 - window_sz, slideby)
+    mean_corr = []
+    mean_frate = []
+    for start in windows:
+        corr = sess.spikes.corr.pairwise(pyr, period=[start, start + window_sz])
+        frate = sess.spikes.firing_rate(pyr, period=[start, start + window_sz])
+        mean_corr.append(np.nanmean(corr))
+        mean_frate.append(np.mean(frate))
+
+    mean_corr_all = mean_corr_all.append(
+        pd.DataFrame(
+            {
+                "time": (windows - post[0] + window_sz / 2) / 3600,
+                "corr": gaussian_filter1d(mean_corr / np.sum(mean_corr), sigma=1),
+                "frate": gaussian_filter1d(mean_frate / np.sum(mean_frate), sigma=1),
+                "subject": sess.recinfo.session.sessionName,
+                "grp": sess.recinfo.animal.tag,
+            }
+        )
+    )
+
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=[4, 3], hspace=0.3)
+group = ["sd", "nsd"]
+for i, grp in enumerate(group):
+    grp_data = mean_corr_all[mean_corr_all.grp == grp]
+    mean_corr = grp_data.groupby("time").mean()
+
+    axfr = plt.subplot(gs[i, :-1])
+    figure.panel_label(axfr, "a")
+    sns.lineplot(
+        x="time",
+        y="corr",
+        # hue="subject",
+        data=grp_data,
+        ax=axfr,
+        ci=None,
+        style="subject",
+        legend=None,
+        color="gray",
+        ls="--",
+        dashes=False,
+        alpha=0.5,
+    )
+    # mean_corr.plot(ax=axfr, y="frate", color="k", linewidth=2, alpha=0.7, legend=None)
+    mean_corr.plot(ax=axfr, y="corr", color="k", linewidth=2, alpha=0.7, legend=None)
+    axfr.plot([0, 5], [0.005, 0.005], color="#f14646", linewidth=5)
+    axfr.text(2.5, 0.0055, "SD", ha="center")
+    axfr.set_ylabel("Mean correlation")
+    axfr.set_xlabel("Time since ZT0 (h)")
+    axfr.set_ylim([0, 0.02])
+    axfr.ticklabel_format(axis="y", scilimits=(0, 0))
+
+figure.savefig("meancorr_sd_nsd", __file__)
 # endregion
 
 
