@@ -1,4 +1,5 @@
 from callfunc import processData
+from typing import List
 
 
 def allsess():
@@ -36,6 +37,7 @@ class Openfield:
 class Sd:
     @property
     def allsess(self):
+        pipelines: List[processData]
         pipelines = self.ratJday1 + self.ratKday1 + self.ratNday1 + self.ratSday3
         return pipelines
 
@@ -63,6 +65,7 @@ class Sd:
 class Nsd:
     @property
     def allsess(self):
+        pipelines: List[processData]
         pipelines = self.ratJday2 + self.ratKday2 + self.ratNday2 + self.ratSday2
         return pipelines
 
