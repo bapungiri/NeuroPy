@@ -15,14 +15,14 @@ from plotUtil import Colormap
 # plt.clf()
 
 # fig, ax = plt.subplots(figsize=(5, 3))
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
 
     # sess.ripple.channels()
-    # sess.ripple.detect()
+    sess.ripple.detect()
     # ripples = sess.ripple.events
     # sess.ripple.export2Neuroscope()
-    sess.ripple.plot()
+    # sess.ripple.plot()
 #
 # ax.set_xlim([-5, 10])
 # endregion
@@ -42,12 +42,10 @@ for sub, sess in enumerate(sessions):
 
 #%% H-SWA
 # region
-plt.clf()
+sessions = subjects.Nsd().ratNday2
 for sub, sess in enumerate(sessions):
 
-    sess.trange = np.array([])
-
-    sess.swa.detect()
+    sess.swa.detect(chan=103)
     # sess.swa.plot()
 # endregion
 

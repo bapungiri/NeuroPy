@@ -1,6 +1,8 @@
 from callfunc import processData
 from typing import List
 
+colors = {"sd": "#ff6b6b", "nsd": "#69c"}
+
 
 def allsess():
     """all data folders together """
@@ -61,6 +63,10 @@ class Sd:
         path = "/data/Clustering/SleepDeprivation/RatS/Day3SD/"
         return [processData(path)]
 
+    def __add__(self, other):
+        pipelines: List[processData] = self.allsess + other.allsess
+        return pipelines
+
 
 class Nsd:
     @property
@@ -88,6 +94,10 @@ class Nsd:
     def ratSday2(self):
         path = "/data/Clustering/SleepDeprivation/RatS/Day2NSD/"
         return [processData(path)]
+
+    def __add__(self, other):
+        pipelines: List[processData] = self.allsess + other.allsess
+        return pipelines
 
 
 class Two_novel:

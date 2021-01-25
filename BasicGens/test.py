@@ -5,17 +5,10 @@ import pandas as pd
 import csv
 from pathlib import Path
 
-rootdir = Path("/run/media/bapung/mercik/RatS/Day5TwoNovel")
-folders = [f for f in rootdir.iterdir() if f.is_dir()]
-sub_file = Path(
-    "experiment1/recording1/continuous/Intan_Rec._Controller-100.0/continuous.dat"
-)
+file1 = "/data/Clustering/SleepDeprivation/RatN/Day1/spykcirc/RatNDay1Shank3/RatNDay1Shank3.GUI/templates.npy"
 
-nframes = []
-for folder in folders:
-    file = folder / sub_file
-    nframes.append(len(np.memmap(file, dtype="int16", mode="r")) / 195)
+file2 = "/data/Clustering/SleepDeprivation/RatN/Day1/spykcirc/RatNDay1Shank3/RatNDay1Shank3.GUI/template_ind.npy"
 
-nframes = np.asarray(nframes).astype(int)
-
-print(nframes)
+file3 = ""
+temp = np.load(file1)
+temp_ind = np.load(file2)

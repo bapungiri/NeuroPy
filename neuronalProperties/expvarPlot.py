@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import scipy.stats as stats
 import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter1d
@@ -12,20 +13,27 @@ import pingouin as pg
 #%% Explained variance PRE-MAZE-POST
 # region
 figure = Fig()
-fig, gs = figure.draw(num=1, grid=(2, 1))
+fig, gs = figure.draw(num=1, grid=(2, 2))
+# sessions = (
+#     subjects.Nsd().ratSday2
+#     + subjects.Sd().ratSday3
+#     + subjects.Nsd().ratNday2
+#     + subjects.Sd().ratKday1
+# )
 sessions = subjects.Sd().ratSday3
-# sessions = subjects.Nsd().ratSday2
 
 for sub, sess in enumerate(sessions):
 
     pre = sess.epochs.pre
-    maze1 = sess.epochs.maze1
+    maze = sess.epochs.maze
+    if maze is None:
+        maze = sess.epochs.maze1
     # maze2 = sess.epochs.maze2
     post = sess.epochs.post
-
+    maze2 = sess.epochs.maze2
     # --- break region into periods --------
     bin1 = sess.utils.getinterval(pre, 2)
-    bin2 = sess.utils.getinterval(post, 2)
+    bin2 = sess.utils.getinterval(post, 4)
     bins = bin1 + bin2
     # bins = [
     #     pre,
@@ -41,7 +49,11 @@ for sub, sess in enumerate(sessions):
     # sess.spikes.stability.refPeriodViolation()
     # violations = sess.spikes.stability.violations
     sess.replay.expvar.compute(
-        template=maze1, match=post, control=pre, slideby=300, cross_shanks=False
+        template=maze,
+        match=[post[0], maze2[1]],
+        control=pre,
+        slideby=300,
+        cross_shanks=True,
     )
     print(sess.replay.expvar.npairs)
 
@@ -50,6 +62,9 @@ for sub, sess in enumerate(sessions):
     ax1 = fig.add_subplot(axstate[1:])
     sess.replay.expvar.plot(ax=ax1, tstart=post[0])
     ax1.set_xlim(left=0)
+    ax1.tick_params(width=2)
+    if sub == 3:
+        ax1.set_ylim([0, 0.17])
     # ax1.spines["right"].set_visible("False")
     # ax1.spines["top"].set_visible("False")
 
@@ -59,7 +74,7 @@ for sub, sess in enumerate(sessions):
     # ax1.set_ylim([0, 11])
 
 
-# figure.savefig("RatS_EV", __file__)
+# figure.savefig("EV_check", __file__)
 # endregion
 
 
@@ -432,4 +447,39 @@ for sub, grp in enumerate(["sd", "nsd"]):
     ax.set_xlabel("Time (h)")
 
 figure.savefig("exp_var", __file__)
+# endregion
+
+
+#%% Example figure for explained variance
+# region
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(3, 2), wspace=0.3)
+
+sessions = subjects.Sd().ratSday3
+
+for sess in sessions:
+    spikes = sess.spikes.pyr
+    pre = sess.epochs.pre
+    maze = sess.epochs.maze1
+    post = sess.epochs.post
+    precorr = sess.spikes.corr.pairwise(spikes, period=pre)
+    mazecorr = sess.spikes.corr.pairwise(spikes, period=maze)
+    postcorr = sess.spikes.corr.pairwise(spikes, period=[post[0], post[0] + 3600])
+
+    ax = plt.subplot(gs[0])
+    sns.regplot(
+        mazecorr, precorr, ci=None, color="k", marker=".", line_kws={"color": "r"}
+    )
+    ax.set_xlabel("MAZE")
+    ax.set_ylabel("PRE")
+
+    ax = plt.subplot(gs[1], sharey=ax, sharex=ax)
+    sns.regplot(
+        mazecorr, postcorr, ci=None, color="k", marker=".", line_kws={"color": "r"}
+    )
+    # ax.scatter(mazecorr, postcorr, c="k", s=2)
+    ax.set_xlabel("MAZE")
+    ax.set_ylabel("POST")
+
 # endregion

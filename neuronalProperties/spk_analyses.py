@@ -879,7 +879,6 @@ for sub, sess in enumerate(sessions):
         )
     )
 
-
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=[4, 3], hspace=0.3)
 group = ["sd", "nsd"]

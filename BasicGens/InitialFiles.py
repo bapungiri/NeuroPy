@@ -10,7 +10,7 @@ import time
 
 #%% Generate _basics.npy files
 # region
-sessions = subjects.Nsd().ratSday2
+sessions = subjects.Sd().ratNday1
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
@@ -18,13 +18,13 @@ for sub, sess in enumerate(sessions):
     #     "/data/Clustering/SleepDeprivation/RatS/Day3SD/openEphysSettings/settings.xml"
     # )
     # sess.recinfo.generate_xml(settingsPath=openephys_settingspath)
-    sess.recinfo.makerecinfo(nShanks=[6, 8], skulleeg=[51], motion=[192, 193, 194])
+    sess.recinfo.makerecinfo(nShanks=8)
     # sess.recinfo.makerecinfo(nShanks=8)
 # endregion
 
 #%% Generate probemap and .prb for spyking circus
 # region
-sessions = subjects.Nsd().ratSday2
+sessions = subjects.Nsd().ratKday2
 for sub, sess in enumerate(sessions):
 
     # sess.trange = np.array([])
@@ -86,10 +86,14 @@ for sub, sess in enumerate(sessions):
 
 #%% Gen spikes or instantenous firing rate
 # region
-sessions = subjects.Nsd().ratSday2
+sessions = subjects.Sd().ratJday1
 for sub, sess in enumerate(sessions):
     # sess.trange = np.array([])
-    sess.spikes.from_Phy(fileformat="same_folder")
+    sess.recinfo.sampfreq = 30000
+    sess.spikes.from_Phy(
+        folder="/data/Clustering/SleepDeprivation/RatJ/Day1/spykcirc/clus_combined",
+        fileformat="diff_folder",
+    )
     # sess.spikes.gen_instfiring()
 # endregion
 
