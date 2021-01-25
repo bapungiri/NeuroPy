@@ -1,8 +1,6 @@
 #%%
 import warnings
 
-import matplotlib
-import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -10,12 +8,11 @@ import scipy.signal as sg
 import scipy.stats as stats
 import seaborn as sns
 import signal_process
-from ccg import correlograms
+from mathutil import eventpsth
 from plotUtil import Colormap, Fig
 from scipy.ndimage import gaussian_filter1d
 import subjects
 
-cmap = matplotlib.cm.get_cmap("hot_r")
 # warnings.simplefilter(action="default")
 
 
@@ -701,20 +698,24 @@ figure.savefig("delta_ripple_coupling_sd", __file__)
 
 #%%* Hourly delta-ripple locking over the course of normal sleep (control sessions POST)
 # region
+sessions = subjects.Nsd().ratSday2
 psth_all = []
-for sub, sess in enumerate(sessions[3:]):
+for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
 
     post = sess.epochs.post
     windows = np.arange(post[0], post[1], 2 * 3600)
+    rpls = sess.ripple.events.start
+    hswa = sess.swa.events.peaktime
 
     psth = []
-
     for start in windows[:5]:
         period = [start, start + 2 * 3600]
         psth.append(
-            sess.eventpsth.hswa_ripple.compute(period=period, nQuantiles=1).squeeze()
+            sess.eventpsth.compute(
+                ref=hswa, event=rpls, period=period, nQuantiles=1
+            ).squeeze()
         )
 
     psth = np.asarray(psth)
@@ -727,12 +728,12 @@ for sub, sess in enumerate(sessions[3:]):
         var_name="window",
         value_name="counts",
     )
-    psth["subname"] = [sess.sessinfo.session.sessionName] * len(psth)
+    psth["subname"] = [sess.recinfo.session.sessionName] * len(psth)
 
     psth_all.append(psth)
 
 figure = Fig()
-fig, gs = figure.draw(grid=[5, 5])
+fig, gs = figure.draw(num=1, grid=[5, 5])
 psth_all = pd.concat(psth_all, ignore_index=True)
 ax = fig.add_subplot(gs[3])
 ax.clear()
@@ -751,6 +752,81 @@ ax.set_ylabel("Counts")
 ax.set_title("Ripple probability \n over normal sleep")
 figure.panel_label(ax, "e")
 figure.savefig("normal_sleep_hourly_delta_ripple", __file__)
+# endregion
+
+#%%* Comparing delta-ripple locking between recovery sleep and normal sleeps
+# region
+sessions = subjects.Nsd().allsess + subjects.Sd().allsess
+psth_all = pd.DataFrame()
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    post = sess.epochs.post
+    rpls = sess.ripple.events
+    hswa = sess.swa.events
+    tag = sess.recinfo.animal.tag
+
+    if tag == "sd":
+        period = [post[0] + 5 * 3600, post[1]]
+    else:
+        period = [post[0], post[0] + 5 * 3600]
+        # period = [post[0] + 5 * 3600, post[1]]
+
+    rpls = rpls[(rpls.start > period[0]) & (rpls.end < period[1])]
+    rpl_peaktime = rpls.peaktime
+    hswa = np.asarray(hswa[(hswa.start > period[0]) & (hswa.end < period[1])].peaktime)
+
+    # --- excluding hswa inside ripple events ----------
+    # rpl_epochs = rpls[["start", "end"]].to_numpy().ravel()
+    # sharp_waves = np.digitize(x=hswa, bins=rpl_epochs)
+    # odd_bins = np.where(sharp_waves % 2 == 1)[0]
+    # hswa = hswa[odd_bins]
+
+    psth = eventpsth(ref=hswa, event=rpl_peaktime, fs=eegSrate).squeeze()
+
+    df = pd.DataFrame(
+        {"time": np.linspace(-0.5, 0.5, 101) + 0.005, "psth": psth, "grp": tag}
+    )
+    psth_all = psth_all.append(df)
+
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=[3, 2])
+
+for grp in ["sd", "nsd"]:
+
+    color = subjects.colors[grp]
+    data = psth_all[psth_all.grp == grp]
+    mean = data.groupby("time").mean()
+    sem = data.groupby("time").sem(ddof=0)
+
+    ax = fig.add_subplot(gs[1])
+    mean.plot(y="psth", ax=ax, color=color, legend=False)
+    ax.fill_between(
+        mean.index,
+        mean.psth - sem.psth,
+        mean.psth + sem.psth,
+        color=color,
+        alpha=0.3,
+        label=grp,
+    )
+    # sns.lineplot(
+    #     x="time",
+    #     y="psth",
+    #     hue="grp",
+    #     data=psth_all,
+    #     palette=["#69c", "#ff6b6b"],
+    #     ci=None,
+    #     # n_boot=1,
+    #     legend=False,
+    # )
+    ax.set_ylim(top=800)
+    ax.set_xlabel("Times from delta (s)")
+    ax.set_ylabel("# Ripples")
+    ax.set_title("Recovery sleep \n vs \n NSD (first 5 h)")
+
+ax.legend()
+figure.panel_label(ax, "e")
+# figure.savefig("rec_slp_vs_normal_sleeplast5h", __file__)
 # endregion
 
 
@@ -804,7 +880,9 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     post = sess.epochs.post
     period = [post[0] + 5 * 3600, post[1]]
-    psth = sess.eventpsth.hswa_spindle.compute(period=None, nQuantiles=10)
+    rpls = sess.ripple.events.peaktime
+    spindles = sess.spindle.events.start
+    psth = eventpsth(ref=spindles, event=rpls, nQuantiles=10)
     psth = pd.DataFrame(psth.T, columns=range(10))
     psth["time"] = np.linspace(-0.5, 0.5, 101) + 0.05
     psth = pd.melt(

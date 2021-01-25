@@ -581,3 +581,41 @@ for sub, sess in enumerate(sessions):
 
 # figure.savefig("gamma_power_track", __file__)
 # endregion
+
+#%% Asynchrony of ripples between hemisphere during sleep deprivation
+# region
+sessions = subjects.Sd().ratSday3
+
+for sub, sess in enumerate(sessions):
+    post = sess.epochs.post
+    rpls = sess.ripple.events
+    rpls = rpls[(rpls.start > post[0]) & (rpls.start < post[1])]
+    chans = [54, 110]
+
+    thresh_lfp = np.zeros(sess.recinfo.getNframesEEG)
+    for chan in chans:
+        lfp = sess.recinfo.geteeg(chans=chan)
+        ripple_band = signal_process.filter_sig.bandpass(lfp, lf=150, hf=240)
+        hilbert_amp = stats.zscore(np.abs(signal_process.hilbertfast(ripple_band)))
+        thresh_lfp += np.where(hilbert_amp > 5, 1, 0)
+
+    both = []
+    for epoch in rpls.itertuples():
+        frames = np.arange(int(epoch.start * 1250), int(epoch.end * 1250))
+        extract_lfp = thresh_lfp[frames - 1]
+
+        if 2 in extract_lfp:
+            both.append(0)
+        else:
+            both.append(1)
+
+    hist_ = stats.binned_statistic(
+        rpls.start,
+        bins=np.arange(post[0], post[1], 1500),
+        values=both,
+        statistic="sum",
+    )
+    plt.plot(hist_[0])
+
+
+# endregion

@@ -4,37 +4,14 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 import seaborn as sns
-import matplotlib
-from collections import namedtuple
 from pathlib import Path
-import matplotlib.gridspec as gridspec
-import signal_process
 import matplotlib as mpl
 from plotUtil import Colormap
 import scipy.signal as sg
 from ccg import correlograms
-import warnings
-
-cmap = matplotlib.cm.get_cmap("hot_r")
-warnings.simplefilter(action="default")
-
-
-from callfunc import processData
-
-#%% Subjects
-basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    "/data/Clustering/SleepDeprivation/RatK/Day4/",
-    "/data/Clustering/SleepDeprivation/RatN/Day4/",
-]
-
-
-sessions = [processData(_) for _ in basePath]
+from plotUtil import Fig
+from sklearn.cluster import KMeans
+import subjects
 
 #%% Plotting cell statistics
 # region
@@ -63,11 +40,83 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
-#%% Plotting CCG for each cell with data like refractory peiod violation, quality etc
+#%% Auto labelling of cells scratchpad
 # region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(1, 1))
+sessions = subjects.Sd().ratNday1
+for sub, sess in enumerate(sessions):
+    spikes = sess.spikes.times
+    sess.spikes.label_celltype()
+    ccgs = sess.spikes.get_acg(spikes=spikes)
+    ccg_width = ccgs[0].shape[-1]
+    ccg_right = [_[26:] for _ in ccgs]
+    burstiness = np.asarray([len(ccg) / np.sum(ccg) for ccg in ccg_right])
+
+    period_dur = sess.recinfo.getNframesEEG / 1250
+    templates = sess.spikes.templates
+
+    frate = np.asarray([len(cell) / period_dur for cell in spikes])
+    waveform = np.asarray(
+        [cell[np.argmax(np.ptp(cell, axis=1)), :] for cell in templates]
+    )
+
+    n_t = waveform.shape[1]
+    center = np.int(n_t / 2)
+    left_peak = np.max(waveform[:, :center], axis=1)
+    right_peak = np.max(waveform[:, center + 1 :], axis=1)
+    peak_ratio = left_peak / right_peak
+
+    isi = [np.diff(_) for _ in spikes]
+    isi_bin = np.arange(0, 0.1, 0.001)
+    isi_hist = np.asarray([np.histogram(_, bins=isi_bin)[0] for _ in isi])
+    n_spikes_ref = np.sum(isi_hist[:, :2], axis=1) + 1e-16
+    ref_period_ratio = np.max(isi_hist, axis=1) / n_spikes_ref
+
+    sum_peak = np.asarray([np.max(ccg[20:24]) for ccg in ccgs])
+    sum_refractory = np.asarray([np.sum(ccg[24:26]) for ccg in ccgs]) + 1e-16
+    ref_ratio = sum_peak / sum_refractory
+
+    param1 = peak_ratio
+    param2 = burstiness  # np.log10(sum_peak / sum_refractory)
+    param3 = frate
+
+    features = np.vstack((param1, param2, param3)).T
+    kmeans = KMeans(n_clusters=2).fit(features)
+    y_means = kmeans.predict(features)
+    ax = plt.subplot(gs[0], projection="3d")
+    # ax.scatter(param3, param2, param1)
+    ax.scatter(param1, param2, param3, c=y_means, s=50, cmap="viridis")
+
+    # plt.plot(np.log10(frate), np.log(sum_peak / sum_refractory), ".")
+
+    # for cell_id, ccg in enumerate(ccgs):
+    #     ax = plt.subplot(gs[cell_id])
+    #     ax.bar(np.arange(len(ccg)), ccg)
+
 
 # endregion
 
+#%% Plot autocorrelograms
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(10, 11))
+sessions = subjects.Sd().ratNday1
+for sub, sess in enumerate(sessions):
+    # sess.recinfo.sampfreq = 30000
+    sess.spikes.label_celltype()
+    spikes = sess.spikes.intneur
+    duration = sess.recinfo.getNframesEEG / 1250
+    frate = [len(_) / np.ptp(_) for _ in spikes]
+    ccgs = sess.spikes.get_acg(spikes=spikes)
+    for cell_id, ccg in enumerate(ccgs):
+        ax = plt.subplot(gs[cell_id])
+        ax.bar(np.arange(len(ccg)), ccg)
+        ax.set_title(f"{np.round(frate[cell_id],2)}")
+        ax.axis("off")
+
+
+# endregion
 #%% Plot spike amplitude over time and CCG
 # region
 for sub, sess in enumerate(sessions):

@@ -9,34 +9,55 @@ import seaborn as sns
 import matplotlib as mpl
 import scipy.ndimage as smooth
 import signal_process
-
-from callfunc import processData
-
-#%% Subjects
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-]
-
-
-sessions = [processData(_) for _ in basePath]
+from plotUtil import Fig
+import subjects
 
 #%% localsleep detection
 # region
+sessions = subjects.Sd().allsess
 for sub, sess in enumerate(sessions):
-
-    sess.trange = np.array([])
     post = sess.epochs.post
     period = [post[0], post[0] + 5 * 3600]
     sess.localsleep.detect(period=period)
+    # sess.localsleep.plot_examples()
 # endregion
 
+#%% Localsleep event rate across sleep deprivation
+# region
 
+sessions = subjects.Sd().allsess
+data = pd.DataFrame()
+for sub, sess in enumerate(sessions):
+    post = sess.epochs.post
+    lcslp = sess.localsleep.events
+    period = [post[0], post[0] + 5 * 3600]
+    bins = np.linspace(period[0], period[1], 6)
+    counts = np.histogram(lcslp.start, bins=bins)[0]
+
+    data = data.append(
+        pd.DataFrame({"bins": np.arange(2), "counts": counts[[0, 4]] / 60, "name": sub})
+    )
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(3, 3))
+ax = plt.subplot(gs[0])
+sns.pointplot(
+    data=data,
+    x="bins",
+    y="counts",
+    hue="name",
+    # color="#c5c3c6",
+    ax=ax,
+    palette=["#c5c3c6"] * 5,
+    zorder=1,
+)
+sns.pointplot(
+    data=data, x="bins", y="counts", palette="gray", join=True, ax=ax, zorder=2
+)
+ax.set_ylim(bottom=0)
+
+
+# endregion
 #%% Local sleep example plots plus summary from all SD sessions
 # region
 plt.close("all")
@@ -369,4 +390,3 @@ for sub, sess in enumerate(sessions):
 
 
 # endregion
-
