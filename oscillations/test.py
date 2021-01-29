@@ -1,82 +1,57 @@
-# importing various libraries
-import sys
-from PyQt5.QtWidgets import QDialog, QApplication, QPushButton, QVBoxLayout
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+import numpy as np
+
+from skimage.transform import hough_line, hough_line_peaks
+from skimage.feature import canny
+from skimage.draw import line
+from skimage import data
+
 import matplotlib.pyplot as plt
-import random
-
-# main window
-# which inherits QDialog
-class Window(QDialog):
-
-    # constructor
-    def __init__(self, parent=None):
-        super(Window, self).__init__(parent)
-
-        # a figure instance to plot on
-        self.figure = plt.figure()
-
-        # this is the Canvas Widget that
-        # displays the 'figure'it takes the
-        # 'figure' instance as a parameter to __init__
-        self.canvas = FigureCanvas(self.figure)
-
-        # this is the Navigation widget
-        # it takes the Canvas widget and a parent
-        self.toolbar = NavigationToolbar(self.canvas, self)
-
-        # Just some button connected to 'plot' method
-        self.button = QPushButton("Plot")
-
-        # adding action to the button
-        self.button.clicked.connect(self.plot)
-
-        # creating a Vertical Box layout
-        layout = QVBoxLayout()
-
-        # adding tool bar to the layout
-        layout.addWidget(self.toolbar)
-
-        # adding canvas to the layout
-        layout.addWidget(self.canvas)
-
-        # adding push button to the layout
-        layout.addWidget(self.button)
-
-        # setting layout to the main window
-        self.setLayout(layout)
-
-    # action called by thte push button
-    def plot(self):
-
-        # random data
-        data = [random.random() for i in range(10)]
-
-        # clearing old figure
-        self.figure.clear()
-
-        # create an axis
-        ax = self.figure.add_subplot(111)
-
-        # plot data
-        ax.plot(data, "*-")
-
-        # refresh canvas
-        self.canvas.draw()
+from matplotlib import cm
 
 
-# driver code
-if __name__ == "__main__":
+# Constructing test image
+# image = np.zeros((200, 200))
+# idx = np.arange(25, 175)
+# image[idx, idx] = 255
+# image[line(45, 25, 25, 175)] = 255
+# image[line(25, 135, 175, 155)] = 255
+image = b[92]
+# Classic straight-line Hough transform
+# Set a precision of 0.5 degree.
+tested_angles = np.linspace(-np.pi / 2, np.pi / 2, 360, endpoint=False)
+h, theta, d = hough_line(image, theta=tested_angles)
 
-    # creating apyqt5 application
-    app = QApplication(sys.argv)
+# Generating figure 1
+fig, axes = plt.subplots(1, 3, figsize=(15, 6))
+ax = axes.ravel()
 
-    # creating a window object
-    main = Window()
+ax[0].imshow(image, cmap=cm.gray)
+ax[0].set_title("Input image")
+ax[0].set_axis_off()
 
-    # showing the window
-    main.show()
+angle_step = 0.5 * np.diff(theta).mean()
+d_step = 0.5 * np.diff(d).mean()
+bounds = [
+    np.rad2deg(theta[0] - angle_step),
+    np.rad2deg(theta[-1] + angle_step),
+    d[-1] + d_step,
+    d[0] - d_step,
+]
+ax[1].imshow(np.log(1 + h), extent=bounds, cmap=cm.gray, aspect=1 / 1.5)
+ax[1].set_title("Hough transform")
+ax[1].set_xlabel("Angles (degrees)")
+ax[1].set_ylabel("Distance (pixels)")
+ax[1].axis("image")
 
-    # loop
-    quit(app.exec_())
+ax[2].imshow(image, cmap=cm.gray)
+origin = np.array((0, image.shape[1]))
+for _, angle, dist in zip(*hough_line_peaks(h, theta, d)):
+    y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
+    ax[2].plot(origin, (y0, y1), "-r")
+ax[2].set_xlim(origin)
+ax[2].set_ylim((image.shape[0], 0))
+ax[2].set_axis_off()
+ax[2].set_title("Detected lines")
+
+plt.tight_layout()
+plt.show()

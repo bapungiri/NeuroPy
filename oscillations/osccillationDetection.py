@@ -15,11 +15,11 @@ from plotUtil import Colormap
 # plt.clf()
 
 # fig, ax = plt.subplots(figsize=(5, 3))
-sessions = subjects.Nsd().ratSday2
+sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
 
     # sess.ripple.channels()
-    sess.ripple.detect()
+    sess.ripple.detect(lowthreshold=2)
     # ripples = sess.ripple.events
     # sess.ripple.export2Neuroscope()
     # sess.ripple.plot()
