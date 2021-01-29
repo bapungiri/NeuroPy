@@ -86,17 +86,26 @@ for sub, sess in enumerate(sessions):
 
 #%% Gen spikes or instantenous firing rate
 # region
-sessions = subjects.Sd().ratJday1
+sessions = subjects.Openfield().ratNday4
 for sub, sess in enumerate(sessions):
     # sess.trange = np.array([])
     sess.recinfo.sampfreq = 30000
     sess.spikes.from_Phy(
-        folder="/data/Clustering/SleepDeprivation/RatJ/Day1/spykcirc/clus_combined",
-        fileformat="diff_folder",
+        folder="/data/Clustering/SleepDeprivation/RatN/Day4/spykcirc/RatN_Day4_2019-10-15_11-30-06.GUI",
+        fileformat="same_folder",
     )
     # sess.spikes.gen_instfiring()
 # endregion
 
+#%% label cells
+# region
+sessions = subjects.Openfield().ratNday4
+for sub, sess in enumerate(sessions):
+    sess.recinfo.sampfreq = 30000
+    sess.spikes.label_celltype()
+
+
+# endregion
 #%%Generate bestThetachan
 # region
 

@@ -24,7 +24,7 @@ def allsess():
     return [processData(_) for _ in paths]
 
 
-class Openfield:
+class Of:
     @property
     def ratJday4(self):
         path = "/data/Clustering/SleepDeprivation/RatJ/Day4/"

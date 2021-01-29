@@ -14,23 +14,26 @@ import pingouin as pg
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(2, 2))
-# sessions = (
-#     subjects.Nsd().ratSday2
-#     + subjects.Sd().ratSday3
-#     + subjects.Nsd().ratNday2
-#     + subjects.Sd().ratKday1
-# )
-sessions = subjects.Sd().ratSday3
+sessions = (
+    subjects.Nsd().ratSday2
+    + subjects.Sd().ratSday3
+    + subjects.Nsd().ratNday2
+    + subjects.Sd().ratNday1
+)
+# sessions = subjects.Sd().ratSday3
 
 for sub, sess in enumerate(sessions):
 
     pre = sess.epochs.pre
-    maze = sess.epochs.maze
-    if maze is None:
+
+    try:
+        maze = sess.epochs.maze
+    except:
         maze = sess.epochs.maze1
     # maze2 = sess.epochs.maze2
+
     post = sess.epochs.post
-    maze2 = sess.epochs.maze2
+    # maze2 = sess.epochs.maze2
     # --- break region into periods --------
     bin1 = sess.utils.getinterval(pre, 2)
     bin2 = sess.utils.getinterval(post, 4)
@@ -48,10 +51,15 @@ for sub, sess in enumerate(sessions):
     sess.spikes.stability.firingRate(periods=bins)
     # sess.spikes.stability.refPeriodViolation()
     # violations = sess.spikes.stability.violations
+
+    control = maze
+    template = [post[0] + 4 * 3600, post[0] + 5 * 3600]
+    match = [post[0] + 5 * 3600, post[1]]
+
     sess.replay.expvar.compute(
-        template=maze,
-        match=[post[0], maze2[1]],
-        control=pre,
+        template=template,
+        match=match,
+        control=control,
         slideby=300,
         cross_shanks=True,
     )
@@ -63,8 +71,8 @@ for sub, sess in enumerate(sessions):
     sess.replay.expvar.plot(ax=ax1, tstart=post[0])
     ax1.set_xlim(left=0)
     ax1.tick_params(width=2)
-    if sub == 3:
-        ax1.set_ylim([0, 0.17])
+    # if sub == 3:
+    #     ax1.set_ylim([0, 0.17])
     # ax1.spines["right"].set_visible("False")
     # ax1.spines["top"].set_visible("False")
 
@@ -74,7 +82,7 @@ for sub, sess in enumerate(sessions):
     # ax1.set_ylim([0, 11])
 
 
-# figure.savefig("EV_check", __file__)
+# figure.savefig("EV_sessions", __file__)
 # endregion
 
 
@@ -469,17 +477,85 @@ for sess in sessions:
 
     ax = plt.subplot(gs[0])
     sns.regplot(
-        mazecorr, precorr, ci=None, color="k", marker=".", line_kws={"color": "r"}
+        x=mazecorr, y=precorr, ci=None, color="k", marker=".", line_kws={"color": "r"}
     )
     ax.set_xlabel("MAZE")
     ax.set_ylabel("PRE")
 
     ax = plt.subplot(gs[1], sharey=ax, sharex=ax)
     sns.regplot(
-        mazecorr, postcorr, ci=None, color="k", marker=".", line_kws={"color": "r"}
+        x=mazecorr, y=postcorr, ci=None, color="k", marker=".", line_kws={"color": "r"}
     )
     # ax.scatter(mazecorr, postcorr, c="k", s=2)
     ax.set_xlabel("MAZE")
     ax.set_ylabel("POST")
+
+# endregion
+
+
+#%% CCG temporal structure over time
+# region
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 1))
+sessions = subjects.Sd().ratSday3 + subjects.Nsd().ratSday2
+
+for sub, sess in enumerate(sessions):
+    spikes = sess.spikes.pyr
+    maze = sess.epochs.maze1
+    pre = sess.epochs.pre
+    post = sess.epochs.post
+    maze2 = sess.epochs.maze2
+    post = [post[0], maze2[1]]
+    maze = [post[0] + 4 * 3600, post[0] + 5 * 3600]
+
+    def bin_spk(period):
+        maze_spikes = [
+            cell[np.where((cell > period[0]) & (cell < period[1]))[0]]
+            for cell in spikes
+        ]
+        ccgs = sess.spikes.ccg_temporal(maze_spikes)
+        return ccgs
+
+    maze_corr = bin_spk(maze)
+    pre_corr = bin_spk([pre[0], pre[0] + 900])
+
+    df2 = pd.DataFrame({"maze": maze_corr, "pre": pre_corr})
+    pre_ccg_corr = np.asarray(df2.corr())[0, 1]
+
+    # indices = np.union1d(
+    #     np.argwhere(np.isnan(maze_corr)), np.argwhere(np.isnan(pre_corr))
+    # )
+    # pre_ccg_corr = np.corrcoef(pre_corr[~indices], maze_corr[~indices])[0, 1]
+
+    bins_period = np.arange(post[0], post[1], 900)
+
+    corr_post = []
+    for start in bins_period:
+        post_corr = bin_spk([start, start + 900])
+        df = pd.DataFrame({"maze": maze_corr, "post": post_corr})
+        corr = np.asarray(df.corr())[0, 1]
+        corr_post.append(corr)
+
+    # ax = plt.subplot(gs[sub])
+    gs_ = figure.subplot2grid(gs[sub], grid=(3, 1))
+    ax = plt.subplot(gs_[1:])
+    ax.plot((bins_period - post[0]) / 3600, corr_post, "k")
+    # ax.axhline(pre_ccg_corr)
+    ax.set_ylabel("correlation")
+    ax.set_xlabel("Time (h)")
+    # ax.set_ylim([-0.05, 0.29])
+
+    axhypno = plt.subplot(gs_[0])
+    sess.brainstates.hypnogram(ax=axhypno, tstart=post[0], unit="h")
+    # a = np.corrcoef(maze_corr, pre_corr)[0, 1]
+    # b = np.corrcoef(maze_corr, post_corr)[0, 1]
+
+    # ax = plt.subplot(gs[0])
+    # sns.regplot(x=maze_corr, y=pre_corr, ci=None)
+
+    # ax = plt.subplot(gs[1])
+    # sns.regplot(x=maze_corr, y=post_corr, ci=None)
+
 
 # endregion

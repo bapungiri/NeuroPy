@@ -10,8 +10,9 @@ from plotUtil import Colormap
 import scipy.signal as sg
 from ccg import correlograms
 from plotUtil import Fig
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 import subjects
+from sklearn.preprocessing import StandardScaler
 
 #%% Plotting cell statistics
 # region
@@ -44,7 +45,7 @@ for sub, sess in enumerate(sessions):
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(1, 1))
-sessions = subjects.Sd().ratNday1
+sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
     spikes = sess.spikes.times
     sess.spikes.label_celltype()
@@ -61,6 +62,7 @@ for sub, sess in enumerate(sessions):
         [cell[np.argmax(np.ptp(cell, axis=1)), :] for cell in templates]
     )
 
+    # ---- peak difference--------
     n_t = waveform.shape[1]
     center = np.int(n_t / 2)
     left_peak = np.max(waveform[:, :center], axis=1)
@@ -93,6 +95,66 @@ for sub, sess in enumerate(sessions):
     # for cell_id, ccg in enumerate(ccgs):
     #     ax = plt.subplot(gs[cell_id])
     #     ax.bar(np.arange(len(ccg)), ccg)
+# endregion
+
+#%% Test all clustering algorithms
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(1, 1))
+sessions = subjects.Sd().ratSday3
+for sub, sess in enumerate(sessions):
+    spikes = sess.spikes.times
+    templates = sess.spikes.templates
+    # sess.spikes.label_celltype()
+
+    # --------- burstiness ---------
+    ccgs = sess.spikes.get_acg(spikes=spikes)
+    ccg_width = ccgs[0].shape[-1]
+    ccg_right = [_[26:] for _ in ccgs]
+    burstiness = [np.sum(np.arange(len(ccg)) * ccg) / np.sum(ccg) for ccg in ccg_right]
+
+    # ------ frate ----------
+    period_dur = sess.recinfo.getNframesEEG / 1250
+    frate = np.asarray([len(cell) / period_dur for cell in spikes])
+
+    # ---- peak difference--------
+    waveform = np.asarray(
+        [cell[np.argmax(np.ptp(cell, axis=1)), :] for cell in templates]
+    )
+    n_t = waveform.shape[1]  # waveform width
+    center = np.int(n_t / 2)
+    wave_window = int(0.25 * (30000 / 1000))
+    from_peak = int(0.18 * (30000 / 1000))
+    left_peak = np.trapz(
+        waveform[:, center - from_peak - wave_window : center - from_peak], axis=1
+    )
+    right_peak = np.trapz(
+        waveform[:, center + from_peak : center + from_peak + wave_window], axis=1
+    )
+    peak_ratio = left_peak - right_peak
+
+    isi = [np.diff(_) for _ in spikes]
+    isi_bin = np.arange(0, 0.1, 0.001)
+    isi_hist = np.asarray([np.histogram(_, bins=isi_bin)[0] for _ in isi])
+    n_spikes_ref = np.sum(isi_hist[:, :2], axis=1) + 1e-16
+    ref_period_ratio = np.max(isi_hist, axis=1) / n_spikes_ref
+
+    param1 = frate
+    param2 = burstiness
+    param3 = peak_ratio
+
+    features = np.vstack((param1, param2, param3)).T
+    features = StandardScaler().fit_transform(features)
+    kmeans = KMeans(n_clusters=2).fit(features)
+    ax = plt.subplot(gs[0], projection="3d")
+    # ax.scatter(param3, param2, param1)
+    ax.scatter(param1, param2, param3, c=kmeans.labels_, s=50, cmap="tab20")
+
+    # plt.plot(np.log10(frate), np.log(sum_peak / sum_refractory), ".")
+
+    # for cell_id, ccg in enumerate(ccgs):
+    #     ax = plt.subplot(gs[cell_id])
+    #     ax.bar(np.arange(len(ccg)), ccg)
 
 
 # endregion
@@ -101,10 +163,13 @@ for sub, sess in enumerate(sessions):
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(10, 11))
-sessions = subjects.Sd().ratNday1
+sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
     # sess.recinfo.sampfreq = 30000
-    sess.spikes.label_celltype()
+    # sess.spikes.label_celltype()
+    templates = sess.spikes.templates
+    int_wav = [templates[_] for _ in sess.spikes.intneurid]
+    wave = int_wav[0]
     spikes = sess.spikes.intneur
     duration = sess.recinfo.getNframesEEG / 1250
     frate = [len(_) / np.ptp(_) for _ in spikes]
