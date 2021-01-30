@@ -46,10 +46,10 @@ for sub, sess in enumerate(sessions):
 
 #%% Generate position files
 # region
-sessions = subjects.Nsd()
+sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
     sess.trange = []
-    sess.position.getPosition(method="from_metadata", scale=4.0)
+    sess.position.getPosition(method="from_metadata", scale=1.0)
     # sess.position.export2Neuroscope()
 
 # endregion
@@ -73,12 +73,12 @@ for sub, sess in enumerate(sessions):
 
 #%% create Track
 # region
-sessions = subjects.sd([3])
+sessions = subjects.Nsd().ratSday2
 for sub, sess in enumerate(sessions):
-    sess.trange = np.array([])
-    # sess.tracks.create(epoch_names=["maze"])
-    # sess.tracks.linearize_position(track_name=["maze2"], sample_sec=3)
-    # sess.tracks.estimate_run_laps("maze", speedthresh=(20, 30))
+    # sess.trange = np.array([])
+    # sess.tracks.create(epoch_names=["maze1"])
+    sess.tracks.linearize_position(track_names=["maze1"], sample_sec=3)
+    sess.tracks.estimate_run_laps("maze1", speedthresh=(20, 30))
     # sess.epochs.getfromCSV()
 
 # endregion
