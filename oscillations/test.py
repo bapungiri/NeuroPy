@@ -1,57 +1,77 @@
 import numpy as np
-
-from skimage.transform import hough_line, hough_line_peaks
-from skimage.feature import canny
-from skimage.draw import line
-from skimage import data
-
 import matplotlib.pyplot as plt
-from matplotlib import cm
+import time
+import cupy as cp
+
+x = np.arange(0, 1, 0.02)
+
+mat = np.random.uniform(0, 0.1, size=(43, 10))
+mat[0, 0] = 0.6
+mat[5, 1] = 0.7
+mat[9, 3] = 0.7
+mat[10, 4] = 0.6
+mat[15, 5] = 0.7
+mat[17, 6] = 0.7
+mat[19, 7] = 0.7
+mat[20, 8] = 0.6
+mat[30, 9] = 0.7
+
+mat = np.apply_along_axis(np.convolve, axis=0, arr=mat, v=np.ones(3))
+
+t = np.arange(mat.shape[1])
+nt = len(t)
+tmid = (nt + 1) / 2
+pos = np.arange(mat.shape[0])
+npos = len(pos)
+pmid = (npos + 1) / 2
+
+nlines = 35000
+slope = np.random.uniform(low=-np.pi / 2, high=np.pi / 2, size=nlines)
+diag_len = np.sqrt((nt - 1) ** 2 + (npos - 1) ** 2)
+intercept = np.random.uniform(low=-diag_len / 2, high=diag_len / 2, size=nlines)
+
+tstart = time.time()
+mat_cp = cp.array(mat)
+cmat = cp.tile(intercept, (nt, 1)).T
+mmat = cp.tile(slope, (nt, 1)).T
+tmat = cp.tile(t, (nlines, 1))
+cp.cuda.Stream.null.synchronize()
+posterior = cp.zeros((nlines, nt))
+
+y_line = (((cmat - (tmat - tmid) * cp.cos(mmat)) / cp.sin(mmat)) + pmid).astype(int)
+t_out = cp.where((y_line < 0) | (y_line > npos - 1))
+t_in = cp.where((y_line >= 0) & (y_line <= npos - 1))
+posterior[t_out] = cp.median(mat_cp[:, t_out[1]], axis=0)
+posterior[t_in] = mat_cp[y_line[t_in], t_in[1]]
+
+score = cp.nanmean(posterior, axis=1)
+print(time.time() - tstart)
 
 
-# Constructing test image
-# image = np.zeros((200, 200))
-# idx = np.arange(25, 175)
-# image[idx, idx] = 255
-# image[line(45, 25, 25, 175)] = 255
-# image[line(25, 135, 175, 155)] = 255
-image = b[92]
-# Classic straight-line Hough transform
-# Set a precision of 0.5 degree.
-tested_angles = np.linspace(-np.pi / 2, np.pi / 2, 360, endpoint=False)
-h, theta, d = hough_line(image, theta=tested_angles)
+tstart = time.time()
+cmat = np.tile(intercept, (nt, 1)).T
+mmat = np.tile(slope, (nt, 1)).T
+tmat = np.tile(t, (nlines, 1))
+posterior = np.zeros((nlines, nt))
 
-# Generating figure 1
-fig, axes = plt.subplots(1, 3, figsize=(15, 6))
-ax = axes.ravel()
+y_line = (((cmat - (tmat - tmid) * np.cos(mmat)) / np.sin(mmat)) + pmid).astype(int)
+t_out = np.where((y_line < 0) | (y_line > npos - 1))
+t_in = np.where((y_line >= 0) & (y_line <= npos - 1))
+posterior[t_out] = np.median(mat[:, t_out[1]], axis=0)
+posterior[t_in] = mat[y_line[t_in], t_in[1]]
 
-ax[0].imshow(image, cmap=cm.gray)
-ax[0].set_title("Input image")
-ax[0].set_axis_off()
+score = np.nanmean(posterior, axis=1)
+print(time.time() - tstart)
 
-angle_step = 0.5 * np.diff(theta).mean()
-d_step = 0.5 * np.diff(d).mean()
-bounds = [
-    np.rad2deg(theta[0] - angle_step),
-    np.rad2deg(theta[-1] + angle_step),
-    d[-1] + d_step,
-    d[0] - d_step,
-]
-ax[1].imshow(np.log(1 + h), extent=bounds, cmap=cm.gray, aspect=1 / 1.5)
-ax[1].set_title("Hough transform")
-ax[1].set_xlabel("Angles (degrees)")
-ax[1].set_ylabel("Distance (pixels)")
-ax[1].axis("image")
 
-ax[2].imshow(image, cmap=cm.gray)
-origin = np.array((0, image.shape[1]))
-for _, angle, dist in zip(*hough_line_peaks(h, theta, d)):
-    y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
-    ax[2].plot(origin, (y0, y1), "-r")
-ax[2].set_xlim(origin)
-ax[2].set_ylim((image.shape[0], 0))
-ax[2].set_axis_off()
-ax[2].set_title("Detected lines")
+# plt.ylim([0, npos])
+# plt.plot(x, y)
 
-plt.tight_layout()
-plt.show()
+max_line = np.argmax(score)
+ymax = (
+    (intercept[max_line] - (t - tmid) * np.cos(slope[max_line]))
+    / np.sin(slope[max_line])
+) + pmid
+
+plt.pcolormesh(mat)
+plt.plot(t, ymax)

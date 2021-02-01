@@ -149,6 +149,7 @@ for sub, sess in enumerate(sessions):
 
 figure = Fig()
 fig, gs = figure.draw(grid=(5, 3))
+sessions = subjects.Of().ratNday4
 fig.suptitle("Phase specfic extraction schematic")
 for sub, sess in enumerate(sessions):
     eegSrate = sess.recinfo.lfpSrate
