@@ -1,0 +1,226 @@
+# %%
+import warnings
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pingouin as pg
+import scipy.signal as sg
+import scipy.stats as stats
+import seaborn as sns
+import signal_process
+import subjects
+from mathutil import threshPeriods
+from plotUtil import Colormap, Fig
+from scipy.ndimage import gaussian_filter, gaussian_filter1d
+
+# warnings.simplefilter(action="default")
+
+#%% Explained variance
+# region
+
+# endregion
+
+
+#%% Multiple regression theta parameters and slow gamm with wavelet analysis of slow gamma
+# region
+"""For RatNDay4 (openfield), 
+    chosen channel = 11 (pyramidal layer) 
+"""
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(5, 3), wspace=0.4)
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+
+    # ------ sharp wave ripple plot -------
+    rpls = sess.ripple.events
+    axripple = plt.subplot(gs[:3, 0])
+    sess.ripple.plot_example(ax=axripple, ripple_indx=2457, shank_id=7, pad=0.6)
+
+    gs_subplot = figure.subplot2grid(gs[:3, 1:], grid=(4, 2))
+    for shank in [7]:
+        channels = sess.recinfo.goodchangrp[shank][::2]
+        bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+        phase_centers = bin_angle[:-1] + np.diff(bin_angle).mean() / 2
+        lfpmaze = sess.recinfo.geteeg(chans=channels, timeRange=maze)
+
+        frgamma = np.arange(25, 150, 1)
+
+        def wavlet_(chan, lfp):
+            strong_theta = sess.theta.getstrongTheta(lfp)[0]
+            highpass_theta = signal_process.filter_sig.highpass(strong_theta, cutoff=25)
+
+            # ----- wavelet power for gamma oscillations----------
+            wavdec = signal_process.wavelet_decomp(highpass_theta, freqs=frgamma)
+            wav = wavdec.colgin2009()
+            wav = stats.zscore(wav, axis=1)
+
+            # ----segmenting gamma wavelet at theta phases ----------
+            theta_params = sess.theta.getParams(strong_theta)
+            bin_ind = np.digitize(theta_params.angle, bin_angle)
+
+            gamma_at_theta = pd.DataFrame()
+            for i in np.unique(bin_ind):
+                find_where = np.where(bin_ind == i)[0]
+                gamma_at_theta[bin_angle[i - 1]] = np.mean(wav[:, find_where], axis=1)
+            gamma_at_theta.insert(0, column="freq", value=frgamma)
+            gamma_at_theta.insert(0, column="chan", value=chan)
+
+            return gamma_at_theta
+
+        gamma_all_chan = pd.concat(
+            [wavlet_(chan, lfp) for (chan, lfp) in zip(channels, lfpmaze)]
+        ).groupby("chan")
+
+        for i, chan in enumerate(channels):
+            spect = (
+                gamma_all_chan.get_group(chan).drop(columns="chan").set_index("freq")
+            )
+            ax = plt.subplot(gs_subplot[i])
+            sns.heatmap(
+                spect, ax=ax, cmap="jet", cbar=None, xticklabels=5, rasterized=True
+            )
+            # ax.pcolormesh(phase_centers, frgamma, spect, shading="auto")
+            ax.set_title(f"channel = {chan}", loc="left")
+            ax.invert_yaxis()
+
+            if i < 6:
+                ax.get_xaxis().set_visible([])
+            if i % 2 != 0:
+                ax.get_yaxis().set_visible([])
+
+    # figure.savefig(f"wavelet_slgamma", __file__)
+
+
+figure.savefig("ripple_wavelet_theta", __file__)
+
+
+# endregion
+
+#%% Schematic --> Theta phase specific extraction method and depthwise examples
+# region
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(5, 3), wspace=0.4)
+sessions = subjects.Of().ratNday4
+fig.suptitle("Phase specfic extraction schematic")
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    thetachan = sess.theta.bestchan
+    eeg = sess.recinfo.geteeg(chans=thetachan, timeRange=maze)
+    strong_theta = stats.zscore(sess.theta.getstrongTheta(eeg)[0])
+    rand_start = np.random.randint(0, len(strong_theta), 1)[0]
+    theta_sample = strong_theta[rand_start : rand_start + 1 * eegSrate]
+    thetaparams = sess.theta.getParams(theta_sample)
+    gamma_lfp = signal_process.filter_sig.highpass(theta_sample, cutoff=25)
+
+    # ----- dividing 360 degress into non-overlapping 5 bins ------------
+    angle_bin = np.linspace(0, 360, 6)  # 5 bins so each bin=25ms
+    angle_centers = angle_bin + np.diff(angle_bin).mean() / 2
+    bin_ind = np.digitize(thetaparams.angle, bins=angle_bin)
+    df = {}
+    ax = plt.subplot(gs[0, :])
+    ax.clear()
+    cmap = mpl.cm.get_cmap("RdPu")
+    for phase in range(1, len(angle_bin)):
+        df[phase] = gamma_lfp[np.where(bin_ind == phase)[0]]
+
+        ax.fill_between(
+            np.arange(len(theta_sample)),
+            np.min(theta_sample),
+            theta_sample,
+            where=(bin_ind == phase),
+            # interpolate=False,
+            color=cmap((phase + 1) / 10),
+            # alpha=0.3,
+            zorder=1,
+        )
+        # theta_atphase = theta_sample[np.where(bin_ind == phase)[0]]
+        # ax.plot(theta_atphase)
+    ax.plot(theta_sample, "k", zorder=2)
+    ax.plot(thetaparams.lfp_filtered, "r", zorder=3)
+    ax.plot(gamma_lfp - 3, color="#3b1641", zorder=3)
+    ax.set_xlim([0, len(theta_sample)])
+    ax.axis("off")
+
+    axphase = plt.subplot(gs[1, :2])
+    axphase.clear()
+    y_shift = 0.25
+    for i in range(1, 6):
+        axphase.plot(df[i] + y_shift, color=cmap((i + 1) / 10))
+        axphase.axis("off")
+        y_shift += 0.95
+        axphase.set_ylim([-3.5, 4.8])
+
+    # ------ sharp wave ripple plot -------
+    rpls = sess.ripple.events
+    axripple = plt.subplot(gs[2:, 0])
+    sess.ripple.plot_example(ax=axripple, ripple_indx=2457, shank_id=7, pad=0.6)
+    # sess.ripple.export2Neuroscope()
+
+    # ------ phase specific plot -------
+
+    gs_subplot = figure.subplot2grid(gs[2:, 1:], grid=(4, 2))
+    for shank in [7]:
+        channels = sess.recinfo.goodchangrp[shank][::2]
+        bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+        phase_centers = bin_angle[:-1] + np.diff(bin_angle).mean() / 2
+        lfpmaze = sess.recinfo.geteeg(chans=channels, timeRange=maze)
+
+        frgamma = np.arange(25, 150, 1)
+
+        def phase_(chan, lfp):
+            strong_theta = sess.theta.getstrongTheta(lfp)[0]
+            highpass_theta = signal_process.filter_sig.highpass(strong_theta, cutoff=25)
+            gamma, _, angle = sess.theta.phase_specfic_extraction(
+                strong_theta, highpass_theta, binsize=40, slideby=5
+            )
+            df = pd.DataFrame()
+            f_ = None
+            for gamma_bin, center in zip(gamma, angle):
+                f_, pxx = sg.welch(gamma_bin, nperseg=1250, noverlap=625, fs=eegSrate)
+                df[center] = pxx
+            df.insert(0, "freq", f_)
+            df.insert(0, "chan", chan)
+            return df
+
+        gamma_all_chan = pd.concat(
+            [phase_(chan, lfp) for (chan, lfp) in zip(channels, lfpmaze)]
+        ).groupby("chan")
+
+        for i, chan in enumerate(channels):
+            spect = (
+                gamma_all_chan.get_group(chan).drop(columns="chan").set_index("freq")
+            )
+            # spect = spect[(spect.index > 25) & (spect.index < 150)]
+            spect = spect[(spect.index > 25) & (spect.index < 150)].transform(
+                stats.zscore, axis=1
+            )
+            spect = spect.transform(gaussian_filter1d, axis=1, sigma=3)
+            spect = spect.transform(gaussian_filter1d, axis=0, sigma=3)
+            ax = plt.subplot(gs_subplot[i])
+            ax.clear()
+            sns.heatmap(
+                spect,
+                ax=ax,
+                cmap="Spectral_r",
+                cbar=None,
+                xticklabels=10,
+                rasterized=True,
+                shading=None,
+            )
+            # ax.pcolormesh(phase_centers, frgamma, spect, shading="auto")
+            ax.set_title(f"channel = {chan}", loc="left")
+            ax.invert_yaxis()
+            if i < 6:
+                ax.get_xaxis().set_visible([])
+            if i % 2 != 0:
+                ax.get_yaxis().set_visible([])
+
+            # ax.set_ylim([25, 150])
+
+
+figure.savefig("theta_phase_extract", __file__)
+# endregion
