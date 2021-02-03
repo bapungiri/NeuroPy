@@ -7,13 +7,13 @@ import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter1d, gaussian_filter
 import subjects
 from plotUtil import Fig
-from mathutil import threshPeriods, hmmfit1d
-from typing import Annotated
-import copy
+from mathutil import threshPeriods
+import time
+import seaborn as sns
 
 #%% 1D place field in openfield arena
 # region
-sessions = subjects.openfield()
+sessions = subjects.Of()
 for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
@@ -87,11 +87,11 @@ for sub, sess in enumerate(sessions):
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(2, 2))
-sessions = subjects.Sd().ratSday3
+sessions = subjects.Sd().ratNday1
 for sub, sess in enumerate(sessions):
     # period = sess.epochs.maze1
     ax = plt.subplot(gs[2])
-    sess.placefield.pf1d.compute(track_name="maze1", run_dir="backward")
+    sess.placefield.pf1d.compute(track_name="maze", run_dir="forward")
 
     ratemaps = np.asarray(sess.placefield.pf1d.no_thresh["ratemaps"])
     peak_frate = np.max(ratemaps, axis=1)
@@ -225,12 +225,11 @@ for sess in sessions:
 # endregion
 #%% Bayesian estimation in 1d linear type track
 # region
-sessions = subjects.Nsd().ratSday2
+sessions = subjects.Sd().ratNday1
 for sess in sessions:
     sess.placefield.pf1d.compute("maze", grid_bin=8, speed_thresh=5)
-    sess.decode.bayes1d.estimate_behavior(
-        sess.placefield.pf1d, binsize=0.2, speed_thresh=True, smooth=2
-    )
+    sess.decode.bayes1d.binsize = 0.25
+    sess.decode.bayes1d.estimate_behavior(speed_thresh=True, smooth=2)
 
     # plt.plot(gaussian_filter1d(sess.decode.bayes1d.decodedPos, sigma=1))
     # plt.plot(sess.decode.bayes1d.actualpos, sess.decode.bayes1d.decodedPos, ".")
@@ -239,33 +238,158 @@ for sess in sessions:
 
 #%% Decode pbe events
 # region
-
 figure = Fig()
-sessions = subjects.nsd([2])
+sessions = subjects.Nsd().ratSday2
 for sess in sessions:
-    sess.placefield.pf1d.compute("maze", grid_bin=8, speed_thresh=5)
     sd_period = sess.epochs["post"]
+    maze = sess.epochs.post
     rpls = sess.pbe.events
     rpls = rpls[
-        (rpls.start > sd_period[0])
-        & (rpls.start < sd_period[0] + 2 * 3600)
+        (rpls.start > maze[0] + 5 * 3600)
+        & (rpls.start < maze[1] + 6 * 3600)
         & (rpls.duration > 0.15)
+        & (rpls.duration < 0.45)
     ]
-    a, b, c = sess.decode.bayes1d.decode_events(
-        sess.placefield.pf1d, rpls, speed_thresh=True
+    sess.placefield.pf1d.compute("maze1", grid_bin=8, run_dir="forward")
+    sess.decode.bayes1d.events = rpls
+    sess.decode.bayes1d.binsize = 0.02
+    sess.decode.bayes1d.n_jobs = 12
+
+    sess.decode.bayes1d.decode_events()
+    score = sess.decode.bayes1d.score
+    slope = sess.decode.bayes1d.slope
+    posterior = sess.decode.bayes1d.posterior
+
+    st = time.time()
+    sess.decode.bayes1d.decode_shuffle(n_iter=100, kind="column")
+    shuff_score = sess.decode.bayes1d.shuffle_score
+    print(time.time() - st)
+
+    pval = sess.decode.bayes1d.p_val_events
+
+    bins = np.arange(0, 0.7, 0.01)
+    hist_evt = np.histogram(score, bins=bins)[0]
+    hist_shuffle = np.histogram(shuff_score, bins=bins)[0]
+
+    good_evt_ind = np.where(pval < 0.05)[0]
+    top_10 = np.argsort(score[good_evt_ind])[::-1][:100]
+    good_evt = [posterior[_] for _ in good_evt_ind[top_10]]
+    score_top = score[good_evt_ind[top_10]]
+    # slope_top = slope[good_evt_ind[top_10]]
+
+    # postive = np.where(slope_top > 0.2)[0]
+    # score_top = score_top[postive]
+    # slope_top = slope_top[postive]
+    fig, gs = figure.draw(num=1, grid=(8, 12), hspace=0.3)
+    for i in range(100):
+
+        ax = plt.subplot(gs[i])
+        ax.pcolormesh(good_evt[i], cmap="hot", vmin=0, vmax=0.4)
+        ax.set_title(f"{np.round(score_top[i],2)}")
+        ax.axis("off")
+
+    # ind_ = np.arange(0, len(good_evt), 200)
+    # n_fig = int(len(good_evt) / 200)
+    # for fig_wind in range(n_fig):
+    #     p = ind_[fig_wind]
+    #     fig, gs = figure.draw(num=fig_wind, grid=(10, 20))
+    #     for ind, i in enumerate(range(p, p + 200)):
+    #         ax = plt.subplot(gs[ind])
+    #         posterior = good_evt[i]  # / np.max(b[i])
+    #         ax.pcolormesh(posterior, cmap="hot")
+    # ax.xticks([])
+
+    # fig, gs = figure.draw(num=2, grid=(1, 1))
+
+    # ax = plt.subplot(gs[0])
+    # ax.bar(bins[:-1], hist_shuffle / np.sum(hist_shuffle), width=0.01, color="#aca5a5")
+    # ax.axvline(thresh, color="r")
+    # ax.set_xlabel("Replay score")
+    # ax.set_ylabel("Density")
+
+
+# endregion
+
+#%% Significant replay events across time e.g, POST
+# region
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = (
+    subjects.Sd().ratNday1
+    + subjects.Nsd().ratNday2
+    + subjects.Sd().ratSday3
+    + subjects.Nsd().ratSday2
+)
+for sub, sess in enumerate(sessions):
+    sd_period = sess.epochs["post"]
+    track_name = sess.tracks.names[0]
+    maze = sess.epochs[track_name]
+    # maze2 = sess.epochs.maze2
+    post = sess.epochs.post
+
+    period = [post[0], post[1]]
+    period_bins = np.arange(period[0], period[1], 900)
+    events = sess.pbe.events
+    events = events[
+        (events.start > period[0])
+        & (events.start < period[1])
+        & (events.duration > 0.1)
+        & (events.duration < 0.5)
+    ]
+
+    binsize = 0.02
+    sess.decode.bayes1d.events = events
+    sess.decode.bayes1d.binsize = 0.02
+    sess.decode.bayes1d.n_jobs = 12
+
+    score, slope, shuffle_score = [], [], []
+    replay_hist = pd.DataFrame()
+    bincntr = (period_bins[:-1] - period[0] + 450) / 3600
+    for run_dir in ["forward", "backward"]:
+        sess.placefield.pf1d.compute(track_name, grid_bin=8, run_dir=run_dir)
+        sess.decode.bayes1d.decode_events()
+        score_ = sess.decode.bayes1d.score
+        slope_ = np.abs(sess.decode.bayes1d.slope)
+        sess.decode.bayes1d.decode_shuffle(n_iter=200, kind="column")
+        pval = sess.decode.bayes1d.p_val_events
+
+        good_evt_ind = np.where(pval < 0.05)[0]
+        slope_good = slope_[good_evt_ind]
+        hist_ = np.histogram(events.iloc[good_evt_ind].start, bins=period_bins)[0]
+        mean_slope = stats.binned_statistic(
+            events.iloc[good_evt_ind].start, slope_good, bins=period_bins
+        )[0]
+        replay_hist = replay_hist.append(
+            pd.DataFrame(
+                {
+                    "time": bincntr,
+                    "number": hist_,
+                    "direction": run_dir,
+                    "slope": mean_slope,
+                }
+            )
+        )
+
+    gs_ = figure.subplot2grid(gs[sub], grid=(5, 1))
+    ax = plt.subplot(gs_[1:3])
+    sns.lineplot(data=replay_hist, x="time", y="number", hue="direction", ax=ax)
+    ax.set_xlim([0, np.diff(period) / 3600])
+    plt.setp(ax.get_xticklabels(), visible=False)
+    ax.set_xlabel("")
+
+    axvel = plt.subplot(gs_[3:])
+    sns.lineplot(
+        data=replay_hist.groupby("time").mean(),
+        x="time",
+        y="slope",
+        ax=axvel,
+        color="k",
     )
 
-    ind_ = np.arange(0, 1400, 200)
-    for fig_wind in range(10):
-        p = ind_[fig_wind]
-        fig, gs = figure.draw(num=fig_wind, grid=(10, 20))
-        for ind, i in enumerate(range(p, p + 200)):
-            ax = plt.subplot(gs[ind])
-            posterior = b[i]  # / np.max(b[i])
-            ax.imshow(
-                posterior, aspect="auto", cmap="hot", interpolation=None, origin="lower"
-            )
-        # ax.xticks([])
+    axhypno = plt.subplot(gs_[0], sharex=ax)
+    sess.brainstates.hypnogram(ax=axhypno, tstart=period[0], unit="h")
 
+figure.savefig("replay_across_time", __file__)
 
 # endregion
