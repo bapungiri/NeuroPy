@@ -266,7 +266,7 @@ sns.boxplot(
 )
 ax.set_title("NSD session (POST)")
 
-figure.savefig("Ripple_SD_normal", __file__)
+# figure.savefig("Ripple_SD_normal", __file__)
 
 # endregion
 #%% Ripple Power distribution during sleep deprivation

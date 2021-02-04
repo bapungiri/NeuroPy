@@ -314,7 +314,7 @@ for sess in sessions:
 # region
 
 figure = Fig()
-fig, gs = figure.draw(num=1, grid=(2, 2))
+fig, gs = figure.draw(num=1, grid=(4, 2))
 sessions = (
     subjects.Sd().ratNday1
     + subjects.Nsd().ratNday2
@@ -355,6 +355,7 @@ for sub, sess in enumerate(sessions):
         pval = sess.decode.bayes1d.p_val_events
 
         good_evt_ind = np.where(pval < 0.05)[0]
+        # good_evt_ind = np.where(score_ > 0.2)[0]
         slope_good = slope_[good_evt_ind]
         hist_ = np.histogram(events.iloc[good_evt_ind].start, bins=period_bins)[0]
         mean_slope = stats.binned_statistic(
@@ -371,25 +372,32 @@ for sub, sess in enumerate(sessions):
             )
         )
 
-    gs_ = figure.subplot2grid(gs[sub], grid=(5, 1))
-    ax = plt.subplot(gs_[1:3])
-    sns.lineplot(data=replay_hist, x="time", y="number", hue="direction", ax=ax)
+    gs_ = figure.subplot2grid(gs[sub], grid=(4, 1))
+    ax = plt.subplot(gs_[1:])
+    sns.lineplot(
+        data=replay_hist,
+        x="time",
+        y="number",
+        hue="direction",
+        ax=ax,
+        palette=["#5d538d", "#f95939"],
+    )
     ax.set_xlim([0, np.diff(period) / 3600])
     plt.setp(ax.get_xticklabels(), visible=False)
     ax.set_xlabel("")
 
-    axvel = plt.subplot(gs_[3:])
-    sns.lineplot(
-        data=replay_hist.groupby("time").mean(),
-        x="time",
-        y="slope",
-        ax=axvel,
-        color="k",
-    )
+    # axvel = plt.subplot(gs_[3:])
+    # sns.lineplot(
+    #     data=replay_hist.groupby("time").mean(),
+    #     x="time",
+    #     y="slope",
+    #     ax=axvel,
+    #     color="k",
+    # )
 
     axhypno = plt.subplot(gs_[0], sharex=ax)
     sess.brainstates.hypnogram(ax=axhypno, tstart=period[0], unit="h")
 
-figure.savefig("replay_across_time", __file__)
+figure.savefig("replay_across_time2", __file__)
 
 # endregion

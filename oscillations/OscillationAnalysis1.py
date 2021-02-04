@@ -428,7 +428,6 @@ figure.panel_label(axripple, "a")
 data = []
 sessions = subjects.Sd().allsess
 for sub, sess in enumerate(sessions):
-    sess.trange = np.array([])
     post = sess.epochs.post
     rpls = sess.ripple.events.start
     swa = sess.swa.events
@@ -445,10 +444,10 @@ sns.barplot(x="hour", y="ripple", data=density, ci="sd", ax=axripple, color="#d9
 axripple.set_ylabel("Ripples/s")
 axripple.tick_params(axis="x", labelrotation=45)
 
-sns.barplot(x="hour", y="delta", data=density, ci="sd")
-axdelta.set_ylabel("delta/min")
-axdelta.set_xlabel("")
-axdelta.tick_params(axis="x", labelrotation=45)
+# sns.barplot(x="hour", y="delta", data=density, ci="sd")
+# axdelta.set_ylabel("delta/min")
+# axdelta.set_xlabel("")
+# axdelta.tick_params(axis="x", labelrotation=45)
 
 # figure.savefig("ripple_delta_density_sd", __file__)
 # endregion
