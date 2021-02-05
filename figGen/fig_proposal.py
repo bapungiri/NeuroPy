@@ -10,7 +10,6 @@ import scipy.stats as stats
 import seaborn as sns
 import signal_process
 import subjects
-from mathutil import threshPeriods
 from plotUtil import Colormap, Fig
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
@@ -18,6 +17,65 @@ from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 #%% Explained variance
 # region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(3, 2))
+sessions = (
+    subjects.Nsd().ratSday2
+    + subjects.Sd().ratSday3
+    + subjects.Nsd().ratNday2
+    + subjects.Sd().ratNday1
+)
+
+for sub, sess in enumerate(sessions):
+
+    pre = sess.epochs.pre
+
+    try:
+        maze = sess.epochs.maze
+    except:
+        maze = sess.epochs.maze1
+    # maze2 = sess.epochs.maze2
+
+    post = sess.epochs.post
+    # maze2 = sess.epochs.maze2
+    # --- break region into periods --------
+    bin1 = sess.utils.getinterval(pre, 2)
+    bin2 = sess.utils.getinterval(post, 4)
+    bins = bin1 + bin2
+    sess.spikes.stability.firingRate(periods=bins)
+
+    control = pre
+    template = maze
+    match = [post[0], post[1]]
+
+    sess.replay.expvar.compute(
+        template=template,
+        match=match,
+        control=control,
+        slideby=300,
+        cross_shanks=True,
+    )
+    print(sess.replay.expvar.npairs)
+
+    axstate = figure.subplot2grid(gs[sub], grid=(4, 1))
+
+    ax1 = fig.add_subplot(axstate[1:])
+    sess.replay.expvar.plot(ax=ax1, tstart=post[0])
+    ax1.set_xlim(left=0)
+    ax1.tick_params(width=2)
+
+    if sub == 3:
+        ax1.set_ylim([0, 0.17])
+    # ax1.spines["right"].set_visible("False")
+    # ax1.spines["top"].set_visible("False")
+
+    axhypno = fig.add_subplot(axstate[0], sharex=ax1)
+    sess.brainstates.hypnogram(ax=axhypno, tstart=post[0], unit="h")
+    # panel_label(axhypno, "a")
+    # ax1.set_ylim([0, 11])
+
+
+figure.savefig("proposal_expvar")
 
 # endregion
 
@@ -93,7 +151,7 @@ for sub, sess in enumerate(sessions):
     # figure.savefig(f"wavelet_slgamma", __file__)
 
 
-figure.savefig("ripple_wavelet_theta", __file__)
+figure.savefig("proposal_ripple_wavelet_theta", __file__)
 
 
 # endregion
@@ -222,5 +280,5 @@ for sub, sess in enumerate(sessions):
             # ax.set_ylim([25, 150])
 
 
-figure.savefig("theta_phase_extract", __file__)
+figure.savefig("proposal_theta_phase_extract", __file__)
 # endregion
