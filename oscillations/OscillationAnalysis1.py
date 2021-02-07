@@ -248,6 +248,7 @@ ax.set_title("Power in ripple band")
 figure.panel_label(ax, "a")
 # figure.savefig("ripple_power_sd", __file__)
 
+
 # endregion
 
 #%% Plot spectrogram for different frequency bands (gamma, ripple) separately
