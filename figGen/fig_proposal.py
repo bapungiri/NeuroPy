@@ -15,6 +15,251 @@ from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 # warnings.simplefilter(action="default")
 
+#%% Spectrogram, sleep fraction, ripple power SD, number of ripples
+# region
+
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(3, 3), wspace=0.3)
+
+# --- spectrogram -------
+sessions = subjects.Sd().ratSday3 + subjects.Nsd().ratSday2
+df = pd.DataFrame()
+
+gs_spec = figure.subplot2grid(gs[0, :2], grid=(2, 1))
+for sub, sess in enumerate(sessions):
+
+    tag = sess.recinfo.animal.tag
+    post = sess.epochs.post
+    gs_ = figure.subplot2grid(gs_spec[sub], grid=(4, 1))
+    axspec = fig.add_subplot(gs_[1:])
+    chan = 77
+    sess.viewdata.specgram(chan=chan, ax=axspec, window=10, overlap=2, period=post)
+    axspec.text(10, 25, f"RatS-{tag.upper()}-POST", color="#fff")
+    if sub == 0:
+        axspec.axes.get_xaxis().set_visible(False)
+        figure.panel_label(axspec, "a")
+    axhypno = fig.add_subplot(gs_[0], sharex=axspec)
+    sess.brainstates.hypnogram(ax=axhypno, tstart=post[0], unit="s")
+
+# ----- sleep proportion ----------
+gs_slp = figure.subplot2grid(gs[0, -1], grid=(2, 1))
+sessions = subjects.Nsd() + subjects.Sd()
+df_all = []
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    tag = sess.recinfo.animal.tag
+    post = sess.epochs.post
+
+    period = np.arange(post[0], post[1] - 900, 900)
+    df = pd.DataFrame(columns=["nrem", "rem", "quiet", "active"])
+    for st in period:
+        states_prop = sess.brainstates.proportion(period=[st, st + 900])
+        df = df.append(states_prop.T)
+
+    df.fillna(0, inplace=True)
+    df.insert(0, "window", np.arange(len(period)))
+    df["grp"] = tag
+
+    df_all.append(df)
+
+df_all = pd.concat(df_all)
+grp = df_all.groupby("grp")
+sd_grp = grp.get_group("sd").groupby("window").mean()
+nsd_grp = grp.get_group("nsd").groupby("window").mean()
+
+
+ax = plt.subplot(gs_slp[0])
+ax.clear()
+sd_grp.plot.bar(
+    ax=ax,
+    y=["nrem", "rem"],
+    stacked=True,
+    width=1,
+    color=sess.brainstates.colors,
+    alpha=0.5,
+    legend=None,
+    rot=45,
+)
+ax.set_ylim(top=1)
+ax.axes.get_xaxis().set_visible(False)
+ax.set_ylabel("Sleep fraction")
+
+ax = plt.subplot(gs_slp[1])
+ax.clear()
+nsd_grp.plot.bar(
+    ax=ax,
+    y=["nrem", "rem"],
+    stacked=True,
+    width=1,
+    color=sess.brainstates.colors,
+    alpha=0.5,
+    legend=None,
+    rot=45,
+)
+ax.set_ylim(top=1)
+ax.axes.get_xaxis().set_visible(False)
+ax.set_ylabel("sleep fraction")
+
+
+# ---- ripple power spectrum ----------
+
+sessions = subjects.Sd().allsess
+df = pd.DataFrame()
+for sub, sess in enumerate(sessions):
+    post = sess.epochs.post
+    sd = [post[0], post[0] + 5 * 3600]
+    eegSrate = sess.recinfo.lfpSrate
+    channel = sess.ripple.bestchans[3]
+    post = sess.epochs.post
+    lfp1st = sess.recinfo.geteeg(chans=channel, timeRange=[post[0], post[0] + 3600])
+    lfp5th = sess.recinfo.geteeg(
+        chans=channel, timeRange=[post[0] + 4 * 3600, post[0] + 5 * 3600]
+    )
+
+    psd = lambda sig: sg.welch(
+        sig, fs=eegSrate, nperseg=5 * eegSrate, noverlap=2 * eegSrate
+    )
+    # multitaper = lambda sig: signal_process.mtspect(
+    #     sig, fs=eegSrate, nperseg=10 * eegSrate, noverlap=5 * eegSrate
+    # )
+
+    _, psd1st = psd(lfp1st)
+    f, psd5th = psd(lfp5th)
+
+    # smoothing
+    psd1st = gaussian_filter1d(psd1st, sigma=5)
+    psd5th = gaussian_filter1d(psd5th, sigma=5)
+    norm = np.sum(psd1st) + np.sum(psd5th)  # normalize
+
+    df = df.append(pd.DataFrame({"freq": f, "psd": psd1st / norm, "hour": "first"}))
+    df = df.append(pd.DataFrame({"freq": f, "psd": psd5th / norm, "hour": "last"}))
+
+
+ax = plt.subplot(gs[1, 0])
+
+colors = ["#f67e7e", "#d70427"]
+for h, color in zip(["first", "last"], colors):
+    df_ = df.groupby("hour").get_group(h).groupby("freq")
+    f = df_.mean().index.values
+    psd_mean = df_.mean().psd.values
+    psd_sem = df_.sem(ddof=0).psd.values
+    ax.fill_between(
+        f,
+        psd_mean - psd_sem,
+        psd_mean + psd_sem,
+        color=color,
+        alpha=0.5,
+        ec=None,
+        label=h,
+    )
+    ax.plot(f, psd_mean, color=color)
+    ax.set_xlim([120, 300])
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_ylim([0.5 * 10e-6, 0.5 * 10e-5])
+
+ax.set_xlabel("Frequency (Hz)")
+ax.set_ylabel("Power (a.u.)")
+ax.legend()
+ax.set_title("Power in ripple band")
+
+figure.panel_label(ax, "c")
+# figure.savefig("ripple_power_sd", __file__)
+
+# ----- number of ripples ------------------
+data_sd, data_rs, data_nsd = [], [], []
+sessions = subjects.Sd() + subjects.Nsd()
+for sub, sess in enumerate(sessions):
+    post = sess.epochs.post
+    rpls = sess.ripple.events.start
+    tag = sess.recinfo.animal.tag
+
+    if tag == "sd":
+        # -------sd period-----------
+        sd = np.linspace(post[0], post[0] + 5 * 3600, 6)
+        rpls_sd = np.histogram(rpls, bins=sd)[0] / 3600
+
+        window = [f"ZT-{_}" for _ in range(len(sd) - 1)]
+        data_sd.append(pd.DataFrame({"hour": window, "ripple": rpls_sd}))
+
+        # -------- recovery sleep -------
+        states = sess.brainstates.states
+        recslp_nrem = states.loc[
+            (states.start > post[0] + 5 * 3600)
+            & (states.name == "nrem")
+            & (states.duration > 240),
+            ["start", "end", "duration"],
+        ]
+
+        nrem_dur = np.asarray(recslp_nrem.duration)
+        nrem_bins = recslp_nrem.to_numpy()[:, :2].flatten()
+        rpls_nrem = np.histogram(rpls, bins=nrem_bins)[0][::2] / nrem_dur
+
+        window = [nrem_ind + 1 for nrem_ind in range(len(nrem_dur))]
+        data_rs.append(
+            pd.DataFrame(
+                {
+                    "nrem": window,
+                    "ripple": rpls_nrem,
+                }
+            )
+        )
+
+    else:
+        # -------- recovery sleep -------
+        states = sess.brainstates.states
+        recslp_nrem = states.loc[
+            (states.start > post[0])
+            & (states.name == "nrem")
+            & (states.duration > 240),
+            ["start", "end", "duration"],
+        ]
+
+        nrem_dur = np.asarray(recslp_nrem.duration)
+        nrem_bins = recslp_nrem.to_numpy()[:, :2].flatten()
+        rpls_nrem = np.histogram(rpls, bins=nrem_bins)[0][::2] / nrem_dur
+
+        window = [nrem_ind + 1 for nrem_ind in range(len(nrem_dur))]
+        data_nsd.append(
+            pd.DataFrame(
+                {
+                    "nrem": window,
+                    "ripple": rpls_nrem,
+                }
+            )
+        )
+
+
+density_sd = pd.concat(data_sd)
+density_rs = pd.concat(data_rs)
+density_nsd = pd.concat(data_nsd)
+
+gs_ = figure.subplot2grid(gs[1, 1:], grid=(2, 4), wspace=0.3, hspace=0.3)
+axripple = plt.subplot(gs_[0, 0])
+sns.barplot(
+    x="hour", y="ripple", data=density_sd, ci="sd", ax=axripple, color="#d93a3a"
+)
+
+axripple.set_ylabel("Ripples/s")
+axripple.tick_params(axis="x", labelrotation=45)
+figure.panel_label(axripple, "d")
+
+axrs = plt.subplot(gs_[0, 1:], sharey=axripple)
+sns.barplot(x="nrem", y="ripple", data=density_rs, ci="sd", ax=axrs, color="#69c")
+axrs.set_ylabel("")
+axrs.tick_params(axis="x", labelrotation=45)
+
+axnsd = plt.subplot(gs_[1, :], sharey=axripple)
+sns.barplot(x="nrem", y="ripple", data=density_nsd, ci="sd", ax=axnsd, color="#69c")
+axnsd.set_ylabel("Ripples/s")
+axnsd.tick_params(axis="x", labelrotation=45)
+
+
+# figure.savefig("proposal_sleep_ripple")
+
+# endregion
+
+
 #%% Explained variance
 # region
 figure = Fig()
