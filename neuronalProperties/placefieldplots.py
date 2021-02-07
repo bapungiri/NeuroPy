@@ -87,13 +87,13 @@ for sub, sess in enumerate(sessions):
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(2, 2))
-sessions = subjects.Sd().ratNday1
+sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
     # period = sess.epochs.maze1
     ax = plt.subplot(gs[2])
-    sess.placefield.pf1d.compute(track_name="maze", run_dir="forward")
+    sess.placefield.pf1d.compute(track_name="maze1", run_dir="forward")
 
-    ratemaps = np.asarray(sess.placefield.pf1d.no_thresh["ratemaps"])
+    ratemaps = np.asarray(sess.placefield.pf1d.ratemaps["ratemaps"])
     peak_frate = np.max(ratemaps, axis=1)
     good_cells = np.where(peak_frate > 1.5)[0]
 
@@ -101,16 +101,13 @@ for sub, sess in enumerate(sessions):
     cell_order = np.argsort(np.argmax(good_ratemaps, axis=1))
     good_cells = good_cells[cell_order]
 
-    sess.placefield.pf1d.plot(
-        ax=ax, speed_thresh=True, normalize=True, sortby=good_cells
-    )
+    sess.placefield.pf1d.plot(ax=ax, normalize=True, sortby=good_cells)
     # sess.placefield.pf1d.plot_raw(speed_thresh=True, subplots=None)
     ax.set_title("Maze1")
     ax = plt.subplot(gs[3])
-    sess.placefield.pf1d.compute(track_name="maze2", run_dir="backward")
+    sess.placefield.pf1d.compute(track_name="maze2", run_dir="forward")
     sess.placefield.pf1d.plot(
         ax=ax,
-        speed_thresh=True,
         normalize=True,
         sortby=good_cells,
     )
