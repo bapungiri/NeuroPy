@@ -100,7 +100,7 @@ class Nsd:
         return pipelines
 
 
-class Two_novel:
+class Tn:
     paths = [
         "/data/Clustering/SleepDeprivation/RatJ/Day3/",
         "/data/Clustering/SleepDeprivation/RatK/Day3/",
