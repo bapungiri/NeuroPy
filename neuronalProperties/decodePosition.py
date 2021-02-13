@@ -19,8 +19,6 @@ basePath = [
     # "/data/Clustering/SleepDeprivation/RatK/Day4/"
     "/data/Clustering/SleepDeprivation/RatN/Day4/",
 ]
-
-
 sessions = [processData(_) for _ in basePath]
 
 #%% Bayesian decoding in open field
