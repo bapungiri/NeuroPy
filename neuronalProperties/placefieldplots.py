@@ -307,6 +307,44 @@ for sess in sessions:
 
 # endregion
 
+
+#%% Distribution of replay score across sleep
+# region
+figure = Fig()
+sessions = subjects.Nsd().ratSday2
+for sess in sessions:
+    sd_period = sess.epochs["post"]
+    post = sess.epochs.post
+    rpls = sess.pbe.events
+    rpls = rpls[
+        (rpls.start > post[0])
+        & (rpls.start < post[1])
+        & (rpls.duration > 0.1)
+        & (rpls.duration < 0.5)
+    ]
+    sess.placefield.pf1d.compute("maze1", grid_bin=8, run_dir="forward")
+    sess.decode.bayes1d.events = rpls
+    sess.decode.bayes1d.binsize = 0.02
+    sess.decode.bayes1d.n_jobs = 12
+
+    sess.decode.bayes1d.decode_events()
+    score = sess.decode.bayes1d.score
+    # slope = sess.decode.bayes1d.slope
+    # posterior = sess.decode.bayes1d.posterior
+    def score_hist(arr):
+        bin_score = np.linspace(0, 1, 30)
+        hist_score = np.histogram(arr, bins=bin_score)
+        return hist_score[0]
+
+    bins = np.arange(post[0], post[1], 600)
+
+    dist = []
+
+    evt_dist = np.digitize(rpls.start, bins=bins)
+
+
+# endregion
+
 #%% Significant replay events across time e.g, POST
 # region
 

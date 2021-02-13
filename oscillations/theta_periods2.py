@@ -766,7 +766,7 @@ for sub, sess in enumerate(sessions[:3]):
     specpower = sess.brainstates.params
 
     sd_period = sess.epochs.post
-    specpower_sd = specpower.loc[
+    specpower_sd = specpower.angles[
         (specpower.time > sd_period[0]) & (specpower.time < sd_period[0] + 5 * 3600)
     ]
     specpower_sd1st = specpower.loc[
@@ -1368,7 +1368,7 @@ for sub, sess in enumerate(sessions):
 figure = Fig()
 fig, gs = figure.draw(grid=[4, 3])
 
-sessions = subjects.sd()
+sessions = subjects.Sd()
 binData = None
 for sub, sess in enumerate(sessions[7:8]):
 
@@ -1486,6 +1486,139 @@ for sub, sess in enumerate(sessions):
         wavdec = signal_process.wavelet_decomp(lfp, freqs=frgamma, sampfreq=1250)
         wav = wavdec.colgin2009()
         df[center] = np.mean(wav, axis=1)
+
+
+# endregion
+
+
+#%% Scratchpad --> Theta phase estimation using waveshape
+# region
+sessions = subjects.Sd().ratSday3
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze1
+    chans = sess.recinfo.channelgroups[-1]
+    lfp = np.asarray(sess.recinfo.geteeg(chans=67, timeRange=maze))
+    corr_chans = np.corrcoef(lfp)
+    corr_chans = np.where(corr_chans > 0.7, 1, 0)
+    # plt.pcolormesh(np.array(chans), np.array(chans), corr_chans)
+    # df = pd.DataFrame(corr_chans, columns=chans)
+    # df.insert(0, "chans", chans)
+    # df = df.set_index("chans")
+    # sns.heatmap(df, annot=True)
+
+    lfp_ca1 = np.median(lfp[:10, :], axis=0)
+    strong_theta = sess.theta.getstrongTheta(lfp_ca1, lowthresh=0.5, highthresh=1)[0]
+
+    theta_param1 = signal_process.ThetaParams(strong_theta, fs=1250, method="hilbert")
+    theta_param2 = signal_process.ThetaParams(strong_theta, fs=1250, method="waveshape")
+
+    # --- phase estimation by waveshape --------
+    filt_lfp1 = signal_process.filter_sig.bandpass(strong_theta, lf=1, hf=80)
+    filt_lfp1 = stats.zscore(filt_lfp1)
+    peak = sg.find_peaks(filt_lfp1, height=0, distance=100, prominence=0.8)[0]
+    trough = sg.find_peaks(-filt_lfp1, height=0, distance=100, prominence=0.8)[0]
+
+    loc = np.concatenate((trough, peak))
+    angles = np.concatenate((np.zeros(len(trough)), 180 * np.ones(len(peak))))
+    sort_ind = np.argsort(loc)
+    loc = loc[sort_ind]
+    angles = angles[sort_ind]
+    lfp_angle1 = np.interp(np.arange(len(strong_theta)), loc, angles)
+    angle_descend = np.where(np.diff(lfp_angle1) < 0)[0]
+    lfp_angle1[angle_descend] = -lfp_angle1[angle_descend] + 360
+
+    # --- phase estimation by hilbert transform --------
+    filt_lfp2 = signal_process.ThetaParams(strong_theta, lowtheta=1, hightheta=25)
+    lfp_angle2 = filt_lfp2.angle
+
+    a = np.concatenate([lfp_angle1, lfp_angle1 + 360, lfp_angle1, lfp_angle1 + 360])
+    b = np.concatenate([lfp_angle2, lfp_angle2 + 360, lfp_angle2 + 360, lfp_angle2])
+
+    plt.scatter(a, b, s=0.01)
+
+    # for p in peak:
+    #     plt.axvline(p, color="red")
+
+    # for t in trough:
+    #     plt.axvline(t, color='green')
+
+    # filt_lfp = signal_process.filter_sig.bandpass(lfp, lf=1, hf=80)
+
+
+# endregion
+
+#%% Scratchpad --> Theta phase estimation using waveshape
+# region
+sessions = subjects.Sd().ratNday1
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    chans = sess.recinfo.channelgroups[-1]
+    lfp = np.asarray(sess.recinfo.geteeg(chans=chans, timeRange=maze))
+    corr_chans = np.corrcoef(lfp)
+    corr_chans = np.where(corr_chans > 0.7, 1, 0)
+
+    lfp_ca1 = np.median(lfp[:10, :], axis=0)
+    strong_theta = sess.theta.getstrongTheta(lfp_ca1, lowthresh=0.5, highthresh=1)[0]
+
+    # --- phase estimation by waveshape --------
+    filt_lfp1 = signal_process.filter_sig.bandpass(strong_theta, lf=1, hf=80)
+    # filt_lfp1 = stats.zscore(filt_lfp1)
+    peak = sg.find_peaks(filt_lfp1, height=0, distance=100, prominence=0.8)[0]
+    trough = sg.find_peaks(-filt_lfp1, height=0, distance=100, prominence=0.8)[0]
+
+    loc = np.concatenate((trough, peak))
+    angles = np.concatenate((np.zeros(len(trough)), 180 * np.ones(len(peak))))
+    sort_ind = np.argsort(loc)
+    loc = loc[sort_ind]
+    angles = angles[sort_ind]
+    lfp_angle1 = np.interp(np.arange(len(strong_theta)), loc, angles)
+    angle_descend = np.where(np.diff(lfp_angle1) < 0)[0]
+    lfp_angle1[angle_descend] = -lfp_angle1[angle_descend] + 360
+
+    # --- phase estimation by hilbert transform --------
+    filt_lfp2 = signal_process.ThetaParams(strong_theta, fs=1250)
+    lfp_angle2 = filt_lfp2.angle
+
+    frgamma = np.arange(25, 150)
+    # ----- wavelet power for gamma oscillations----------
+    wavdec = signal_process.wavelet_decomp(strong_theta, freqs=frgamma)
+    wav = wavdec.colgin2009()
+    wav = stats.zscore(wav, axis=1)
+
+    # ----segmenting gamma wavelet at theta phases ----------
+    bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+    phase_centers = bin_angle[:-1] + np.diff(bin_angle).mean() / 2
+
+    bin_ind1 = np.digitize(lfp_angle1, bin_angle)
+    bin_ind2 = np.digitize(lfp_angle2, bin_angle)
+
+    gamma_at_theta = pd.DataFrame()
+    for i in np.unique(bin_ind1):
+        find_where = np.where(bin_ind1 == i)[0]
+        gamma_at_theta[bin_angle[i - 1]] = np.mean(wav[:, find_where], axis=1)
+    gamma_at_theta.insert(0, column="freq", value=frgamma)
+    gamma_at_theta.set_index("freq", inplace=True)
+
+    gamma_at_theta2 = pd.DataFrame()
+    for i in np.unique(bin_ind2):
+        find_where = np.where(bin_ind2 == i)[0]
+        gamma_at_theta2[bin_angle[i - 1]] = np.mean(wav[:, find_where], axis=1)
+    gamma_at_theta2.insert(0, column="freq", value=frgamma)
+    gamma_at_theta2.set_index("freq", inplace=True)
+
+    # gamma_at_theta = gamma_at_theta.transform(stats.zscore, axis=1)
+    # gamma_at_theta2 = gamma_at_theta2.transform(stats.zscore, axis=1)
+
+    figure = Fig()
+    fig, gs = figure.draw(num=1, grid=(1, 2))
+
+    ax = plt.subplot(gs[0])
+    sns.heatmap(gamma_at_theta, ax=ax, cmap="jet", shading="gouraud", vmax=0.08)
+    ax.invert_yaxis()
+
+    ax = plt.subplot(gs[1])
+    sns.heatmap(gamma_at_theta2, ax=ax, cmap="jet")
+    ax.invert_yaxis()
 
 
 # endregion

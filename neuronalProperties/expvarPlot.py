@@ -559,3 +559,63 @@ for sub, sess in enumerate(sessions):
 
 
 # endregion
+
+#%% Explained variance calculated with shuffled cell id
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(3, 2))
+sessions = (
+    subjects.Nsd().ratSday2
+    + subjects.Sd().ratSday3
+    + subjects.Nsd().ratNday2
+    + subjects.Sd().ratNday1
+)
+# sessions = subjects.Sd().ratSday3
+
+for sub, sess in enumerate(sessions):
+
+    pre = sess.epochs.pre
+
+    try:
+        maze = sess.epochs.maze
+    except:
+        maze = sess.epochs.maze1
+
+    post = sess.epochs.post
+    try:
+        maze2 = sess.epochs.maze2
+        post = [post[0], maze2[1]]
+    except:
+        post = post
+
+    # --- break region into periods --------
+    bins = sess.utils.getinterval([maze[0], post[1]], 5)
+    sess.spikes.stability.firingRate(periods=bins)
+
+    # template = maze
+    # match = post
+
+    sess.replay.expvar.compute_shuffle(
+        template=maze, match=post, slideby=300, n_iter=100
+    )
+    ev = sess.replay.expvar.ev
+    rev = sess.replay.expvar.rev
+
+    axstate = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[sub], hspace=0.2)
+
+    ax1 = fig.add_subplot(axstate[1:])
+    sess.replay.expvar.plot(ax=ax1, tstart=post[0])
+    ax1.set_xlim(left=0)
+    ax1.tick_params(width=2)
+    if sub == 3:
+        ax1.set_ylim([0, 0.15])
+    # # ax1.spines["right"].set_visible("False")
+    # # ax1.spines["top"].set_visible("False")
+
+    axhypno = fig.add_subplot(axstate[0], sharex=ax1)
+    sess.brainstates.hypnogram(ax=axhypno, tstart=post[0], unit="h")
+    # # panel_label(axhypno, "a")
+    # # ax1.set_ylim([0, 11])
+
+figure.savefig("expvar_cellid_shuffle")
+# endregion
