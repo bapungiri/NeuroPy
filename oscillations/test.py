@@ -1,77 +1,52 @@
+import pandas as pd
 import numpy as np
+import networkx as nx
 import matplotlib.pyplot as plt
-import time
-import cupy as cp
 
-x = np.arange(0, 1, 0.02)
+# I build a data set: 10 individuals and 5 variables for each
+ind1 = [5, 10, 3, 4, 8, 10, 12, 1, 9, 4]
+ind5 = [1, 1, 13, 4, 18, 5, 2, 11, 3, 8]
+df = pd.DataFrame(
+    {
+        "A": ind1,
+        "B": ind1 + np.random.randint(10, size=(10)),
+        "C": ind1 + np.random.randint(10, size=(10)),
+        "D": ind1 + np.random.randint(5, size=(10)),
+        "E": ind1 + np.random.randint(5, size=(10)),
+        "F": ind5,
+        "G": ind5 + np.random.randint(5, size=(10)),
+        "H": ind5 + np.random.randint(5, size=(10)),
+        "I": ind5 + np.random.randint(5, size=(10)),
+        "J": ind5 + np.random.randint(5, size=(10)),
+    }
+)
+df
 
-mat = np.random.uniform(0, 0.1, size=(43, 10))
-mat[0, 0] = 0.6
-mat[5, 1] = 0.7
-mat[9, 3] = 0.7
-mat[10, 4] = 0.6
-mat[15, 5] = 0.7
-mat[17, 6] = 0.7
-mat[19, 7] = 0.7
-mat[20, 8] = 0.6
-mat[30, 9] = 0.7
+# Calculate the correlation between individuals. We have to transpose first, because the corr function calculate the pairwise correlations between columns.
+corr = df.corr()
+corr
+corr = pd.DataFrame(corr_chans, columns=chans)
+corr = corr.reindex(chans)
 
-mat = np.apply_along_axis(np.convolve, axis=0, arr=mat, v=np.ones(3))
+# Transform it in a links data frame (3 columns only):
+links = corr.stack().reset_index()
+links.columns = ["var1", "var2", "value"]
+links
 
-t = np.arange(mat.shape[1])
-nt = len(t)
-tmid = (nt + 1) / 2
-pos = np.arange(mat.shape[0])
-npos = len(pos)
-pmid = (npos + 1) / 2
+# Keep only correlation over a threshold and remove self correlation (cor(A,A)=1)
+links_filtered = links.loc[(links["value"] > 0.7) & (links["var1"] != links["var2"])]
+links_filtered
 
-nlines = 35000
-slope = np.random.uniform(low=-np.pi / 2, high=np.pi / 2, size=nlines)
-diag_len = np.sqrt((nt - 1) ** 2 + (npos - 1) ** 2)
-intercept = np.random.uniform(low=-diag_len / 2, high=diag_len / 2, size=nlines)
+# Build your graph
+G = nx.from_pandas_edgelist(links_filtered, "var1", "var2")
 
-tstart = time.time()
-mat_cp = cp.array(mat)
-cmat = cp.tile(intercept, (nt, 1)).T
-mmat = cp.tile(slope, (nt, 1)).T
-tmat = cp.tile(t, (nlines, 1))
-cp.cuda.Stream.null.synchronize()
-posterior = cp.zeros((nlines, nt))
-
-y_line = (((cmat - (tmat - tmid) * cp.cos(mmat)) / cp.sin(mmat)) + pmid).astype(int)
-t_out = cp.where((y_line < 0) | (y_line > npos - 1))
-t_in = cp.where((y_line >= 0) & (y_line <= npos - 1))
-posterior[t_out] = cp.median(mat_cp[:, t_out[1]], axis=0)
-posterior[t_in] = mat_cp[y_line[t_in], t_in[1]]
-
-score = cp.nanmean(posterior, axis=1)
-print(time.time() - tstart)
-
-
-tstart = time.time()
-cmat = np.tile(intercept, (nt, 1)).T
-mmat = np.tile(slope, (nt, 1)).T
-tmat = np.tile(t, (nlines, 1))
-posterior = np.zeros((nlines, nt))
-
-y_line = (((cmat - (tmat - tmid) * np.cos(mmat)) / np.sin(mmat)) + pmid).astype(int)
-t_out = np.where((y_line < 0) | (y_line > npos - 1))
-t_in = np.where((y_line >= 0) & (y_line <= npos - 1))
-posterior[t_out] = np.median(mat[:, t_out[1]], axis=0)
-posterior[t_in] = mat[y_line[t_in], t_in[1]]
-
-score = np.nanmean(posterior, axis=1)
-print(time.time() - tstart)
-
-
-# plt.ylim([0, npos])
-# plt.plot(x, y)
-
-max_line = np.argmax(score)
-ymax = (
-    (intercept[max_line] - (t - tmid) * np.cos(slope[max_line]))
-    / np.sin(slope[max_line])
-) + pmid
-
-plt.pcolormesh(mat)
-plt.plot(t, ymax)
+# Plot the network:
+nx.draw(
+    G,
+    with_labels=True,
+    node_color="orange",
+    node_size=400,
+    edge_color="black",
+    linewidths=1,
+    font_size=15,
+)

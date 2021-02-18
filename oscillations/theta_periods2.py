@@ -18,6 +18,9 @@ from mathutil import threshPeriods
 from plotUtil import Colormap, Fig
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from joblib import Parallel, delayed
+import networkx as nx
+from sklearn.cluster import spectral_clustering
+import scipy.cluster.hierarchy as sch
 
 # warnings.simplefilter(action="default")
 
@@ -1236,7 +1239,7 @@ for sub, sess in enumerate(sessions[7:8]):
 """
 figure = Fig()
 fig, gs = figure.draw(grid=(8, 8))
-sessions = subjects.Openfield().ratNday4
+sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions[7:8]):
     maze = sess.epochs.maze
 
@@ -1516,7 +1519,10 @@ for sub, sess in enumerate(sessions):
     filt_lfp1 = signal_process.filter_sig.bandpass(strong_theta, lf=1, hf=80)
     filt_lfp1 = stats.zscore(filt_lfp1)
     peak = sg.find_peaks(filt_lfp1, height=0, distance=100, prominence=0.8)[0]
-    trough = sg.find_peaks(-filt_lfp1, height=0, distance=100, prominence=0.8)[0]
+    trough = stats.binned_statistic(
+        np.arange(len(filt_lfp1)), filt_lfp1, bins=peak, statistic=np.argmin
+    )[0]
+    trough = peak[:-1] + trough
 
     loc = np.concatenate((trough, peak))
     angles = np.concatenate((np.zeros(len(trough)), 180 * np.ones(len(peak))))
@@ -1547,37 +1553,25 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
-#%% Scratchpad --> Theta phase estimation using waveshape
+#%% Comparing gamma wavelet along theta using with phase estimation using waveshape and hilbert
 # region
-sessions = subjects.Sd().ratNday1
+sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
-    maze = sess.epochs.maze
+    maze = sess.epochs.maze1
     chans = sess.recinfo.channelgroups[-1]
     lfp = np.asarray(sess.recinfo.geteeg(chans=chans, timeRange=maze))
     corr_chans = np.corrcoef(lfp)
     corr_chans = np.where(corr_chans > 0.7, 1, 0)
 
-    lfp_ca1 = np.median(lfp[:10, :], axis=0)
+    lfp_ca1 = np.median(lfp[:8, :], axis=0)
     strong_theta = sess.theta.getstrongTheta(lfp_ca1, lowthresh=0.5, highthresh=1)[0]
 
     # --- phase estimation by waveshape --------
-    filt_lfp1 = signal_process.filter_sig.bandpass(strong_theta, lf=1, hf=80)
-    # filt_lfp1 = stats.zscore(filt_lfp1)
-    peak = sg.find_peaks(filt_lfp1, height=0, distance=100, prominence=0.8)[0]
-    trough = sg.find_peaks(-filt_lfp1, height=0, distance=100, prominence=0.8)[0]
 
-    loc = np.concatenate((trough, peak))
-    angles = np.concatenate((np.zeros(len(trough)), 180 * np.ones(len(peak))))
-    sort_ind = np.argsort(loc)
-    loc = loc[sort_ind]
-    angles = angles[sort_ind]
-    lfp_angle1 = np.interp(np.arange(len(strong_theta)), loc, angles)
-    angle_descend = np.where(np.diff(lfp_angle1) < 0)[0]
-    lfp_angle1[angle_descend] = -lfp_angle1[angle_descend] + 360
-
-    # --- phase estimation by hilbert transform --------
-    filt_lfp2 = signal_process.ThetaParams(strong_theta, fs=1250)
-    lfp_angle2 = filt_lfp2.angle
+    theta_param1 = signal_process.ThetaParams(strong_theta, fs=1250, method="waveshape")
+    lfp_angle1 = theta_param1.angle
+    theta_param2 = signal_process.ThetaParams(strong_theta, fs=1250, method="hilbert")
+    lfp_angle2 = theta_param2.angle
 
     frgamma = np.arange(25, 150)
     # ----- wavelet power for gamma oscillations----------
@@ -1613,12 +1607,185 @@ for sub, sess in enumerate(sessions):
     fig, gs = figure.draw(num=1, grid=(1, 2))
 
     ax = plt.subplot(gs[0])
-    sns.heatmap(gamma_at_theta, ax=ax, cmap="jet", shading="gouraud", vmax=0.08)
+    sns.heatmap(gamma_at_theta, ax=ax, cmap="jet")
     ax.invert_yaxis()
 
     ax = plt.subplot(gs[1])
     sns.heatmap(gamma_at_theta2, ax=ax, cmap="jet")
     ax.invert_yaxis()
 
+
+# endregion
+
+#%% Gamma at theta phases on multiple shanks using (belluscio meethod) taking mean of correlated LFP
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 4))
+
+# sessions = subjects.Sd().allsess[:3] + subjects.Nsd().allsess[:3]
+# sessions = subjects.Of().ratNday4
+sessions = subjects.Sd().ratNday1
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    eegSrate = sess.recinfo.lfpSrate
+    ca1_chans = sess.ripple.bestchans
+    nShanks = sess.recinfo.nShanks
+    chan_grp = sess.recinfo.goodchangrp
+    chan_grp = [_ for _ in chan_grp if _]
+
+    gamma_all = []
+    for chans in chan_grp:
+        ca1_ind = np.intersect1d(chans, ca1_chans, return_indices=True)[1][0]
+        chosen_chans = chans[: ca1_ind + 3]
+        corr_chans = np.corrcoef(lfp)
+        corr_chans = np.where(corr_chans > 0.7, 1, 0)
+
+        lfp = np.asarray(sess.recinfo.geteeg(chans=chosen_chans, timeRange=maze))
+        lfp_ca1 = np.median(lfp, axis=0)
+        strong_theta = sess.theta.getstrongTheta(
+            lfp_ca1, lowthresh=0.1, highthresh=0.5
+        )[0]
+
+        # --- phase estimation by waveshape --------
+
+        theta_param = signal_process.ThetaParams(
+            strong_theta, fs=1250, method="waveshape"
+        )
+        lfp_angle = theta_param.angle
+
+        frgamma = np.arange(25, 150)
+        # ----- wavelet power for gamma oscillations----------
+        wavdec = signal_process.wavelet_decomp(
+            strong_theta, freqs=frgamma, sampfreq=eegSrate
+        )
+        wav = wavdec.colgin2009()
+        wav = stats.zscore(wav, axis=1)
+
+        # ----segmenting gamma wavelet at theta phases ----------
+        bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+        phase_centers = bin_angle[:-1] + np.diff(bin_angle).mean() / 2
+
+        bin_ind = np.digitize(lfp_angle, bin_angle)
+
+        gamma_at_theta = pd.DataFrame()
+        for i in np.unique(bin_ind):
+            find_where = np.where(bin_ind == i)[0]
+            gamma_at_theta[bin_angle[i - 1]] = np.mean(wav[:, find_where], axis=1)
+        gamma_at_theta.insert(0, column="freq", value=frgamma)
+        gamma_at_theta.set_index("freq", inplace=True)
+
+        gamma_all.append(gamma_at_theta)
+
+    for i, data in enumerate(gamma_all):
+        ax = plt.subplot(gs[i])
+        ax.contourf(
+            phase_centers,
+            frgamma,
+            np.asarray(data),
+            cmap="jet",
+            levels=50,
+            # origin="lower",
+        )
+        ax.set_xticks([0, 90, 180, 270, 360])
+        ax.set_yticks(np.arange(25, 150, 30))
+        ax.set_title(f"Shank {i+1}")
+
+
+# figure.savefig("theta_gamma_belluscio")
+# endregion
+
+#%% Gamma frequency theta phase linear relationship
+# region
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    ca1_chans = sess.ripple.bestchans
+    nShanks = sess.recinfo.nShanks
+    chan_grp = sess.recinfo.goodchangrp
+    chan_grp = [_ for _ in chan_grp if _]
+
+    chosen_chans = []
+    for chans in chan_grp:
+        ca1_ind = np.intersect1d(chans, ca1_chans, return_indices=True)[1][0]
+        chosen_chans.extend(chans[: ca1_ind + 1])
+
+    lfp = np.asarray(sess.recinfo.geteeg(chans=chosen_chans, timeRange=maze))
+    # corr_chans = np.corrcoef(lfp)
+    # corr_chans = np.where(corr_chans > 0.7, 1, 0)
+
+    lfp_ca1 = np.median(lfp, axis=0)
+    strong_theta = sess.theta.getstrongTheta(lfp_ca1, lowthresh=0, highthresh=1)[0]
+
+    # --- phase estimation by waveshape --------
+
+    theta_param = signal_process.ThetaParams(strong_theta, fs=1250, method="waveshape")
+    lfp_angle = theta_param.angle
+
+    frgamma = np.arange(25, 150, 30)
+    bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+
+    hist_all = []
+    for gamma in frgamma:
+        gamma_lfp = signal_process.filter_sig.bandpass(
+            strong_theta, lf=gamma, hf=gamma + 5
+        )
+        hilbert_sig = signal_process.hilbertfast(gamma_lfp)
+        hilbert_amp = np.abs(hilbert_sig)
+        periods = threshPeriods(
+            stats.zscore(hilbert_amp),
+            lowthresh=2,
+            highthresh=2.1,
+            minDistance=0,
+            minDuration=10,
+        )
+        periods = np.ravel(periods)
+        peak = stats.binned_statistic(
+            np.arange(len(hilbert_amp)),
+            hilbert_amp,
+            bins=periods,
+            statistic=np.argmax,
+        )[0]
+        peak = periods[:-1] + peak
+        peak = peak[::2]
+        gamma_phase = lfp_angle[peak.astype(int)]
+        gamma_phase_hist = np.histogram(gamma_phase, bins=bin_angle)[0]
+        hist_all.append(gamma_phase_hist)
+
+    # frgamma = np.arange(25, 150)
+    # # ----- wavelet power for gamma oscillations----------
+    # wavdec = signal_process.wavelet_decomp(strong_theta, freqs=frgamma)
+    # wav = wavdec.colgin2009()
+    # wav = stats.zscore(wav, axis=1)
+
+    # ----segmenting gamma wavelet at theta phases ----------
+    # phase_centers = bin_angle[:-1] + np.diff(bin_angle).mean() / 2
+
+    # bin_ind = np.digitize(lfp_angle, bin_angle)
+
+    # gamma_at_theta = pd.DataFrame()
+    # for i in np.unique(bin_ind):
+    #     find_where = np.where(bin_ind == i)[0]
+    #     gamma_at_theta[bin_angle[i - 1]] = np.mean(wav[:, find_where], axis=1)
+    # gamma_at_theta.insert(0, column="freq", value=frgamma)
+    # gamma_at_theta.set_index("freq", inplace=True)
+
+    figure = Fig()
+    fig, gs = figure.draw(num=1, grid=(4, 4))
+
+    ax = plt.subplot(gs[0])
+    # sns.heatmap(gamma_at_theta, ax=ax, cmap="jet")
+    # ax.pcolormesh(bin_angle[1:], frgamma, np.asarray(gamma_at_theta), cmap="jet")
+    # ax.contourf(
+    #     phase_centers,
+    #     frgamma,
+    #     np.asarray(gamma_at_theta),
+    #     cmap="jet",
+    #     levels=50,
+    #     # origin="lower",
+    # )
+    # ax.set_xlim([0, 360])
+    ax.plot(np.asarray(hist_all).T)
+    # ax.set_xticks([0, 90, 180, 270, 360])
+    # ax.set_yticks(np.arange(25, 150, 30))
 
 # endregion
