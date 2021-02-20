@@ -85,7 +85,7 @@ for sub, sess in enumerate(sessions):
 # endregion
 
 
-#%% Gamma around theta for correlated channels
+#%% Gamma around theta for correlated channels using wavelet
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(4, 4))
@@ -168,6 +168,82 @@ for sub, sess in enumerate(sessions):
         ax.set_xticks([0, 90, 180, 270, 360])
         ax.set_yticks(np.arange(25, 150, 30))
         ax.set_title(f"Shank {i+1}")
+
+
+# endregion
+
+#%% Gamma around theta for correlated channels using phase extraction
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 4))
+
+# sessions = subjects.Sd().allsess[:3] + subjects.Nsd().allsess[:3]
+# sessions = subjects.Sd().ratJday1
+# sessions = subjects.Nsd().ratNday2
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    eegSrate = sess.recinfo.lfpSrate
+    ca1_chans = sess.ripple.bestchans
+    nShanks = sess.recinfo.nShanks
+    chan_grp = sess.recinfo.goodchangrp
+    chan_grp = [_ for _ in chan_grp if _]
+    chans = sess.recinfo.goodchans
+
+    lfp = np.asarray(sess.recinfo.geteeg(chans=chans, timeRange=maze))
+    corr_chans = np.corrcoef(lfp)
+    corr_chans = np.where(corr_chans > 0.7, 1, 0)
+    np.fill_diagonal(corr_chans, 0)
+
+    labels = spectral_clustering(affinity=corr_chans, n_clusters=2)
+    sort_ind = np.argsort(labels)
+    corr_new = corr_chans[np.ix_(sort_ind, sort_ind)]
+
+    grp1 = chans[np.where(labels == 0)[0]]
+    grp2 = chans[labels == 1]
+
+    gamma_all = []
+    for grp_chans in [grp1, grp2]:
+        grp_ind = np.intersect1d(chans, grp_chans, return_indices=True)[1]
+        lfp_ca1 = np.median(lfp[grp_ind, :], axis=0)
+        # plt.plot(lfp_ca1)
+        strong_theta = sess.theta.getstrongTheta(lfp_ca1, lowthresh=0, highthresh=1)[0]
+
+        # --- phase estimation by waveshape --------
+
+        theta_param = signal_process.ThetaParams(
+            strong_theta, fs=1250, method="waveshape"
+        )
+        lfp_angle = theta_param.angle
+        gamma = signal_process.filter_sig.highpass(strong_theta, cutoff=60)
+        gamma_at_theta, _, angle_centers = theta_param.break_by_phase(
+            gamma, binsize=180, slideby=None
+        )
+
+        df = pd.DataFrame()
+        f_ = None
+        for lfp_, center in zip(gamma_at_theta, angle_centers):
+            f_, pxx = sg.welch(lfp_, nperseg=2 * 1250, noverlap=625, fs=1250)
+            df[center] = pxx
+
+        df.insert(0, "freq", f_)
+
+        gamma_all.append(df)
+
+    for i, df in enumerate(gamma_all):
+        ax = plt.subplot(gs[i])
+        data = df[df.freq < 200].set_index("freq").transform(stats.zscore, axis=1)
+        ax.pcolormesh(
+            data.columns,
+            data.index,
+            gaussian_filter(data, sigma=1),
+            cmap="jet",
+            shading="auto",
+        )
+        ax.set_xlabel(r"$\theta$ phase")
+        ax.set_ylabel("Frequency (Hz)")
+        ax.set_xticks(np.linspace(0, 360, 5))
+        # ax.set_title(bin_names[i])
 
 
 # endregion
