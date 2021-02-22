@@ -25,5 +25,5 @@ c[: 191 * 60 * 1250 * 134] = b1[: 191 * 60 * 1250 * 134]
 c[191 * 60 * 1250 * 134 :] = b1[192 * 60 * 1250 * 134 :]
 # del c
 
-# # writes the data to that space
-# d = np.memmap(Destfile, dtype="int16", mode="r+", shape=(len(b1)))
+# writes the data to that space
+d = np.memmap(Destfile, dtype="int16", mode="r+", shape=(len(b1)))
