@@ -109,7 +109,7 @@ for sub, sess in enumerate(sessions):
     corr_chans = np.where(corr_chans > 0.7, 1, 0)
     np.fill_diagonal(corr_chans, 0)
 
-    labels = spectral_clustering(affinity=corr_chans, n_clusters=3)
+    labels = spectral_clustering(affinity=corr_chans, n_clusters=2)
     sort_ind = np.argsort(labels)
     corr_new = corr_chans[np.ix_(sort_ind, sort_ind)]
 
@@ -217,7 +217,7 @@ for sub, sess in enumerate(sessions):
         lfp_angle = theta_param.angle
         gamma = signal_process.filter_sig.highpass(strong_theta, cutoff=60)
         gamma_at_theta, _, angle_centers = theta_param.break_by_phase(
-            gamma, binsize=180, slideby=None
+            gamma, binsize=30, slideby=9
         )
 
         df = pd.DataFrame()
@@ -244,6 +244,70 @@ for sub, sess in enumerate(sessions):
         ax.set_ylabel("Frequency (Hz)")
         ax.set_xticks(np.linspace(0, 360, 5))
         # ax.set_title(bin_names[i])
+
+
+# endregion
+
+
+#%% Gamma bouts and cross-correlogram of interneurons
+# region
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    spikes = sess.spikes.pyr + sess.spikes.intneur
+    chan = 12
+
+    lfp = sess.recinfo.geteeg(chans=chan, timeRange=maze)
+    gamma_filt = signal_process.filter_sig.bandpass(lfp, lf=25, hf=55, fs=eegSrate)
+    hilbert_sig = signal_process.hilbertfast(gamma_filt)
+    hilbert_amp = np.abs(hilbert_sig)
+    bouts = threshPeriods(
+        stats.zscore(hilbert_amp),
+        lowthresh=1,
+        highthresh=1.1,
+        minDuration=10,
+        minDistance=10,
+    )
+    bouts = bouts / eegSrate + maze[0]
+
+    gamma_spikes = []
+    for cell in spikes:
+        spike_ind = np.digitize(cell, bins=np.ravel(bouts))
+        gamma_spikes.append(cell[spike_ind % 2 == 1])
+
+    acg = np.asarray(sess.spikes.get_acg(spikes=gamma_spikes))
+    acg_norm = stats.zscore(acg, axis=1)
+
+    # plt.imshow(acg_norm, cmap="tab20c")
+    acg_half = acg_norm[:, 28:]
+    sum_acg = np.sum(acg_half, axis=1)
+    zero_ccg_ind = np.where(sum_acg == 0)[0]
+    acg_half = np.delete(acg_half, zero_ccg_ind, axis=0)
+
+    # sort_ind = np.argsort(acg_norm, axis=1)
+    # acg_sorted = acg_half[sort_ind, :]
+    # plt.imshow(acg_half, cmap="tab20c")
+
+    acg_new = np.zeros_like(acg_half)
+    for i, vals in enumerate(acg_half):
+        if np.count_nonzero(vals) > 0:
+            peak = sg.find_peaks(vals)[0]
+            vals[peak] = 1
+            vals[np.setdiff1d(np.arange(len(vals)), peak)] = 0
+            acg_new[i, :] = vals
+
+    sort_ind = np.argsort(np.argmax(acg_new, axis=1))
+    acg_new = acg_new[sort_ind, :]
+
+    labels = spectral_clustering(affinity=a, n_clusters=2)
+    sort_ind = np.argsort(labels)
+    corr_new = corr_chans[np.ix_(sort_ind, sort_ind)]
+
+    pdist = sch.distance.pdist(a)
+    linkage = sch.linkage(pdist, method="complete")
+    idx = sch.fcluster(linkage, 0.5 * pdist.max(), "distance")
 
 
 # endregion

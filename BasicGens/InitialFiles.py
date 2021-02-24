@@ -8,7 +8,7 @@ from scipy.ndimage import gaussian_filter
 import subjects
 import time
 
-sessions = subjects.Tn().ratSday5
+sessions = subjects.Of().ratNday4
 
 #%% Generate _basics.npy files
 # region
@@ -17,7 +17,8 @@ for sub, sess in enumerate(sessions):
     #     "/data/Clustering/SleepDeprivation/RatS/Day3SD/openEphysSettings/settings.xml"
     # )
     # sess.recinfo.generate_xml(settingsPath=openephys_settingspath)
-    sess.recinfo.makerecinfo(nShanks=[6, 8], skulleeg=[51], motion=[192, 193, 194])
+    # sess.recinfo.makerecinfo(nShanks=[6, 8], skulleeg=[51], motion=[192, 193, 194])
+    sess.recinfo.makerecinfo(nShanks=8)
     # sess.recinfo.makerecinfo(nShanks=8)
 # endregion
 
@@ -83,7 +84,7 @@ for sub, sess in enumerate(sessions):
 # region
 for sub, sess in enumerate(sessions):
     # sess.trange = np.array([])
-    sess.recinfo.sampfreq = 30000
+    # sess.recinfo.sampfreq = 30000
     sess.spikes.from_Phy(
         folder="/data/Clustering/SleepDeprivation/RatN/Day4/spykcirc/RatN_Day4_2019-10-15_11-30-06.GUI",
         fileformat="same_folder",
@@ -94,7 +95,7 @@ for sub, sess in enumerate(sessions):
 #%% label cells
 # region
 for sub, sess in enumerate(sessions):
-    sess.recinfo.sampfreq = 30000
+    # sess.recinfo.sampfreq = 30000
     sess.spikes.label_celltype()
 
 
