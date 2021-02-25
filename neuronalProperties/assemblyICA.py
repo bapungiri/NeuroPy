@@ -1,5 +1,4 @@
 #%%
-from getSpikes import Stability, spikes
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -9,28 +8,15 @@ from scipy.ndimage import gaussian_filter
 from ccg import correlograms
 from mathutil import getICA_Assembly
 from callfunc import processData
-
-basePath = [
-    "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-    # "/data/Clustering/SleepDeprivation/RatN/Day4/"
-]
-
-
-sessions = [processData(_) for _ in basePath]
-
+import subjects
+from plotUtil import Fig
 
 #%% Reactivation strength
 plt.clf()
 fig = plt.figure(1, figsize=(10, 15))
 gs = gridspec.GridSpec(16, 1, figure=fig)
 fig.subplots_adjust(hspace=0.3)
-
+sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     maze = sess.epochs.maze
@@ -294,3 +280,19 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
+#%% Directed reward vs sprinkled reward reactivation comparison
+# region
+# figure = Fig()
+# fig, gs = figure.draw(num=2, grid=(1, 1))
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    sprinkle = sess.epochs.sprinkle
+    pre_sprinkle = [maze[0], sprinkle[0]]
+    activation = sess.replay.assemblyICA.getActivation(
+        template=pre_sprinkle, match=maze
+    )
+    # ax = plt.subplot(gs[0])
+    sess.replay.assemblyICA.plotActivation()
+
+# endregion
