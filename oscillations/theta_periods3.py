@@ -20,6 +20,8 @@ from joblib import Parallel, delayed
 import networkx as nx
 from sklearn.cluster import spectral_clustering
 import scipy.cluster.hierarchy as sch
+import subjects
+import scipy.fft as fft
 
 #%% Scratchpad for selecting correlated channels
 # region
@@ -251,63 +253,108 @@ for sub, sess in enumerate(sessions):
 
 #%% Gamma bouts and cross-correlogram of interneurons
 # region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(16, 5))
 sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
 
     eegSrate = sess.recinfo.lfpSrate
     maze = sess.epochs.maze
-    spikes = sess.spikes.pyr + sess.spikes.intneur
+    spikes = sess.spikes.pyr  # sess.spikes.intneur
     chan = 12
 
     lfp = sess.recinfo.geteeg(chans=chan, timeRange=maze)
-    gamma_filt = signal_process.filter_sig.bandpass(lfp, lf=25, hf=55, fs=eegSrate)
-    hilbert_sig = signal_process.hilbertfast(gamma_filt)
-    hilbert_amp = np.abs(hilbert_sig)
-    bouts = threshPeriods(
-        stats.zscore(hilbert_amp),
-        lowthresh=1,
-        highthresh=1.1,
-        minDuration=10,
-        minDistance=10,
-    )
-    bouts = bouts / eegSrate + maze[0]
 
-    gamma_spikes = []
-    for cell in spikes:
-        spike_ind = np.digitize(cell, bins=np.ravel(bouts))
-        gamma_spikes.append(cell[spike_ind % 2 == 1])
+    def get_ccg_gamma(low, high):
+        gamma_filt = signal_process.filter_sig.bandpass(
+            lfp, lf=low, hf=high, fs=eegSrate
+        )
+        hilbert_sig = signal_process.hilbertfast(gamma_filt)
+        hilbert_amp = np.abs(hilbert_sig)
+        bouts = threshPeriods(
+            stats.zscore(hilbert_amp),
+            lowthresh=1,
+            highthresh=1.1,
+            minDuration=10,
+            minDistance=10,
+        )
+        bouts = bouts / eegSrate + maze[0]
 
-    acg = np.asarray(sess.spikes.get_acg(spikes=gamma_spikes))
-    acg_norm = stats.zscore(acg, axis=1)
+        gamma_spikes = []
+        for cell in spikes:
+            spike_ind = np.digitize(cell, bins=np.ravel(bouts))
+            gamma_spikes.append(cell[spike_ind % 2 == 1])
+
+        acg = np.asarray(sess.spikes.get_acg(spikes=gamma_spikes))
+        acg_norm = stats.zscore(acg, axis=1)
+
+        return acg
+
+    acg_slgamma = get_ccg_gamma(25, 55)
+    acg_medgamma = get_ccg_gamma(60, 100)
+
+    t = np.linspace(-50, 50, 51)
+    for i, (sl, med) in enumerate(zip(acg_slgamma, acg_medgamma)):
+        gs_ = figure.subplot2grid(gs[i], grid=(1, 2))
+        ax1 = plt.subplot(gs_[0])
+        ax1.fill_between(t, sl)
+
+        ax2 = plt.subplot(gs_[1])
+        ax2.fill_between(t, med)
 
     # plt.imshow(acg_norm, cmap="tab20c")
-    acg_half = acg_norm[:, 28:]
-    sum_acg = np.sum(acg_half, axis=1)
-    zero_ccg_ind = np.where(sum_acg == 0)[0]
-    acg_half = np.delete(acg_half, zero_ccg_ind, axis=0)
+    # acg_half = acg_norm[:, 28:]
+    # sum_acg = np.sum(acg_half, axis=1)
+    # zero_ccg_ind = np.where(sum_acg == 0)[0]
+    # acg_half = np.delete(acg_half, zero_ccg_ind, axis=0)
 
-    # sort_ind = np.argsort(acg_norm, axis=1)
-    # acg_sorted = acg_half[sort_ind, :]
-    # plt.imshow(acg_half, cmap="tab20c")
+    # # sort_ind = np.argsort(acg_norm, axis=1)
+    # # acg_sorted = acg_half[sort_ind, :]
+    # # plt.imshow(acg_half, cmap="tab20c")
 
-    acg_new = np.zeros_like(acg_half)
-    for i, vals in enumerate(acg_half):
-        if np.count_nonzero(vals) > 0:
-            peak = sg.find_peaks(vals)[0]
-            vals[peak] = 1
-            vals[np.setdiff1d(np.arange(len(vals)), peak)] = 0
-            acg_new[i, :] = vals
+    # acg_new = np.zeros_like(acg_half)
+    # for i, vals in enumerate(acg_half):
+    #     if np.count_nonzero(vals) > 0:
+    #         peak = sg.find_peaks(vals)[0]
+    #         vals[peak] = 1
+    #         vals[np.setdiff1d(np.arange(len(vals)), peak)] = 0
+    #         acg_new[i, :] = vals
 
-    sort_ind = np.argsort(np.argmax(acg_new, axis=1))
-    acg_new = acg_new[sort_ind, :]
+    # sort_ind = np.argsort(np.argmax(acg_new, axis=1))
+    # acg_new = acg_new[sort_ind, :]
 
-    labels = spectral_clustering(affinity=a, n_clusters=2)
-    sort_ind = np.argsort(labels)
-    corr_new = corr_chans[np.ix_(sort_ind, sort_ind)]
+    # labels = spectral_clustering(affinity=a, n_clusters=2)
+    # sort_ind = np.argsort(labels)
+    # corr_new = corr_chans[np.ix_(sort_ind, sort_ind)]
 
-    pdist = sch.distance.pdist(a)
-    linkage = sch.linkage(pdist, method="complete")
-    idx = sch.fcluster(linkage, 0.5 * pdist.max(), "distance")
+    # pdist = sch.distance.pdist(a)
+    # linkage = sch.linkage(pdist, method="complete")
+    # idx = sch.fcluster(linkage, 0.5 * pdist.max(), "distance")
 
+
+# endregion
+
+
+#%% check whitening
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Of().ratNday4
+
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    eegSrate = sess.recinfo.lfpSrate
+    lfp = sess.recinfo.geteeg(chans=12, timeRange=maze)
+
+    f, pxx = sg.welch(lfp, fs=eegSrate, nperseg=5 * 1250, noverlap=2 * 1250)
+
+    ax = plt.subplot(gs[0])
+    ax.plot(f, pxx)
+    ax.set_yscale("log")
+    ax.set_xscale("log")
+
+    pxx_smooth = gaussian_filter1d(pxx, sigma=100)
+
+    ax.plot(f, pxx_smooth)
 
 # endregion
