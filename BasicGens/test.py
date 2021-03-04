@@ -1,8 +1,9 @@
-import matplotlib.pyplot as plt
 import numpy as np
 
-# fig, ax = plt.subplots(1, 2)
-fig = plt.figure()
-axs = plt.subplot2grid((5, 5), (0, 0), sharex=True)
+file = "/data/Clustering/SleepDeprivation/RatK/Day4/RatK_2019-08-16_04-42-36/experiment1/recording1/events/Message_Center-904.0/TEXT_group_1/text.npy"
 
-axs.plot([1, 2, 3])
+data = np.load(file)
+
+time_file = "/data/Clustering/SleepDeprivation/RatK/Day4/RatK_2019-08-16_04-42-36/experiment1/recording1/events/Message_Center-904.0/TEXT_group_1/timestamps.npy"
+
+time_data = np.load(time_file)

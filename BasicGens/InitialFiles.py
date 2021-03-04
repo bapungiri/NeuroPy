@@ -8,7 +8,7 @@ from scipy.ndimage import gaussian_filter
 import subjects
 import time
 
-sessions = subjects.Of().ratNday4
+sessions = subjects.Of().ratKday4
 
 #%% Generate _basics.npy files
 # region
@@ -46,7 +46,6 @@ for sub, sess in enumerate(sessions):
 #%% Generate position files
 # region
 for sub, sess in enumerate(sessions):
-    sess.trange = []
     sess.position.getPosition(method="from_metadata", scale=4.0)
     # sess.position.export2Neuroscope()
 

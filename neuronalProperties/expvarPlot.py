@@ -14,13 +14,13 @@ import pingouin as pg
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(2, 2))
-sessions = (
-    subjects.Nsd().ratSday2
-    + subjects.Sd().ratSday3
-    + subjects.Nsd().ratNday2
-    + subjects.Sd().ratNday1
-)
-# sessions = subjects.Sd().ratSday3
+# sessions = (
+#     subjects.Nsd().ratSday2
+#     + subjects.Sd().ratSday3
+#     + subjects.Nsd().ratNday2
+#     + subjects.Sd().ratNday1
+# )
+sessions = subjects.Of().ratKday4
 
 for sub, sess in enumerate(sessions):
 
@@ -52,9 +52,9 @@ for sub, sess in enumerate(sessions):
     # sess.spikes.stability.refPeriodViolation()
     # violations = sess.spikes.stability.violations
 
-    control = maze
-    template = [post[0] + 4 * 3600, post[0] + 5 * 3600]
-    match = [post[0] + 5 * 3600, post[1]]
+    control = pre
+    template = maze  # [post[0] + 4 * 3600, post[0] + 5 * 3600]
+    match = post  # [post[0] + 5 * 3600, post[1]]
 
     sess.replay.expvar.compute(
         template=template,
@@ -77,7 +77,7 @@ for sub, sess in enumerate(sessions):
     # ax1.spines["top"].set_visible("False")
 
     axhypno = fig.add_subplot(axstate[0], sharex=ax1)
-    sess.brainstates.hypnogram(ax=axhypno, tstart=post[0], unit="h")
+    # sess.brainstates.hypnogram(ax=axhypno, tstart=post[0], unit="h")
     # panel_label(axhypno, "a")
     # ax1.set_ylim([0, 11])
 

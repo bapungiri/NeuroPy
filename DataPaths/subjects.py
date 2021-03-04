@@ -31,6 +31,11 @@ class Of:
         return [processData(path)]
 
     @property
+    def ratKday4(self):
+        path = "/data/Clustering/SleepDeprivation/RatK/Day4/"
+        return [processData(path)]
+
+    @property
     def ratNday4(self):
         path = "/data/Clustering/SleepDeprivation/RatN/Day4/"
         return [processData(path)]

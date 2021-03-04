@@ -66,7 +66,7 @@ figure = Fig()
 fig, gs = figure.draw(grid=[4, 4])
 
 axstate = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs[0, :], hspace=0.2)
-sessions = subjects.Nsd().ratSday2
+sessions = subjects.Of().ratKday4
 for sub, sess in enumerate(sessions):
     axspec = fig.add_subplot(axstate[1:4])
     chan = 77
