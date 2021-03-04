@@ -15,6 +15,27 @@ from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 # warnings.simplefilter(action="default")
 
+
+#%% Ripple stats and examples
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Sd().ratNday1
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    sess.ripple.plot_summary(random=True)
+# endregion
+
+#%% Spindle stats and examples
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Sd().ratNday1
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    sess.spindle.plot()
+# endregion
+
 #%% Spectrogram, sleep fraction, ripple power SD, number of ripples
 # region
 
