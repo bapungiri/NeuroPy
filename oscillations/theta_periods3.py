@@ -251,10 +251,10 @@ for sub, sess in enumerate(sessions):
 # endregion
 
 
-#%% Gamma bouts and cross-correlogram of interneurons
+#%% Gamma bouts and cross-correlogram of pyramidal/interneurons
 # region
 figure = Fig()
-fig, gs = figure.draw(num=1, grid=(16, 5))
+fig, gs = figure.draw(num=1, grid=(12, 5))
 sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
 
@@ -285,7 +285,7 @@ for sub, sess in enumerate(sessions):
             spike_ind = np.digitize(cell, bins=np.ravel(bouts))
             gamma_spikes.append(cell[spike_ind % 2 == 1])
 
-        acg = np.asarray(sess.spikes.get_acg(spikes=gamma_spikes))
+        acg = np.asarray(sess.spikes.get_acg(spikes=gamma_spikes, window_size=0.1))
         acg_norm = stats.zscore(acg, axis=1)
 
         return acg
@@ -293,14 +293,18 @@ for sub, sess in enumerate(sessions):
     acg_slgamma = get_ccg_gamma(25, 55)
     acg_medgamma = get_ccg_gamma(60, 100)
 
-    t = np.linspace(-50, 50, 51)
-    for i, (sl, med) in enumerate(zip(acg_slgamma, acg_medgamma)):
-        gs_ = figure.subplot2grid(gs[i], grid=(1, 2))
-        ax1 = plt.subplot(gs_[0])
-        ax1.fill_between(t, sl)
+    t = np.linspace(-1, 1, 101) * 50
+    i = 0
+    for sl, med in zip(acg_slgamma, acg_medgamma):
 
-        ax2 = plt.subplot(gs_[1])
-        ax2.fill_between(t, med)
+        if np.max(sl) > 5 and np.max(med) > 5:
+            gs_ = figure.subplot2grid(gs[i], grid=(1, 2))
+            ax1 = plt.subplot(gs_[0])
+            ax1.fill_between(t, sl)
+
+            ax2 = plt.subplot(gs_[1], sharex=ax1, sharey=ax1)
+            ax2.fill_between(t, med)
+            i += 1
 
     # plt.imshow(acg_norm, cmap="tab20c")
     # acg_half = acg_norm[:, 28:]
@@ -334,6 +338,28 @@ for sub, sess in enumerate(sessions):
 
 # endregion
 
+#%% Summation of shifted sinousoids
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(3, 1), size=(14, 6))
+t = np.linspace(0, 2, 1000)
+y1 = np.sin(2 * np.pi * 8 * t) + np.sin(2 * np.pi * 16 * t)
+y2 = np.sin(2 * np.pi * 7 * t + 0.5)
+y3 = 0.2 * np.sin(2 * np.pi * 10 * t + 0.8)
+y4 = sg.sawtooth(2 * np.pi * 8 * t)[::-1]
+y_sum = y1 + y2 + y3 + y4
+
+ax = plt.subplot(gs[0])
+ax.plot(y1)
+ax.plot(y2)
+ax.plot(y3)
+ax.plot(y4)
+
+ax = plt.subplot(gs[1], sharex=ax)
+ax.plot(y_sum)
+
+
+# endregion
 
 #%% check whitening
 # region
@@ -356,5 +382,79 @@ for sub, sess in enumerate(sessions):
     pxx_smooth = gaussian_filter1d(pxx, sigma=100)
 
     ax.plot(f, pxx_smooth)
+
+# endregion
+
+#%% Check theta across layers during gamma events
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+
+    lfp = sess.recinfo.geteeg(chans=47, timeRange=maze)
+    gamma_filt = signal_process.filter_sig.bandpass(lfp, lf=60, hf=100, fs=eegSrate)
+    hilbert_sig = signal_process.hilbertfast(gamma_filt)
+    hilbert_amp = np.abs(hilbert_sig)
+    bouts = threshPeriods(
+        stats.zscore(hilbert_amp),
+        lowthresh=1,
+        highthresh=1.1,
+        minDuration=10,
+        minDistance=10,
+    )
+    bouts = bouts / eegSrate + maze[0]
+
+    shank_chans = sess.recinfo.goodchangrp[2]
+    bout_ind = 0
+    period = [bouts[bout_ind][0] - 1, bouts[bout_ind][1] + 1]
+    lfp_gamma = np.asarray(sess.recinfo.geteeg(chans=shank_chans, timeRange=period))
+
+    concat_gamma_lfp = []
+    for bout in bouts:
+        concat_gamma_lfp.append(
+            np.asarray(sess.recinfo.geteeg(chans=shank_chans, timeRange=bout))
+        )
+
+    concat_gamma_lfp = np.hstack(concat_gamma_lfp)
+
+    corr_chans = np.corrcoef(concat_gamma_lfp)
+
+    # lfp_gamma = lfp_gamma.T + np.linspace(1200, 0, len(shank_chans))
+
+# endregion
+
+#%% Different gamma band amplitude around reactivation
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 5), size=(12, 6))
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    pre = sess.epochs.pre
+    post = sess.epochs.post
+    sprinkle = sess.epochs.sprinkle
+    pre_sprinkle = [maze[0], sprinkle[0]]
+
+    x = sess.position.x
+    y = sess.position.y
+    t = sess.position.t
+
+    maze_indx = np.where((t > maze[0]) & (t < maze[1]))[0]
+    maze_x = x[maze_indx]
+    maze_y = y[maze_indx]
+    xbins = np.linspace(np.min(maze_x), np.max(maze_x), 40)
+    ybins = np.linspace(np.min(maze_y), np.max(maze_y), 40)
+    xgrid, ygrid = np.meshgrid(xbins, ybins)
+
+    sess.replay.assemblyICA.getAssemblies(period=pre_sprinkle)
+    activation_maze, t_act = sess.replay.assemblyICA.getActivation(period=maze)
+    t_act = t_act[:-1]
+
+    act_zscore = stats.zscore(activation_maze, axis=1)
+    act_zscore = np.where(act_zscore > 2, 1, 0)
+
 
 # endregion

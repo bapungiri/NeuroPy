@@ -12,6 +12,7 @@ import subjects
 from plotUtil import Fig
 
 #%% Reactivation strength
+# region
 plt.clf()
 fig = plt.figure(1, figsize=(10, 15))
 gs = gridspec.GridSpec(16, 1, figure=fig)
@@ -28,6 +29,7 @@ for sub, sess in enumerate(sessions):
         ax.plot(activation[i])
 
 # sess.brainstates.detect()
+# endregion
 
 # violations = sess.spikes.stability.violations
 #%% Reactivation strength vs delta amplitude
@@ -282,17 +284,110 @@ for sub, sess in enumerate(sessions):
 
 #%% Directed reward vs sprinkled reward reactivation comparison
 # region
-# figure = Fig()
-# fig, gs = figure.draw(num=2, grid=(1, 1))
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 5), size=(12, 6))
 sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
     maze = sess.epochs.maze
+    pre = sess.epochs.pre
+    post = sess.epochs.post
     sprinkle = sess.epochs.sprinkle
     pre_sprinkle = [maze[0], sprinkle[0]]
-    activation = sess.replay.assemblyICA.getActivation(
-        template=pre_sprinkle, match=maze
+
+    x = sess.position.x
+    y = sess.position.y
+    t = sess.position.t
+
+    maze_indx = np.where((t > maze[0]) & (t < maze[1]))[0]
+    maze_x = x[maze_indx]
+    maze_y = y[maze_indx]
+    xbins = np.linspace(np.min(maze_x), np.max(maze_x), 40)
+    ybins = np.linspace(np.min(maze_y), np.max(maze_y), 40)
+    xgrid, ygrid = np.meshgrid(xbins, ybins)
+
+    sess.replay.assemblyICA.getAssemblies(period=pre_sprinkle)
+    activation_pre_sprinkle, t_pre_sprinkle = sess.replay.assemblyICA.getActivation(
+        period=pre_sprinkle
     )
-    # ax = plt.subplot(gs[0])
-    sess.replay.assemblyICA.plotActivation()
+    activation_sprinkle, t_sprinkle = sess.replay.assemblyICA.getActivation(
+        period=sprinkle
+    )
+    # sess.replay.assemblyICA.plotActivation()
+
+    act_presprinkle_x = np.interp(t_pre_sprinkle, t, x)
+    act_presprinkle_y = np.interp(t_pre_sprinkle, t, y)
+
+    act_sprinkle_x = np.interp(t_sprinkle, t, x)
+    act_sprinkle_y = np.interp(t_sprinkle, t, y)
+
+    act_pre_sprinkle_zscore = stats.zscore(activation_pre_sprinkle, axis=1)
+    act_pre_sprinkle_zscore = np.where(act_pre_sprinkle_zscore > 2, 1, 0)
+
+    act_sprinkle_zscore = stats.zscore(activation_sprinkle, axis=1)
+    act_sprinkle_zscore = np.where(act_sprinkle_zscore > 2, 1, 0)
+
+    for i, (ensemble_pre, ensemble_sprinkle) in enumerate(
+        zip(act_pre_sprinkle_zscore, act_sprinkle_zscore)
+    ):
+        gs_ = figure.subplot2grid(gs[i], grid=(1, 2), wspace=0.1)
+        ax = plt.subplot(gs_[0])
+        indices = np.where(ensemble_pre == 1)[0]
+        hist_ = np.histogram2d(
+            act_presprinkle_x[indices], act_presprinkle_y[indices], bins=[xbins, ybins]
+        )[0]
+        hist_ = gaussian_filter(hist_, sigma=1)
+        # plt.plot(act_presprinkle_x[indices], act_presprinkle_y[indices], "k.")
+        ax.pcolormesh(xgrid, ygrid, hist_.T, cmap="hot")
+        ax.axis("off")
+        # ax.plot(maze_x, maze_y, alpha=0.3)
+        indices = np.where(ensemble_sprinkle == 1)[0]
+        hist_ = np.histogram2d(
+            act_sprinkle_x[indices], act_sprinkle_y[indices], bins=[xbins, ybins]
+        )[0]
+        ax = plt.subplot(gs_[1])
+        # plt.plot(act_sprinkle_x[indices], act_sprinkle_y[indices], "k.")
+        hist_ = gaussian_filter(hist_.T, sigma=1)
+        ax.pcolormesh(xgrid, ygrid, hist_, cmap="hot")
+        ax.axis("off")
+
+    # figure = Fig()
+    # fig, gs = figure.draw(num=2, grid=(18, 1))
+    # fig = plt.figure(num=2)
+    fig, ax = plt.subplots(nrows=18, ncols=2, num=2, sharex="col", sharey="row")
+
+    for i, (ensemble_pre, ensemble_sprinkle) in enumerate(
+        zip(activation_pre_sprinkle, activation_sprinkle)
+    ):
+        # gs_ = figure.subplot2grid(gs[i], grid=(1, 2))
+        # ax = plt.subplot(gs_[0])
+        ax[i, 0].plot(t_pre_sprinkle[1:], ensemble_pre)
+
+        # ax = plt.subplot(gs_[1], sharey=ax)
+        ax[i, 1].plot(t_sprinkle[1:], ensemble_sprinkle)
+
+
+# endregion
+
+#%% Test maze epochs for sprinkles vs pre-sprinkles
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 5), size=(12, 6))
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    pre = sess.epochs.pre
+    post = sess.epochs.post
+    sprinkle = sess.epochs.sprinkle
+    pre_sprinkle = [maze[0], sprinkle[0]]
+
+    x = sess.position.x
+    y = sess.position.y
+    z = sess.position.z
+    t = sess.position.t
+
+    indices = np.where((t > pre_sprinkle[0]) & (t < pre_sprinkle[1]))[0]
+    testx = x[indices]
+    testy = y[indices]
+    plt.plot(testx, testy)
 
 # endregion
