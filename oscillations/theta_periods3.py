@@ -1,12 +1,7 @@
 # %%
-from typing import Dict
-
-import matplotlib as mpl
-import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pandas.core.groupby.generic import DataFrameGroupBy
 import pingouin as pg
 import scipy.signal as sg
 import scipy.stats as stats
@@ -14,14 +9,14 @@ import seaborn as sns
 import signal_process
 import subjects
 from mathutil import threshPeriods
-from plotUtil import Colormap, Fig
+from plotUtil import Fig
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
-from joblib import Parallel, delayed
 import networkx as nx
 from sklearn.cluster import spectral_clustering
 import scipy.cluster.hierarchy as sch
 import subjects
-import scipy.fft as fft
+
+# import scipy.fft as fft
 
 #%% Scratchpad for selecting correlated channels
 # region
@@ -306,37 +301,67 @@ for sub, sess in enumerate(sessions):
             ax2.fill_between(t, med)
             i += 1
 
-    # plt.imshow(acg_norm, cmap="tab20c")
-    # acg_half = acg_norm[:, 28:]
-    # sum_acg = np.sum(acg_half, axis=1)
-    # zero_ccg_ind = np.where(sum_acg == 0)[0]
-    # acg_half = np.delete(acg_half, zero_ccg_ind, axis=0)
 
-    # # sort_ind = np.argsort(acg_norm, axis=1)
-    # # acg_sorted = acg_half[sort_ind, :]
-    # # plt.imshow(acg_half, cmap="tab20c")
+# endregion
 
-    # acg_new = np.zeros_like(acg_half)
-    # for i, vals in enumerate(acg_half):
-    #     if np.count_nonzero(vals) > 0:
-    #         peak = sg.find_peaks(vals)[0]
-    #         vals[peak] = 1
-    #         vals[np.setdiff1d(np.arange(len(vals)), peak)] = 0
-    #         acg_new[i, :] = vals
+#%% Gamma bouts and cross-correlogram of pyramidal/interneurons
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(12, 5))
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
 
-    # sort_ind = np.argsort(np.argmax(acg_new, axis=1))
-    # acg_new = acg_new[sort_ind, :]
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    spikes = sess.spikes.pyr  # sess.spikes.intneur
+    chan = 12
 
-    # labels = spectral_clustering(affinity=a, n_clusters=2)
-    # sort_ind = np.argsort(labels)
-    # corr_new = corr_chans[np.ix_(sort_ind, sort_ind)]
+    lfp = sess.recinfo.geteeg(chans=chan, timeRange=maze)
 
-    # pdist = sch.distance.pdist(a)
-    # linkage = sch.linkage(pdist, method="complete")
-    # idx = sch.fcluster(linkage, 0.5 * pdist.max(), "distance")
+    def get_ccg_gamma2(low, high):
+        gamma_filt = signal_process.filter_sig.bandpass(
+            lfp, lf=low, hf=high, fs=eegSrate
+        )
+        hilbert_sig = signal_process.hilbertfast(gamma_filt)
+        hilbert_amp = np.abs(hilbert_sig)
+        bouts = threshPeriods(
+            stats.zscore(hilbert_amp),
+            lowthresh=1,
+            highthresh=1.1,
+            minDuration=10,
+            minDistance=10,
+        )
+        bouts = bouts / eegSrate + maze[0]
+
+        gamma_spikes = []
+        for cell in spikes:
+            spike_ind = np.digitize(cell, bins=np.ravel(bouts))
+            gamma_spikes.append(cell[spike_ind % 2 == 1])
+
+        acg = np.asarray(sess.spikes.get_acg(spikes=gamma_spikes, window_size=0.1))
+        acg_norm = stats.zscore(acg, axis=1)
+
+        return acg
+
+    acg_slgamma = get_ccg_gamma2(25, 55)
+    acg_medgamma = get_ccg_gamma2(60, 100)
+
+    t = np.linspace(-1, 1, 101) * 50
+    i = 0
+    for sl, med in zip(acg_slgamma, acg_medgamma):
+
+        if np.max(sl) > 5 and np.max(med) > 5:
+            gs_ = figure.subplot2grid(gs[i], grid=(1, 2))
+            ax1 = plt.subplot(gs_[0])
+            ax1.fill_between(t, sl)
+
+            ax2 = plt.subplot(gs_[1], sharex=ax1, sharey=ax1)
+            ax2.fill_between(t, med)
+            i += 1
 
 
 # endregion
+
 
 #%% Summation of shifted sinousoids
 # region
@@ -437,17 +462,19 @@ for sub, sess in enumerate(sessions):
     post = sess.epochs.post
     sprinkle = sess.epochs.sprinkle
     pre_sprinkle = [maze[0], sprinkle[0]]
+    rpls = sess.ripple.events[["start", "end"]].to_numpy()
+    rpls = rpls.flatten()
 
-    x = sess.position.x
-    y = sess.position.y
-    t = sess.position.t
+    # x = sess.position.x
+    # y = sess.position.y
+    # t = sess.position.t
 
-    maze_indx = np.where((t > maze[0]) & (t < maze[1]))[0]
-    maze_x = x[maze_indx]
-    maze_y = y[maze_indx]
-    xbins = np.linspace(np.min(maze_x), np.max(maze_x), 40)
-    ybins = np.linspace(np.min(maze_y), np.max(maze_y), 40)
-    xgrid, ygrid = np.meshgrid(xbins, ybins)
+    # maze_indx = np.where((t > maze[0]) & (t < maze[1]))[0]
+    # maze_x = x[maze_indx]
+    # maze_y = y[maze_indx]
+    # xbins = np.linspace(np.min(maze_x), np.max(maze_x), 40)
+    # ybins = np.linspace(np.min(maze_y), np.max(maze_y), 40)
+    # xgrid, ygrid = np.meshgrid(xbins, ybins)
 
     sess.replay.assemblyICA.getAssemblies(period=pre_sprinkle)
     activation_maze, t_act = sess.replay.assemblyICA.getActivation(period=maze)
@@ -455,6 +482,137 @@ for sub, sess in enumerate(sessions):
 
     act_zscore = stats.zscore(activation_maze, axis=1)
     act_zscore = np.where(act_zscore > 2, 1, 0)
+    lfp = np.asarray(sess.recinfo.geteeg(chans=113))
+    # frgamma = np.arange(25, 250)
+    frgamma = np.logspace(2, 8, num=60, base=2)
 
+    for i, act in enumerate(act_zscore):
+        indices = np.where(act == 1)[0]
+        timepoints = t_act[indices]
+        bin_rpl = np.digitize(timepoints, rpls)
+        non_rpl = timepoints[(bin_rpl % 2) == 0]
+        frames = []
+        for t in non_rpl:
+            loc = int(t * 1250)
+            frames.extend(np.arange(loc - 625, loc + 625))
+        lfp_act = lfp[frames]
+        # .reshape(len(timepoints), 1250).mean(axis=0)
+        wavdec = signal_process.wavelet_decomp(lfp_act, freqs=frgamma)
+        spect = wavdec.colgin2009()
+        spect = stats.zscore(spect, axis=1)
+        spect = spect.reshape((len(frgamma), 1250, len(non_rpl)), order="F").mean(
+            axis=-1
+        )
+
+        ax = plt.subplot(gs[i])
+        ax.pcolormesh(
+            np.linspace(-0.5, 0.5, 1250),
+            frgamma,
+            spect,
+            cmap="jet",
+            shading="auto",
+            vmax=0.2,
+        )
+        ax.set_yscale("log")
+
+
+# endregion
+
+
+#%% MUA activity modulation by theta phase
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Nsd().ratSday2
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze1
+    spikes = sess.spikes.pyr
+    spikes = [cell[(cell > maze[0]) & (cell < maze[1])] for cell in spikes]
+    spikes = np.concatenate(spikes)
+
+    lfp = sess.recinfo.geteeg(chans=92, timeRange=maze)
+    lfp_t = np.linspace(maze[0], maze[1], len(lfp))
+    # instfiring = np.histogram(spikes, bins=lfp_t)[0]
+    # lfp = lfp[:-1]
+    # lfp_t = lfp_t[:-1]
+    # instfiring = np.interp(lfp_t, instfiring.time, instfiring.frate)
+
+    strong_theta, _, indices = sess.theta.getstrongTheta(lfp)
+    # instfiring_theta = instfiring[indices]
+    # highpass_theta = signal_process.filter_sig.highpass(strong_theta, cutoff=25)
+    theta_param = signal_process.ThetaParams(
+        strong_theta, fs=eegSrate, method="waveshape"
+    )
+    lfp_t = lfp_t[indices]
+    angle = theta_param.angle
+
+    spike_phase = np.interp(spikes, lfp_t, angle)
+
+    angle_bin = np.linspace(0, 360, 360 // 9)
+    # mua_act = stats.binned_statistic(
+    #     angle, instfiring_theta, bins=angle_bin, statistic="sum"
+    # )[0]
+
+    mua_act = np.histogram(spike_phase, bins=angle_bin)[0]
+
+    plt.plot(mua_act)
+
+
+# endregion
+
+
+#%% Wavelet spectrogram at start and end of running epochs
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 1))
+sessions = subjects.Sd().ratNday1 + subjects.Nsd().ratNday2
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    lfp = sess.recinfo.geteeg(chans=92)
+
+    frame_before = 4 * 1250
+    frame_after = 4 * 1250
+    total_frames = frame_before + frame_after
+    run_epochs = sess.tracks.get_laps("maze")
+    lfp_start, lfp_end = [], []
+    for epoch in run_epochs.itertuples():
+        start = int(epoch.start * 1250)
+        end = int(epoch.end * 1250)
+        start_frames = np.arange(start - frame_before, start + frame_after)
+        end_frames = np.arange(end - frame_before, end + frame_after)
+        lfp_start.extend(lfp[start_frames])
+        lfp_end.extend(lfp[end_frames])
+
+    frgamma = np.logspace(1, 8, base=2, num=80)
+    wavdec_start = signal_process.wavelet_decomp(lfp_start, freqs=frgamma)
+    spect_start = wavdec_start.colgin2009()
+    spect_start = stats.zscore(spect_start, axis=1)
+    spect_start = spect_start.reshape(
+        (len(frgamma), total_frames, len(run_epochs)), order="F"
+    ).mean(axis=-1)
+    spect_start = gaussian_filter(spect_start, sigma=2)
+
+    wavdec_end = signal_process.wavelet_decomp(lfp_end, freqs=frgamma)
+    spect_end = wavdec_end.colgin2009()
+    spect_end = stats.zscore(spect_end, axis=1)
+    spect_end = spect_end.reshape(
+        (len(frgamma), total_frames, len(run_epochs)), order="F"
+    ).mean(axis=-1)
+    spect_end = gaussian_filter(spect_end, sigma=2)
+
+    t = np.linspace(-frame_before / 1250, frame_after / 1250, total_frames)
+    gs_ = figure.subplot2grid(gs[sub], grid=(1, 2))
+    ax0 = plt.subplot(gs_[0])
+    ax0.pcolormesh(t, frgamma, spect_start, cmap="jet", shading="auto", vmax=0.5)
+    ax0.set_yscale("log")
+    ax0.set_ylabel("Frequency(Hz)")
+    ax0.set_xlabel("Time around start (s)")
+
+    ax1 = plt.subplot(gs_[1])
+    ax1.pcolormesh(t, frgamma, spect_end, cmap="jet", shading="auto", vmax=0.5)
+    ax1.set_yscale("log")
+    ax1.set_ylabel("Frequency(Hz)")
+    ax1.set_xlabel("Time around end (s)")
 
 # endregion
