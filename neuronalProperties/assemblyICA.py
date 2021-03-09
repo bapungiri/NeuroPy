@@ -391,3 +391,22 @@ for sub, sess in enumerate(sessions):
     plt.plot(testx, testy)
 
 # endregion
+
+
+#%% Assembly activity during MAZE2 experience
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Sd().ratSday3 + subjects.Nsd().ratSday2
+for sub, sess in enumerate(sessions):
+    maze1 = sess.epochs.maze1
+    maze2 = sess.epochs.maze2
+
+    sess.replay.assemblyICA.getAssemblies(period=maze1)
+    activation_maze2, t_maze2 = sess.replay.assemblyICA.getActivation(period=maze2)
+    # sess.replay.assemblyICA.plotActivation()
+
+    hist_ = np.histogram(activation_maze2, bins=np.arange(0, 100, 2), density=True)[0]
+    # cdf = np.cumsum(hist_)
+    plt.plot(hist_)
+# endregion
