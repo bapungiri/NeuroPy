@@ -345,6 +345,39 @@ figure.savefig("proposal_expvar")
 
 # endregion
 
+#%% Place cells remapping
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Sd().ratSday3
+for sub, sess in enumerate(sessions):
+    # period = sess.epochs.maze1
+    ax = plt.subplot(gs[2])
+    sess.placefield.pf1d.compute(track_name="maze1", run_dir="forward")
+
+    ratemaps = np.asarray(sess.placefield.pf1d.ratemaps["ratemaps"])
+    peak_frate = np.max(ratemaps, axis=1)
+    good_cells = np.where(peak_frate > 1.5)[0]
+
+    good_ratemaps = ratemaps[good_cells, :]
+    cell_order = np.argsort(np.argmax(good_ratemaps, axis=1))
+    good_cells = good_cells[cell_order]
+
+    sess.placefield.pf1d.plot(ax=ax, normalize=True, sortby=good_cells)
+    # sess.placefield.pf1d.plot_raw(speed_thresh=True, subplots=None)
+    ax.set_title("Maze1")
+    ax = plt.subplot(gs[3])
+    sess.placefield.pf1d.compute(track_name="maze2", run_dir="forward")
+    sess.placefield.pf1d.plot(
+        ax=ax,
+        normalize=True,
+        sortby=good_cells,
+    )
+    ax.set_title("Maze2")
+    # sess.placefield.pf1d.plot_raw(speed_thresh=True, subplots=None)
+
+# endregion
+
 
 #%% Multiple regression theta parameters and slow gamm with wavelet analysis of slow gamma
 # region
@@ -437,7 +470,8 @@ for sub, sess in enumerate(sessions):
     strong_theta = stats.zscore(sess.theta.getstrongTheta(eeg)[0])
     rand_start = np.random.randint(0, len(strong_theta), 1)[0]
     theta_sample = strong_theta[rand_start : rand_start + 1 * eegSrate]
-    thetaparams = sess.theta.getParams(theta_sample)
+    # thetaparams = sess.theta.getParams(theta_sample)
+    thetaparams = signal_process.ThetaParams(theta_sample)
     gamma_lfp = signal_process.filter_sig.highpass(theta_sample, cutoff=25)
 
     # ----- dividing 360 degress into non-overlapping 5 bins ------------
@@ -529,7 +563,7 @@ for sub, sess in enumerate(sessions):
             sns.heatmap(
                 spect,
                 ax=ax,
-                cmap="Spectral_r",
+                cmap="jet",
                 cbar=None,
                 xticklabels=10,
                 rasterized=True,
@@ -546,5 +580,54 @@ for sub, sess in enumerate(sessions):
             # ax.set_ylim([25, 150])
 
 
-figure.savefig("proposal_theta_phase_extract", __file__)
+# figure.savefig("proposal_theta_phase_extract", __file__)
+# endregion
+
+
+#%% Theta example
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Sd()
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+# endregion
+
+#%% Assembly activity during MAZE2 experience
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+
+ax = plt.subplot(gs[1])
+ax.set_xlabel("Reactivation strength")
+ax.set_ylabel("Counts")
+ax.set_yscale("log")
+color = ["r", "k"]
+
+gs_ = figure.subplot2grid(gs[0], grid=(2, 1))
+
+sessions = subjects.Sd().ratSday3 + subjects.Nsd().ratSday2
+for sub, sess in enumerate(sessions):
+    maze1 = sess.epochs.maze1
+    maze2 = sess.epochs.maze2
+
+    sess.replay.assemblyICA.getAssemblies(period=maze1)
+    activation_maze2, t_maze2 = sess.replay.assemblyICA.getActivation(period=maze2)
+    # sess.replay.assemblyICA.plotActivation()
+
+    bin_act = np.arange(0, 100, 2)
+    hist_ = np.histogram(activation_maze2, bins=bin_act, density=True)[0]
+    # cdf = np.cumsum(hist_)
+
+    gs2 = figure.subplot2grid(gs_[sub], grid=(2, 1))
+
+    for i in range(2):
+        ax1 = plt.subplot(gs2[i])
+        ax1.plot(activation_maze2[i], "k", alpha=0.5)
+        ax1.set_xticks([])
+        ax1.set_ylim([-20, 100])
+
+    ax.plot(bin_act[1:], hist_, color=color[sub])
+
+ax.legend(["SD", "NSD"])
 # endregion
