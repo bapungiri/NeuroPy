@@ -114,6 +114,7 @@ for sub, sess in enumerate(sessions):
     ax.set_title("Maze2")
     # sess.placefield.pf1d.plot_raw(speed_thresh=True, subplots=None)
 
+
 # endregion
 
 #%% Theta-precession in linear type tracks
