@@ -77,6 +77,7 @@ for sub, sess in enumerate(sessions):
     ax.set_xlabel("Frequency (Hz)")
     ax.set_ylabel("Power")
 
+
 # endregion
 
 #%% Phase-amplitude comodulogram for multiple frequencies
@@ -1325,6 +1326,7 @@ for sub, sess in enumerate(sessions):
             for gamma_bin, center in zip(gamma, angle):
                 f_, pxx = sg.welch(gamma_bin, nperseg=1250, noverlap=625, fs=eegSrate)
                 df[center] = pxx
+
             df.insert(0, "freq", f_)
             df.insert(0, "chan", chan)
             return df

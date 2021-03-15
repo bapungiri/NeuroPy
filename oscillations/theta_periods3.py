@@ -246,7 +246,7 @@ for sub, sess in enumerate(sessions):
 # endregion
 
 
-#%% Gamma bouts and cross-correlogram of pyramidal/interneurons
+#%% Scratchpad --> Gamma bouts and cross-correlogram of pyramidal/interneurons
 # region
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(12, 5))
