@@ -341,19 +341,83 @@ for sub, sess in enumerate(sessions):
     # ax1.set_ylim([0, 11])
 
 
-figure.savefig("proposal_expvar")
+# figure.savefig("proposal_expvar")
 
 # endregion
+
+#%% Explained variance with same x-scale
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(3, 2))
+sessions = (
+    subjects.Nsd().ratSday2
+    + subjects.Sd().ratSday3
+    + subjects.Nsd().ratNday2
+    + subjects.Sd().ratNday1
+)
+
+for sub, sess in enumerate(sessions):
+
+    pre = sess.epochs.pre
+
+    try:
+        maze = sess.epochs.maze
+    except:
+        maze = sess.epochs.maze1
+    # maze2 = sess.epochs.maze2
+
+    post = sess.epochs.post
+    # maze2 = sess.epochs.maze2
+    # --- break region into periods --------
+    bin1 = sess.utils.getinterval(pre, 2)
+    bin2 = sess.utils.getinterval(post, 4)
+    bins = bin1 + bin2
+    sess.spikes.stability.firingRate(periods=bins)
+
+    control = pre
+    template = maze
+    match = [post[0], post[1]]
+
+    sess.replay.expvar.compute(
+        template=template,
+        match=match,
+        control=control,
+        slideby=300,
+        cross_shanks=True,
+    )
+    print(sess.replay.expvar.npairs)
+
+    axstate = figure.subplot2grid(gs[sub], grid=(4, 1))
+
+    ax1 = fig.add_subplot(axstate[1:])
+    sess.replay.expvar.plot(ax=ax1, tstart=post[0])
+    ax1.set_xlim(left=0)
+    ax1.tick_params(width=2)
+
+    if sub == 3:
+        ax1.set_ylim([0, 0.17])
+    # ax1.spines["right"].set_visible("False")
+    # ax1.spines["top"].set_visible("False")
+
+    axhypno = fig.add_subplot(axstate[0], sharex=ax1)
+    sess.brainstates.hypnogram(ax=axhypno, tstart=post[0], unit="h")
+    # panel_label(axhypno, "a")
+    # ax1.set_ylim([0, 11])
+
+
+# figure.savefig("proposal_expvar")
+
+# endregion
+
 
 #%% Place cells remapping
 # region
 figure = Fig()
-fig, gs = figure.draw(num=1, grid=(2, 2))
+fig, gs = figure.draw(num=1, grid=(3, 3))
 sessions = subjects.Sd().ratSday3
 for sub, sess in enumerate(sessions):
     # period = sess.epochs.maze1
-    ax = plt.subplot(gs[2])
-    sess.placefield.pf1d.compute(track_name="maze1", run_dir="forward")
+    sess.placefield.pf1d.compute(track_name="maze1", run_dir="backward")
 
     ratemaps = np.asarray(sess.placefield.pf1d.ratemaps["ratemaps"])
     peak_frate = np.max(ratemaps, axis=1)
@@ -363,17 +427,18 @@ for sub, sess in enumerate(sessions):
     cell_order = np.argsort(np.argmax(good_ratemaps, axis=1))
     good_cells = good_cells[cell_order]
 
+    ax = plt.subplot(gs[:2, 0])
     sess.placefield.pf1d.plot(ax=ax, normalize=True, sortby=good_cells)
     # sess.placefield.pf1d.plot_raw(speed_thresh=True, subplots=None)
-    ax.set_title("Maze1")
-    ax = plt.subplot(gs[3])
-    sess.placefield.pf1d.compute(track_name="maze2", run_dir="forward")
+    # ax.set_title("MAZE")
+    ax = plt.subplot(gs[:2, 1])
+    sess.placefield.pf1d.compute(track_name="maze2", run_dir="backward")
     sess.placefield.pf1d.plot(
         ax=ax,
         normalize=True,
         sortby=good_cells,
     )
-    ax.set_title("Maze2")
+    # ax.set_title("Maze2")
     # sess.placefield.pf1d.plot_raw(speed_thresh=True, subplots=None)
 
 # endregion
@@ -556,6 +621,7 @@ for sub, sess in enumerate(sessions):
             spect = spect[(spect.index > 25) & (spect.index < 150)].transform(
                 stats.zscore, axis=1
             )
+
             spect = spect.transform(gaussian_filter1d, axis=1, sigma=3)
             spect = spect.transform(gaussian_filter1d, axis=0, sigma=3)
             ax = plt.subplot(gs_subplot[i])
@@ -630,4 +696,128 @@ for sub, sess in enumerate(sessions):
     ax.plot(bin_act[1:], hist_, color=color[sub])
 
 ax.legend(["SD", "NSD"])
+# endregion
+
+#%% Whavelet vs phase extraction comparison with one example figure only
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+axwav = plt.subplot(gs[0])
+axphase = plt.subplot(gs[1])
+
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    channels = 111
+    phase_bin = np.linspace(0, 360, 21)
+    phase_centers = phase_bin[:-1] + np.diff(phase_bin).mean() / 2
+    lfpmaze = sess.recinfo.geteeg(chans=channels, timeRange=maze)
+    strong_theta = sess.theta.getstrongTheta(lfpmaze)[0]
+
+    # ----- wavelet power for gamma oscillations----------
+    frgamma = np.arange(20, 150, 2)
+    wavdec = signal_process.wavelet_decomp(strong_theta, freqs=frgamma)
+    wav = wavdec.colgin2009()
+    # wav = wav - np.min(wav, axis=1, keepdims=True)
+    # wav = wav / np.max(wav, axis=1, keepdims=True)
+    wav = stats.zscore(wav, axis=1)
+
+    theta_params = signal_process.ThetaParams(strong_theta)
+    bin_angle = np.linspace(0, 360, int(360 / 9) + 1)
+    bin_ind = np.digitize(theta_params.angle, bin_angle)
+
+    gamma_at_theta = pd.DataFrame()
+    for i in np.unique(bin_ind):
+        find_where = np.where(bin_ind == i)[0]
+        gamma_at_theta[bin_angle[i - 1]] = np.mean(wav[:, find_where], axis=1)
+    gamma_at_theta.insert(0, column="freq", value=frgamma)
+
+    gamma_at_theta = gamma_at_theta.set_index("freq")
+    norm_gamma = stats.zscore(np.asarray(gamma_at_theta), axis=1)
+    spect_wavelet = np.asarray(gamma_at_theta)
+    # sns.heatmap(gamma_at_theta, ax=axwav, cmap="jet")
+    axwav.pcolormesh(bin_angle, frgamma, spect_wavelet, cmap="jet", shading="auto")
+
+    # ----- theta phase specific extraction ----------
+    slgamma_highpass = signal_process.filter_sig.highpass(strong_theta, cutoff=25)
+    gamma_bin, _, angle_centers = sess.theta.phase_specfic_extraction(
+        strong_theta, slgamma_highpass, binsize=30, slideby=5
+    )
+
+    df = pd.DataFrame()
+    for lfp, center in zip(gamma_bin, angle_centers):
+        f_, pxx = sg.welch(lfp, nperseg=1250, noverlap=625, fs=eegSrate)
+        df[center] = pxx
+    df.insert(0, "freq", f_)
+    df = df.set_index("freq")
+    df = df[(df.index > 20) & (df.index < 150)].transform(stats.zscore, axis=1)
+
+    freq_ = df.index.values
+    spect = gaussian_filter(np.asarray(df), sigma=2)
+    axphase.pcolormesh(angle_centers, freq_, spect, cmap="jet", shading="auto")
+
+
+# figure.savefig("different_slow_gamma", __file__)
+
+
+# endregion
+
+
+#%% Power spectrum at varying speed
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2), style="Pres")
+sessions = subjects.Of().ratNday4
+
+for sub, sess in enumerate(sessions):
+
+    eegSrate = sess.recinfo.lfpSrate
+    chan = 25
+    maze = sess.epochs.maze
+    mazepos = sess.tracks["maze"]
+    speed = mazepos.speed
+    speed = gaussian_filter1d(speed, sigma=10)
+
+    mean_speed = stats.binned_statistic(
+        mazepos.time, speed, statistic="mean", bins=np.arange(maze[0], maze[1], 1)
+    )
+
+    nQuantiles = 6
+    quantiles = pd.qcut(mean_speed.statistic, nQuantiles, labels=False)
+
+    colors = ["#757575", "#FF3D00"]
+    for i, quant in enumerate([2, 5]):
+
+        indx = np.where(quantiles == quant)[0]
+        timepoints = mean_speed.bin_edges[indx]
+        lfp_ind = np.concatenate(
+            [
+                np.arange(int(tstart * 1250), int((tstart + 1) * 1250))
+                for tstart in timepoints
+            ]
+        )
+
+        auc = []
+        # for chan in goodchans:
+        lfp = sess.recinfo.geteeg(chans=chan)
+        lfp_quantile = lfp[lfp_ind]
+        f, pxx = sg.welch(lfp_quantile, fs=1250, nperseg=2 * 1250, noverlap=1250)
+        f_theta = np.where((f > 20) & (f < 100))[0]
+        area_chan = np.trapz(y=pxx[f_theta], x=f[f_theta])
+        auc.append(area_chan)
+        ax = plt.subplot(gs[0])
+        ax.plot(f, pxx, color=colors[i])
+        ax.set_yscale("log")
+        ax.set_xscale("log")
+
+    ax.axvspan(25, 55, color="#FDD835", alpha=0.3)
+    ax.set_xlim([3, 100])
+    ax.set_ylim(bottom=100)
+    ax.set_ylabel("Power")
+    ax.set_xlabel("Frequency (Hz)")
+
+    # for i in range(len(goodchans)):
+    #     ax.plot(f, pxx[i, :])
+
 # endregion
