@@ -616,3 +616,13 @@ for sub, sess in enumerate(sessions):
     ax1.set_xlabel("Time around end (s)")
 
 # endregion
+
+
+#%% Gamma oscillation frequency band sweeps/sequences during MAZE
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+# endregion

@@ -410,3 +410,45 @@ for sub, sess in enumerate(sessions):
     # cdf = np.cumsum(hist_)
     plt.plot(hist_)
 # endregion
+
+
+#%% Reactivation participating cells location on maze for each ensemble
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(10, 10))
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    sprinkle = sess.epochs.sprinkle
+    sess.replay.assemblyICA.getAssemblies(period=maze)
+    vectors = sess.replay.assemblyICA.vectors
+    activation_maze2, t_maze2 = sess.replay.assemblyICA.getActivation(period=maze)
+
+    spikes = sess.replay.assemblyICA.spikes
+    sess.placefield.pf2d.compute(period=maze, spikes=spikes, gridbin=5, smooth=2)
+    maps = sess.placefield.pf2d.maps
+    xgrid = sess.placefield.pf2d.xgrid
+    ygrid = sess.placefield.pf2d.ygrid
+    x = 5
+
+    for i, assembly in enumerate(vectors.T):
+        ax = plt.subplot(gs[i, 0])
+        sigweight = 1.5 * np.std(assembly)
+        cellid = np.where(assembly > sigweight)[0]
+        print(len(cellid))
+
+        for cell_num, cell in enumerate(cellid):
+            pf_loc = np.unravel_index(np.argmax(maps[cell]), shape=maps[cell].shape)
+            x, y = xgrid[pf_loc[0]], ygrid[pf_loc[1]]
+            ax.plot(x, y, "*")
+
+            axmap = plt.subplot(gs[i, cell_num + 1])
+            axmap.pcolormesh(maps[cell], cmap="Spectral_r")
+
+        ax.set_xlim([np.min(xgrid), np.max(xgrid)])
+        ax.set_ylim([np.min(ygrid), np.max(ygrid)])
+
+    # pf = sess.placefield.pf2d.compute(period=maze)
+
+
+# endregion

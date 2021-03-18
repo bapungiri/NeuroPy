@@ -11,15 +11,37 @@ Here is an example of an epoch encoder that uses CsvEpochSource.
 
 """
 
-from ephyviewer import mkQApp, MainViewer, TraceViewer, CsvEpochSource, EpochEncoder
+from ephyviewer import (
+    mkQApp,
+    MainViewer,
+    TraceViewer,
+    CsvEpochSource,
+    EpochEncoder,
+    WritableEpochSource,
+    epochs,
+)
 import numpy as np
+import subjects
+
+sess = subjects.Sd().ratNday1[0]
+states = sess.brainstates.states
+states_new = {
+    "time": states.start.values,
+    "duration": states.duration.values,
+    "label": states.name.values,
+}
+
+possible_labels = ["nrem", "rem", "quiet", "active"]
+source_epoch = WritableEpochSource(epoch=states_new)
+
+maze = sess.epochs.maze
+lfp = np.array(sess.recinfo.geteeg(chans=67)).reshape(-1, 1)
 
 
 # lets encode some dev mood along the day
-possible_labels = ["euphoric", "nervous", "hungry", "triumphant"]
 
 filename = "example_dev_mood_encoder.csv"
-source_epoch = CsvEpochSource(filename, possible_labels)
+# source_epoch = CsvEpochSource(filename, possible_labels)
 
 
 # you must first create a main Qt application (for event loop)
@@ -34,7 +56,7 @@ t_start = 0.0
 win = MainViewer(debug=True, show_auto_scale=True)
 
 # create a viewer for signal
-view1 = TraceViewer.from_numpy(sigs, sample_rate, t_start, "Signals")
+view1 = TraceViewer.from_numpy(lfp, 1250.0, t_start, "Signals")
 view1.params["scale_mode"] = "same_for_all"
 view1.auto_scale()
 win.add_view(view1)
@@ -46,10 +68,3 @@ win.add_view(view2)
 
 # show main window and run Qapp
 win.show()
-
-
-app.exec_()
-
-
-# press '1', '2', '3', '4' to encode state.
-# or toggle 'Time range selector' and then use 'Insert within range'
