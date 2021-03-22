@@ -452,3 +452,30 @@ for sub, sess in enumerate(sessions):
 
 
 # endregion
+
+
+#%% Activation strength along theta oscillations
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 1))
+sessions = subjects.Sd().ratSday3
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze1
+    lfp = sess.recinfo.geteeg(chans=113, timeRange=maze)
+    t = np.linspace(maze[0], maze[1], len(lfp))
+    sess.replay.assemblyICA.getAssemblies(period=maze)
+    activation_maze, t_maze2 = sess.replay.assemblyICA.getActivation(period=maze)
+
+    activation_maze = stats.zscore(activation_maze, axis=1)
+
+    ax = plt.subplot(gs[0])
+    ax.plot(t, lfp, "k")
+
+    axact = plt.subplot(gs[1], sharex=ax)
+    for i, assembly in enumerate(activation_maze):
+        indices = np.where(assembly > 1.5)[0]
+        t_locs = t_maze2[indices]
+        axact.plot(t_locs, i * np.ones(len(t_locs)), "|")
+
+
+# endregion

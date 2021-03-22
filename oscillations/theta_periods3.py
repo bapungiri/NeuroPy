@@ -15,6 +15,7 @@ import networkx as nx
 from sklearn.cluster import spectral_clustering
 import scipy.cluster.hierarchy as sch
 import subjects
+import hfuncs
 
 # import scipy.fft as fft
 
@@ -625,4 +626,30 @@ fig, gs = figure.draw(num=1, grid=(2, 2))
 sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
     maze = sess.epochs.maze
+# endregion
+
+
+#%% Wavelet analysis on highpass filtered theta oscillations
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(4, 3))
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    eegSrate = sess.recinfo.lfpSrate
+    maze = sess.epochs.maze
+    lfp = sess.recinfo.geteeg(chans=113, timeRange=maze)
+    strong_theta = sess.theta.getstrongTheta(lfp)[0]
+    filt_theta = signal_process.filter_sig.highpass(
+        strong_theta, cutoff=25, fs=eegSrate
+    )
+
+    thetaparams = signal_process.ThetaParams(strong_theta, fs=eegSrate)
+    angle = thetaparams.angle
+    spect = hfuncs.wavelet_gamma_theta_phase(strong_theta, angle)
+
+    ax = plt.subplot(gs[0])
+    ax.pcolormesh(
+        spect.columns.values, spect.index.values, spect, shading="auto", cmap="jet"
+    )
+    ax.set_xticks([0, 180, 360])
 # endregion
