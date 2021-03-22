@@ -1373,9 +1373,9 @@ for sub, sess in enumerate(sessions):
 figure = Fig()
 fig, gs = figure.draw(grid=[4, 3])
 
-sessions = subjects.Sd()
+sessions = subjects.Of().ratNday4
 binData = None
-for sub, sess in enumerate(sessions[7:8]):
+for sub, sess in enumerate(sessions):
 
     sess.trange = np.array([])
     eegSrate = sess.recinfo.lfpSrate
@@ -1408,7 +1408,7 @@ for sub, sess in enumerate(sessions[7:8]):
 
     # ----- dividing 360 degress into multiple bins ------------
     binconfig = [[72, None], [40, None], [40, 5]]  # degree, degree
-    binData = [getwavData(window=wind, slideby=sld) for (wind, sld) in binconfig]
+    binData = [getwavData(binsize=wind, slideby=sld) for (wind, sld) in binconfig]
 
     for i, df in enumerate(binData):
         ax = plt.subplot(gs[sub, i])
@@ -1422,7 +1422,8 @@ for sub, sess in enumerate(sessions[7:8]):
         ax.set_ylabel("Frequency (Hz)")
         ax.invert_yaxis()
 
-figure.savefig("phase_specific_wavelet_scaled", __file__)
+
+# figure.savefig("phase_specific_wavelet_scaled", __file__)
 # endregion
 
 
