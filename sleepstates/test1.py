@@ -1,6 +1,17 @@
-import ipywidgets as widgets
+from PyQt5 import QtWidgets
+import sys
 
 
-widgets.BoundedIntText(
-    value=7, min=0, max=10, step=1, description="Text:", disabled=False
-)
+def main():
+    if not QtWidgets.QApplication.instance():
+        app = QtWidgets.QApplication(sys.argv)
+    else:
+        app = QtWidgets.QApplication.instance()
+    main = MainWindow()
+    main.show()
+
+    return main
+
+
+if __name__ == "__main__":
+    m = main()
