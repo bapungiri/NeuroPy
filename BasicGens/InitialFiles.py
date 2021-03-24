@@ -8,7 +8,7 @@ from scipy.ndimage import gaussian_filter
 import subjects
 import time
 
-sessions = subjects.Of().ratKday4
+sessions = subjects.Tn().ratSday5
 
 #%% Generate _basics.npy files
 # region
@@ -46,7 +46,7 @@ for sub, sess in enumerate(sessions):
 #%% Generate position files
 # region
 for sub, sess in enumerate(sessions):
-    sess.position.getPosition(method="from_metadata", scale=4.0)
+    sess.position.getPosition(method="from_metadata", scale=1.0)
     # sess.position.export2Neuroscope()
 
 # endregion
@@ -56,11 +56,13 @@ for sub, sess in enumerate(sessions):
 for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     epochs = {
-        "pre": [0, 2358],
-        "maze1": [2360, 6031],
+        "pre": [0, 11066],
+        "maze1": [11070, 13970],
+        "maze2": [20756, 24004],
         # "sd": [6033, 14818 + 5 * 3600],
-        "post": [6033, 36899],
-        "maze2": [36902, 40233],
+        "post1": [13972, 20754],
+        "post2": [24006, 42305],
+        # "maze2": [36902, 40233],
     }
     sess.epochs.make_epochs(new_epochs=epochs)
     # sess.epochs.getfromCSV()
@@ -71,9 +73,9 @@ for sub, sess in enumerate(sessions):
 # region
 for sub, sess in enumerate(sessions):
     # sess.trange = np.array([])
-    # sess.tracks.create(epoch_names=["maze"])
-    # sess.tracks.linearize_position(track_names=["maze"], sample_sec=3)
-    sess.tracks.estimate_run_laps("maze", speedthresh=(20, 30))
+    # sess.tracks.create(epoch_names=["maze1", "maze2"])
+    sess.tracks.linearize_position(track_names=["maze2"], sample_sec=5)
+    sess.tracks.estimate_run_laps("maze1", speedthresh=(18, 20))
     # sess.epochs.getfromCSV()
 
 # endregion
@@ -85,7 +87,7 @@ for sub, sess in enumerate(sessions):
     # sess.trange = np.array([])
     # sess.recinfo.sampfreq = 30000
     sess.spikes.from_Phy(
-        folder="/data/Clustering/SleepDeprivation/RatN/Day4/spykcirc/RatN_Day4_2019-10-15_11-30-06.GUI",
+        folder="/data/Clustering/SleepDeprivation/RatS/Day5TwoNovel/spykcirc/RatS-Day5TwoNovel-2020-12-04_07-55-09-1.GUI/",
         fileformat="same_folder",
     )
     # sess.spikes.gen_instfiring()
