@@ -20,7 +20,7 @@ fig, gs = figure.draw(num=1, grid=(2, 2))
 #     + subjects.Nsd().ratNday2
 #     + subjects.Sd().ratNday1
 # )
-sessions = subjects.Of().ratKday4
+sessions = subjects.Tn().ratSday5
 
 for sub, sess in enumerate(sessions):
 
@@ -29,7 +29,7 @@ for sub, sess in enumerate(sessions):
     try:
         maze = sess.epochs.maze
     except:
-        maze = sess.epochs.maze1
+        maze = sess.epochs.maze2
     # maze2 = sess.epochs.maze2
 
     post = sess.epochs.post
@@ -76,7 +76,7 @@ for sub, sess in enumerate(sessions):
     # ax1.spines["right"].set_visible("False")
     # ax1.spines["top"].set_visible("False")
 
-    axhypno = fig.add_subplot(axstate[0], sharex=ax1)
+    # axhypno = fig.add_subplot(axstate[0], sharex=ax1)
     # sess.brainstates.hypnogram(ax=axhypno, tstart=post[0], unit="h")
     # panel_label(axhypno, "a")
     # ax1.set_ylim([0, 11])
@@ -618,4 +618,70 @@ for sub, sess in enumerate(sessions):
     # # ax1.set_ylim([0, 11])
 
 figure.savefig("expvar_cellid_shuffle")
+# endregion
+
+
+#%% Two-novel expvar
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Tn().ratSday5
+
+for sub, sess in enumerate(sessions):
+
+    pre = sess.epochs.pre
+
+    maze1 = sess.epochs.maze1
+    maze2 = sess.epochs.maze2
+    post1 = sess.epochs.post1
+    post2 = sess.epochs.post2
+
+    # --- break region into periods --------
+    bin1 = sess.utils.getinterval(pre, 2)
+    bin2 = sess.utils.getinterval(post2, 3)
+    bins = bin1 + bin2
+    sess.spikes.stability.firingRate(periods=bins)
+
+    # ----- expvar maze1 -------
+    control = pre
+    template = maze1  # [post[0] + 4 * 3600, post[0] + 5 * 3600]
+    match = [post1[0], post2[1]]  # post2  # [post[0] + 5 * 3600, post[1]]
+
+    sess.replay.expvar.compute(
+        template=template,
+        match=match,
+        control=control,
+        slideby=300,
+        cross_shanks=True,
+    )
+    print(sess.replay.expvar.npairs)
+
+    axstate = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[sub], hspace=0.2)
+
+    ax1 = fig.add_subplot(axstate[1:])
+    sess.replay.expvar.plot(ax=ax1, tstart=post1[0])
+    ax1.set_xlim(left=0)
+    ax1.tick_params(width=2)
+
+    # ----- expvar maze2 -------
+    control = pre
+    template = maze2  # [post[0] + 4 * 3600, post[0] + 5 * 3600]
+    match = post2  # [post[0] + 5 * 3600, post[1]]
+
+    sess.replay.expvar.compute(
+        template=template,
+        match=match,
+        control=control,
+        slideby=300,
+        cross_shanks=True,
+    )
+    print(sess.replay.expvar.npairs)
+
+    sess.replay.expvar.plot(ax=ax1, tstart=post1[0])
+
+    maze_time = (np.array(maze2) - post1[0]) / 3600
+    ax1.axvspan(xmin=maze_time[0], xmax=maze_time[1], color="#f2a1a1", alpha=0.5)
+
+# figure.savefig("EV_sessions", __file__)
+
 # endregion
