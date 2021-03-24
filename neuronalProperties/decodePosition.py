@@ -1,35 +1,28 @@
+#%% Imports
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.core.fromnumeric import sort
 import pandas as pd
 import scipy.stats as stats
 import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter1d, gaussian_filter
 import time
 from callfunc import processData
-
-
-basePath = [
-    # "/data/Clustering/SleepDeprivation/RatJ/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day1/",
-    # "/data/Clustering/SleepDeprivation/RatJ/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatN/Day2/",
-    # "/data/Clustering/SleepDeprivation/RatK/Day4/"
-    "/data/Clustering/SleepDeprivation/RatN/Day4/",
-]
-sessions = [processData(_) for _ in basePath]
+import subjects
 
 #%% Bayesian decoding in open field
 # region
-plt.close("all")
+sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
 
-    sess.trange = np.array([])
-    sess.decode.bayes2d.fit()
-    sess.decode.bayes2d.estimateBehav()
-    sess.decode.bayes2d.plot()
+    maze = sess.epochs.maze
+    track = sess.tracks.data["maze"]
+    sess.placefield.pf2d.compute(period=maze)
+    ratemaps = sess.placefield.pf2d.ratemaps["ratemaps"]
+    xgrid = sess.placefield.pf2d.xgrid
+    ygrid = sess.placefield.pf2d.ygrid
+    # sess.decode.bayes2d.fit()
+    # sess.decode.bayes2d.estimateBehav()
+    # sess.decode.bayes2d.plot()
 
 
 # endregion
