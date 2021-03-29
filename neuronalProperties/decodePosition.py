@@ -6,7 +6,6 @@ import scipy.stats as stats
 import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter1d, gaussian_filter
 import time
-from callfunc import processData
 import subjects
 
 #%% Bayesian decoding in open field
@@ -17,11 +16,12 @@ for sub, sess in enumerate(sessions):
     maze = sess.epochs.maze
     track = sess.tracks.data["maze"]
     sess.placefield.pf2d.compute(period=maze)
-    ratemaps = sess.placefield.pf2d.ratemaps["ratemaps"]
+    ratemaps = sess.placefield.pf2d.ratemaps
     xgrid = sess.placefield.pf2d.xgrid
     ygrid = sess.placefield.pf2d.ygrid
-    # sess.decode.bayes2d.fit()
-    # sess.decode.bayes2d.estimateBehav()
+    sess.decode.bayes2d.estimate_behavior()
+    dec_pos = sess.decode.bayes2d.decodedPos
+    sess.decode.bayes2d.events = sess.pbe.events
     # sess.decode.bayes2d.plot()
 
 

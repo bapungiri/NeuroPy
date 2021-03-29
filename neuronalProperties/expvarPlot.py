@@ -668,6 +668,7 @@ for sub, sess in enumerate(sessions):
     template = maze2  # [post[0] + 4 * 3600, post[0] + 5 * 3600]
     match = post2  # [post[0] + 5 * 3600, post[1]]
 
+    sess.replay.expvar.colors["ev"] = "#e75fdc"
     sess.replay.expvar.compute(
         template=template,
         match=match,
@@ -682,6 +683,7 @@ for sub, sess in enumerate(sessions):
     maze_time = (np.array(maze2) - post1[0]) / 3600
     ax1.axvspan(xmin=maze_time[0], xmax=maze_time[1], color="#f2a1a1", alpha=0.5)
 
+ax1.legend(["rev_maze1", "maze1", "rev_maze2", "maze2"])
 # figure.savefig("EV_sessions", __file__)
 
 # endregion
