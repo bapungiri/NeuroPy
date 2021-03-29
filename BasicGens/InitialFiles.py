@@ -108,3 +108,10 @@ for sub, sess in enumerate(sessions):
     sess.trange = np.array([])
     sess.theta.detectBestChan()
 # endregion
+
+#%% Detect pbe
+# region
+sessions = subjects.Sd()
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+# endregion
