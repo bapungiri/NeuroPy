@@ -26,6 +26,19 @@ for sub, sess in enumerate(sessions):
 
 
 # endregion
+#%% Decoding pbe on openfield sprinkle vs no-sprinkle
+# region
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    sess.trange = np.array([])
+    maze = sess.epochs.maze
+    pbe = sess.pbe.events
+    maze_pbe = pbe[(pbe.start > maze[0]) & (pbe.start < maze[1])]
+    sess.placefield.pf2d.compute(maze)
+    sess.decode.bayes2d.events = maze_pbe
+    sess.decode.bayes2d.decode_events()
+# endregion
+
 
 #%% Decoding population burst events during MAZE of open field env
 # region
@@ -135,6 +148,19 @@ for sub, sess in enumerate(sessions):
         ax.set_title(f"{round(immobile_pbe.duration[ind],2)}")
     # ax.set_xlabel("Jump distance (cm)")
     # ax.set_ylabel("Counts")
+
+
+# endregion
+
+#%% Check spkcount for sliding window
+# region
+sessions = subjects.Of().ratNday4
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze
+    spks = sess.spikes.pyr
+    bins = np.arange(maze[0], maze[1], 1)
+    spkcount = np.asarray([np.histogram(_, bins=bins)[0] for _ in spks])
+    slide_view = np.lib.stride_tricks.sliding_window_view(spkcount, 3, axis=1)
 
 
 # endregion
