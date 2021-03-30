@@ -8,7 +8,8 @@ from scipy.ndimage import gaussian_filter
 import subjects
 import time
 
-sessions = subjects.Tn().ratSday5
+# sessions = subjects.Tn().ratSday5
+sessions = subjects.Of().ratNday4
 
 #%% Generate _basics.npy files
 # region
@@ -111,7 +112,8 @@ for sub, sess in enumerate(sessions):
 
 #%% Detect pbe
 # region
-sessions = subjects.Sd()
 for sub, sess in enumerate(sessions):
-    maze = sess.epochs.maze
+    sess.pbe.detect()
+
+
 # endregion

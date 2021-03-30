@@ -620,7 +620,6 @@ for sub, sess in enumerate(sessions):
 figure.savefig("expvar_cellid_shuffle")
 # endregion
 
-
 #%% Two-novel expvar
 # region
 figure = Fig()
