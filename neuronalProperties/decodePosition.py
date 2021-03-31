@@ -7,6 +7,8 @@ import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter1d, gaussian_filter
 import time
 import subjects
+from plotUtil import Fig
+from mathutil import contiguous_regions
 
 #%% Bayesian decoding in open field
 # region
@@ -28,15 +30,48 @@ for sub, sess in enumerate(sessions):
 # endregion
 #%% Decoding pbe on openfield sprinkle vs no-sprinkle
 # region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(10, 10))
 sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
-    sess.trange = np.array([])
+    spks = sess.spikes.pyr + sess.spikes.intneur + sess.spikes.mua
     maze = sess.epochs.maze
     pbe = sess.pbe.events
-    maze_pbe = pbe[(pbe.start > maze[0]) & (pbe.start < maze[1])]
-    sess.placefield.pf2d.compute(maze)
+    maze_pbe = pbe[(pbe.start > maze[0]) & (pbe.start < maze[1])].reset_index()
+
+    thresh = 0.1 * len(spks)
+    # --- selecting pbe with some criteria -----
+    # pbe_req = []
+    # for i, epoch in enumerate(maze_pbe.itertuples()):
+    #     spkcount = np.asarray(
+    #         [np.histogram(_, bins=[epoch.start, epoch.end])[0] for _ in spks]
+    #     ).squeeze()
+    #     if np.count_nonzero(spkcount) > thresh:
+    #         pbe_req.append(i)
+
+    sess.placefield.pf2d.compute(maze, gridbin=5)
     sess.decode.bayes2d.events = maze_pbe
     sess.decode.bayes2d.decode_events()
+    decoded_pos = sess.decode.bayes2d.decodedPos
+
+    events = []
+    for evt in decoded_pos:
+        diff_x = np.diff(evt[0])
+        diff_y = np.diff(evt[1])
+        dist = np.sqrt(diff_x ** 2 + diff_y ** 2)
+        cont_evt = np.where(dist < 20, 1, 0)
+        cont_region = contiguous_regions(cont_evt)
+        a = np.diff(cont_region).squeeze()
+        if np.max(a) > 10:
+            loc = np.argmax(a)
+            region = cont_region[loc, :]
+            events.append(evt[:, region[0] : region[1]])
+
+    for i, evt in enumerate(events):
+        ax = plt.subplot(gs[i])
+        ax.plot(evt[0], evt[1])
+
+
 # endregion
 
 
