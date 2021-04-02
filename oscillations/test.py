@@ -1,70 +1,58 @@
-"""
-ephyviewer also provides an epoch encoder which can be used with shortcut keys
-and/or the mouse to encode labels.
-
-ephyviewer makes available a CsvEpochSource class, which inherits from
-WritableEpochSource. If you would like to customize reading and writing epochs
-to files, you can write your own subclass of WritableEpochSource that implements
-the load() and save() methods.
-
-Here is an example of an epoch encoder that uses CsvEpochSource.
-
-"""
-
-from ephyviewer import (
-    mkQApp,
-    MainViewer,
-    TraceViewer,
-    CsvEpochSource,
-    EpochEncoder,
-    WritableEpochSource,
-    epochs,
-)
-import numpy as np
-import subjects
-
-sess = subjects.Sd().ratNday1[0]
-states = sess.brainstates.states
-states_new = {
-    "time": states.start.values,
-    "duration": states.duration.values,
-    "label": states.name.values,
-}
-
-possible_labels = ["nrem", "rem", "quiet", "active"]
-source_epoch = WritableEpochSource(epoch=states_new)
-
-maze = sess.epochs.maze
-lfp = np.array(sess.recinfo.geteeg(chans=67)).reshape(-1, 1)
+from PyQt5 import QtWidgets, QtCore
+from pyqtgraph import PlotWidget, plot
+import pyqtgraph as pg
+import sys  # We need sys so that we can pass argv to QApplication
+import os
 
 
-# lets encode some dev mood along the day
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self, *args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
 
-filename = "example_dev_mood_encoder.csv"
-# source_epoch = CsvEpochSource(filename, possible_labels)
+        self.graphWidget = pg.PlotWidget()
+        self.setCentralWidget(self.graphWidget)
+
+        hour = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        temperature_1 = [30, 32, 34, 32, 33, 31, 29, 32, 35, 45]
+        temperature_2 = [50, 35, 44, 22, 38, 32, 27, 38, 32, 44]
+
+        # Add Background colour to white
+        self.graphWidget.setBackground("w")
+        # Add Title
+        self.graphWidget.setTitle("plots go here", color="b", size="30pt")
+        # Add Axis Labels
+        styles = {"color": "#f00", "font-size": "20px"}
+        self.graphWidget.setLabel("left", "Temperature (°C)", **styles)
+        self.graphWidget.setLabel("bottom", "Hour (H)", **styles)
+        # Add legend
+        self.graphWidget.addLegend()
+        # Add grid
+        self.graphWidget.showGrid(x=True, y=True)
+        # Set Range
+        self.graphWidget.setXRange(0, 10, padding=0)
+        self.graphWidget.setYRange(20, 55, padding=0)
+
+        self.plot(hour, temperature_1, "Sensor1", "r")
+        self.plot(hour, temperature_2, "Sensor2", "b")
+
+    def plot(self, x, y, plotname, color):
+        pen = pg.mkPen(color=color)
+        self.graphWidget.plot(
+            x, y, name=plotname, pen=pen, symbol="+", symbolSize=30, symbolBrush=(color)
+        )
 
 
-# you must first create a main Qt application (for event loop)
-app = mkQApp()
-
-# create fake 16 signals with 100000 at 10kHz
-sigs = np.random.rand(100000, 16)
-sample_rate = 1000.0
-t_start = 0.0
-
-# Create the main window that can contain several viewers
-win = MainViewer(debug=True, show_auto_scale=True)
-
-# create a viewer for signal
-view1 = TraceViewer.from_numpy(lfp, 1250.0, t_start, "Signals")
-view1.params["scale_mode"] = "same_for_all"
-view1.auto_scale()
-win.add_view(view1)
-
-# create a viewer for the encoder itself
-view2 = EpochEncoder(source=source_epoch, name="Dev mood states along day")
-win.add_view(view2)
+def main():
+    if not QtWidgets.QApplication.instance():
+        app = QtWidgets.QApplication(sys.argv)
+    else:
+        app = QtWidgets.QApplication.instance()
+    # app = QtWidgets.QApplication(sys.argv)
+    main = MainWindow()
+    main.show()
+    # sys.exit(app.exec_())
+    return main
 
 
-# show main window and run Qapp
-win.show()
+if __name__ == "__main__":
+    m = main()
