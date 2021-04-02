@@ -9,6 +9,7 @@ import time
 import subjects
 from plotUtil import Fig
 from mathutil import contiguous_regions
+import ipywidgets as widgets
 
 #%% Bayesian decoding in open field
 # region
@@ -28,13 +29,16 @@ for sub, sess in enumerate(sessions):
 
 
 # endregion
+
+
 #%% Decoding pbe on openfield sprinkle vs no-sprinkle
 # region
 figure = Fig()
-fig, gs = figure.draw(num=1, grid=(10, 10))
+fig, gs = figure.draw(num=1, grid=(2, 1))
 sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
-    spks = sess.spikes.pyr + sess.spikes.intneur + sess.spikes.mua
+    spks = sess.spikes.pyr
+    all_cell_ids = sess.spikes.pyrid
     maze = sess.epochs.maze
     pbe = sess.pbe.events
     maze_pbe = pbe[(pbe.start > maze[0]) & (pbe.start < maze[1])].reset_index()
@@ -50,26 +54,60 @@ for sub, sess in enumerate(sessions):
     #         pbe_req.append(i)
 
     sess.placefield.pf2d.compute(maze, gridbin=5)
+    ratemap_cell_ids = sess.placefield.pf2d.cell_ids
     sess.decode.bayes2d.events = maze_pbe
     sess.decode.bayes2d.decode_events()
     decoded_pos = sess.decode.bayes2d.decodedPos
+    posterior = sess.decode.bayes2d.posterior
 
-    events = []
-    for evt in decoded_pos:
-        diff_x = np.diff(evt[0])
-        diff_y = np.diff(evt[1])
-        dist = np.sqrt(diff_x ** 2 + diff_y ** 2)
-        cont_evt = np.where(dist < 20, 1, 0)
-        cont_region = contiguous_regions(cont_evt)
-        a = np.diff(cont_region).squeeze()
-        if np.max(a) > 10:
-            loc = np.argmax(a)
-            region = cont_region[loc, :]
-            events.append(evt[:, region[0] : region[1]])
+    spks = [
+        spks[i] for i, cell_id in enumerate(all_cell_ids) if cell_id in ratemap_cell_ids
+    ]
 
-    for i, evt in enumerate(events):
-        ax = plt.subplot(gs[i])
-        ax.plot(evt[0], evt[1])
+    # for i, (pbe, evt) in enumerate(zip(maze_pbe.itertuples(), decoded_pos)):
+
+    def plotspec(evt_num):
+
+        evt = decoded_pos[evt_num]
+        evt_posterior = posterior[evt_num]
+        period = [maze_pbe.iloc[evt_num].start, maze_pbe.iloc[evt_num].end]
+        ax = plt.subplot(gs[0])
+        ax.clear()
+        sess.spikes.plot_raster(spikes=spks, period=period, ax=ax)
+        ax.set_yticks(ratemap_cell_ids)
+
+        ax1 = plt.subplot(gs[1])
+        ax1.clear()
+        # ax1.plot(evt[0], evt[1])
+        ax1.imshow(evt_posterior[:, 0].reshape((39, 39), order="F"), cmap="jet")
+
+        # events = []
+        # for evt in decoded_pos:
+        #     diff_x = np.diff(evt[0])
+        #     diff_y = np.diff(evt[1])
+        #     dist = np.sqrt(diff_x ** 2 + diff_y ** 2)
+        #     cont_evt = np.where(dist < 20, 1, 0)
+        #     cont_region = contiguous_regions(cont_evt)
+        #     a = np.diff(cont_region).squeeze()
+        #     if np.max(a) > 10:
+        #         loc = np.argmax(a)
+        #         region = cont_region[loc, :]
+        #         events.append(evt[:, region[0] : region[1]])
+
+        # for i, evt in enumerate(events):
+        #     ax = plt.subplot(gs[i])
+        #     ax.plot(evt[0], evt[1])
+
+    widgets.interact(
+        plotspec,
+        evt_num=widgets.IntSlider(
+            value=2,
+            min=1,
+            max=300,
+            step=1,
+            description="event :",
+        ),
+    )
 
 
 # endregion
