@@ -91,8 +91,8 @@ for sub, sess in enumerate(sessions):
         #     a = np.diff(cont_region).squeeze()
         #     if np.max(a) > 10:
         #         loc = np.argmax(a)
-        #         region = cont_region[loc, :]
-        #         events.append(evt[:, region[0] : region[1]])
+        #         region_ = cont_region[loc, :]
+        #         events.append(evt[:, region_[0] : region[1]])
 
         # for i, evt in enumerate(events):
         #     ax = plt.subplot(gs[i])
