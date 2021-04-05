@@ -1407,20 +1407,29 @@ for sub, sess in enumerate(sessions):
         return df
 
     # ----- dividing 360 degress into multiple bins ------------
-    binconfig = [[72, None], [40, None], [40, 5]]  # degree, degree
+    # binconfig = [[72, None], [40, None],[40, 5]]  # degree, degree
+    binconfig = [[40, 5]]  # degree, degree
     binData = [getwavData(binsize=wind, slideby=sld) for (wind, sld) in binconfig]
 
     for i, df in enumerate(binData):
         ax = plt.subplot(gs[sub, i])
-        data = df.set_index("freq")  # .transform(stats.zscore, axis=1)
-        data = data.mul(frgamma, axis=0)
-        sns.heatmap(data, ax=ax, cmap="Spectral_r", cbar=None, rasterized=True)
+        data = df.set_index("freq").transform(stats.zscore, axis=1)
+        # data = data.mul(frgamma, axis=0)
+        # sns.heatmap(data, ax=ax, cmap="Spectral_r", cbar=None, rasterized=True)
+        ax.pcolormesh(
+            data.columns.values.astype("float"),
+            data.index.values,
+            data,
+            shading="auto",
+            cmap="jet",
+        )
         # ax.set_xticks([0, data.shape[1] // 2, data.shape[1]])
         # ax.set_xticklabels(["0", "180", "360"])
         # ax.locator_params(axis="x", nbins=4)
         ax.set_xlabel(r"$\theta$ phase")
         ax.set_ylabel("Frequency (Hz)")
-        ax.invert_yaxis()
+        ax.set_xticks([0, 180, 360])
+        # ax.invert_yaxis()
 
 
 # figure.savefig("phase_specific_wavelet_scaled", __file__)
