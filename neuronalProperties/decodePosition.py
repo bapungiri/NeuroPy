@@ -34,7 +34,7 @@ for sub, sess in enumerate(sessions):
 #%% Decoding pbe on openfield sprinkle vs no-sprinkle
 # region
 figure = Fig()
-fig, gs = figure.draw(num=1, grid=(2, 1))
+fig, gs = figure.draw(num=1, grid=(1, 3))
 sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
     spks = sess.spikes.pyr
@@ -56,7 +56,7 @@ for sub, sess in enumerate(sessions):
     sess.placefield.pf2d.compute(maze, gridbin=5)
     ratemap_cell_ids = sess.placefield.pf2d.cell_ids
     sess.decode.bayes2d.events = maze_pbe
-    sess.decode.bayes2d.decode_events()
+    sess.decode.bayes2d.decode_events(binsize=0.020, slideby=0.020)
     decoded_pos = sess.decode.bayes2d.decodedPos
     posterior = sess.decode.bayes2d.posterior
 
@@ -74,12 +74,16 @@ for sub, sess in enumerate(sessions):
         ax = plt.subplot(gs[0])
         ax.clear()
         sess.spikes.plot_raster(spikes=spks, period=period, ax=ax)
-        ax.set_yticks(ratemap_cell_ids)
+        ax.set_yticks(np.arange(1, len(spks) + 1))
+        ax.set_yticklabels(ratemap_cell_ids)
 
-        ax1 = plt.subplot(gs[1])
-        ax1.clear()
-        # ax1.plot(evt[0], evt[1])
-        ax1.imshow(evt_posterior[:, 0].reshape((39, 39), order="F"), cmap="jet")
+        gs_ = figure.subplot2grid(gs[1:], grid=(8, 8))
+        for i in range(evt.shape[1]):
+            ax1 = plt.subplot(gs_[i])
+            ax1.clear()
+            # ax1.plot(evt[0], evt[1])
+            ax1.imshow(evt_posterior[:, i].reshape((39, 39), order="F"), cmap="jet")
+            ax1.axis("off")
 
         # events = []
         # for evt in decoded_pos:
