@@ -34,6 +34,7 @@ for sub, sess in enumerate(sessions):
 
 #%% Early to late novel exploration change in pairwise correlation
 # region
+
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(2, 2))
 sessions = (

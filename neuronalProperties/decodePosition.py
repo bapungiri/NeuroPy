@@ -55,11 +55,14 @@ for sub, sess in enumerate(sessions):
 
     sess.placefield.pf2d.compute(maze, gridbin=5)
     ratemap_cell_ids = sess.placefield.pf2d.cell_ids
+    sess.decode.bayes2d.estimate_behavior()
+
     sess.decode.bayes2d.events = maze_pbe
     sess.decode.bayes2d.decode_events(binsize=0.020, slideby=0.020)
     decoded_pos = sess.decode.bayes2d.decodedPos
     posterior = sess.decode.bayes2d.posterior
-
+    xbin = sess.placefield.pf2d.xgrid
+    ybin = sess.placefield.pf2d.ygrid
     spks = [
         spks[i] for i, cell_id in enumerate(all_cell_ids) if cell_id in ratemap_cell_ids
     ]
@@ -82,7 +85,10 @@ for sub, sess in enumerate(sessions):
             ax1 = plt.subplot(gs_[i])
             ax1.clear()
             # ax1.plot(evt[0], evt[1])
-            ax1.imshow(evt_posterior[:, i].reshape((39, 39), order="F"), cmap="jet")
+            decode_map = np.rot90(evt_posterior[:, i].reshape((39, 39), order="C"))
+            ax1.pcolormesh(xbin, ybin, decode_map, cmap="jet")
+            ax1.plot(evt[0, i], evt[1, i], "*")
+
             ax1.axis("off")
 
         # events = []
