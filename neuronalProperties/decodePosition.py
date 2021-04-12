@@ -34,90 +34,98 @@ for sub, sess in enumerate(sessions):
 #%% Decoding pbe on openfield sprinkle vs no-sprinkle
 # region
 figure = Fig()
-fig, gs = figure.draw(num=1, grid=(1, 3))
+fig, gs = figure.draw(num=1, grid=(2, 2))
 sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
     spks = sess.spikes.pyr
     all_cell_ids = sess.spikes.pyrid
     maze = sess.epochs.maze
+    sprinkle = sess.epochs.sprinkle
     pbe = sess.pbe.events
-    maze_pbe = pbe[(pbe.start > maze[0]) & (pbe.start < maze[1])].reset_index()
-
-    thresh = 0.1 * len(spks)
-    # --- selecting pbe with some criteria -----
-    # pbe_req = []
-    # for i, epoch in enumerate(maze_pbe.itertuples()):
-    #     spkcount = np.asarray(
-    #         [np.histogram(_, bins=[epoch.start, epoch.end])[0] for _ in spks]
-    #     ).squeeze()
-    #     if np.count_nonzero(spkcount) > thresh:
-    #         pbe_req.append(i)
-
     sess.placefield.pf2d.compute(maze, gridbin=5)
-    ratemap_cell_ids = sess.placefield.pf2d.cell_ids
-    sess.decode.bayes2d.estimate_behavior()
 
-    sess.decode.bayes2d.events = maze_pbe
-    sess.decode.bayes2d.decode_events(binsize=0.020, slideby=0.020)
+    # ---- pre sprinkle -----
+    pre_sprinkle = [maze[0], sprinkle[0]]
+    pre_sprinkle_pbe = pbe[
+        (pbe.start > pre_sprinkle[0]) & (pbe.start < pre_sprinkle[1])
+    ].reset_index()
+    sess.decode.bayes2d.events = pre_sprinkle_pbe
+    sess.decode.bayes2d.decode_events(binsize=0.020, slideby=0.005)
     decoded_pos = sess.decode.bayes2d.decodedPos
     posterior = sess.decode.bayes2d.posterior
-    xbin = sess.placefield.pf2d.xgrid
-    ybin = sess.placefield.pf2d.ygrid
-    spks = [
-        spks[i] for i, cell_id in enumerate(all_cell_ids) if cell_id in ratemap_cell_ids
-    ]
+    pre_sprinkle_dist = []
+    for evt in decoded_pos:
+        pre_sprinkle_dist.append(np.sqrt((np.diff(evt, axis=1) ** 2).sum(axis=0)))
+    pre_sprinkle_dist = np.concatenate(pre_sprinkle_dist)
 
-    # for i, (pbe, evt) in enumerate(zip(maze_pbe.itertuples(), decoded_pos)):
+    # ---- sprinkle -----
+    sprinkle_pbe = pbe[
+        (pbe.start > sprinkle[0]) & (pbe.start < sprinkle[1])
+    ].reset_index()
+    sess.decode.bayes2d.events = sprinkle_pbe
+    sess.decode.bayes2d.decode_events(binsize=0.020, slideby=0.005)
+    decoded_pos = sess.decode.bayes2d.decodedPos
+    posterior = sess.decode.bayes2d.posterior
+    sprinkle_dist = []
+    for evt in decoded_pos:
+        sprinkle_dist.append(np.sqrt((np.diff(evt, axis=1) ** 2).sum(axis=0)))
+    sprinkle_dist = np.concatenate(sprinkle_dist)
 
-    def plotspec(evt_num):
+    dist_bin = np.arange(0, 300, 5)
+    hist_pre_sprinkle = np.histogram(pre_sprinkle_dist, bins=dist_bin)[0]
+    hist_sprinkle = np.histogram(sprinkle_dist, bins=dist_bin)[0]
 
-        evt = decoded_pos[evt_num]
-        evt_posterior = posterior[evt_num]
-        period = [maze_pbe.iloc[evt_num].start, maze_pbe.iloc[evt_num].end]
-        ax = plt.subplot(gs[0])
-        ax.clear()
-        sess.spikes.plot_raster(spikes=spks, period=period, ax=ax)
-        ax.set_yticks(np.arange(1, len(spks) + 1))
-        ax.set_yticklabels(ratemap_cell_ids)
+    ax = plt.subplot(gs[0])
+    ax.plot(dist_bin[:-1], hist_pre_sprinkle / np.sum(hist_pre_sprinkle), "k")
+    ax.plot(dist_bin[:-1], hist_spfinkle / np.sum(hist_sprinkle), "r")
+    ax.set_yscale("log")
+    ax.set_xlabel("Jump distance")
+    ax.set_ylabel("Normalized counts")
+    ax.legend(["pre_sprinkle", "sprinkle"])
 
-        gs_ = figure.subplot2grid(gs[1:], grid=(8, 8))
-        for i in range(evt.shape[1]):
-            ax1 = plt.subplot(gs_[i])
-            ax1.clear()
-            # ax1.plot(evt[0], evt[1])
-            decode_map = np.rot90(evt_posterior[:, i].reshape((39, 39), order="C"))
-            ax1.pcolormesh(xbin, ybin, decode_map, cmap="jet")
-            ax1.plot(evt[0, i], evt[1, i], "*")
+    # def plotspec(evt_num):
 
-            ax1.axis("off")
+    #     evt = decoded_pos[evt_num]
+    #     evt_posterior = posterior[evt_num]
+    #     period = [maze_pbe.iloc[evt_num].start, maze_pbe.iloc[evt_num].end]
 
-        # events = []
-        # for evt in decoded_pos:
-        #     diff_x = np.diff(evt[0])
-        #     diff_y = np.diff(evt[1])
-        #     dist = np.sqrt(diff_x ** 2 + diff_y ** 2)
-        #     cont_evt = np.where(dist < 20, 1, 0)
-        #     cont_region = contiguous_regions(cont_evt)
-        #     a = np.diff(cont_region).squeeze()
-        #     if np.max(a) > 10:
-        #         loc = np.argmax(a)
-        #         region_ = cont_region[loc, :]
-        #         events.append(evt[:, region_[0] : region[1]])
+    #     axt = plt.subplot(gs[0, 0])
+    #     axt.clear()
+    #     axt.plot(evt[0], evt[1])
 
-        # for i, evt in enumerate(events):
-        #     ax = plt.subplot(gs[i])
-        #     ax.plot(evt[0], evt[1])
+    #     ax = plt.subplot(gs[1:, 0])
+    #     ax.clear()
+    #     sess.spikes.plot_raster(spikes=spks, period=period, ax=ax)
+    #     ax.set_yticks(np.arange(1, len(spks) + 1))
+    #     ax.set_yticklabels(ratemap_cell_ids)
 
-    widgets.interact(
-        plotspec,
-        evt_num=widgets.IntSlider(
-            value=2,
-            min=1,
-            max=300,
-            step=1,
-            description="event :",
-        ),
-    )
+    #     gs_ = figure.subplot2grid(gs[:, 1:], grid=(8, 8))
+    #     for i in range(evt.shape[1]):
+    #         ax1 = plt.subplot(gs_[i])
+    #         ax1.clear()
+    #         # ax1.plot(evt[0], evt[1])
+    #         decode_map = np.rot90(
+    #             np.fliplr(evt_posterior[:, i].reshape((40, 40), order="C"))
+    #         )
+    #         ax1.pcolormesh(xbin, ybin, decode_map, cmap="jet")
+    #         ax1.plot(evt[0, i], evt[1, i], "*")
+
+    #         ax1.axis("off")
+
+    # widgets.interact(
+    #     plotspec,
+    #     evt_num=widgets.IntSlider(
+    #         value=2,
+    #         min=1,
+    #         max=300,
+    #         step=1,
+    #         description="event :",
+    #     ),
+    # )
+
+    # for i, evt in enumerate(decoded_pos[300:]):
+    #     ax = plt.subplot(gs[i])
+    #     ax.plot(evt[0], evt[1])
 
 
 # endregion
