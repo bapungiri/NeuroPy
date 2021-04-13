@@ -14,7 +14,6 @@ import signal_process
 import subjects
 from plotUtil import Fig
 
-# warnings.simplefilter(action="default")
 
 #%% Hourly delta-ripple coupling over recovery sleep
 # region
@@ -616,6 +615,27 @@ for sub, sess in enumerate(sessions):
         statistic="sum",
     )
     plt.plot(hist_[0])
+
+
+# endregion
+
+
+#%% Phase-amplitude-coupling testing
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Sd().ratSday3
+for sub, sess in enumerate(sessions):
+    maze = sess.epochs.maze1
+
+    def get_spect(chan):
+        lfp = sess.recinfo.geteeg(chans=chan)
+        lfp_filtered = signal_process.filter_sig.bandpass(lfp, lf=25, hf=50)
+        f, t, spect = sg.spectrogram(
+            lfp, nperseg=10 * 1250, noverlap=5 * 1250, mode="complex"
+        )
+
+        return spect
 
 
 # endregion
