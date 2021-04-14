@@ -479,3 +479,26 @@ for sub, sess in enumerate(sessions):
 
 
 # endregion
+
+#%% Two novel maze assembly comparison
+# region
+figure = Fig()
+fig, gs = figure.draw(num=1, grid=(2, 2))
+sessions = subjects.Tn().ratSday5
+for sub, sess in enumerate(sessions):
+    maze1 = sess.epochs.maze1
+    maze2 = sess.epochs.maze2
+
+    assembly_maze1 = sess.replay.assemblyICA.getAssemblies(maze1)
+    assembly_maze2 = sess.replay.assemblyICA.getAssemblies(maze2)
+
+    assemblies = np.hstack((assembly_maze1, assembly_maze2))
+    assembly_corr = np.corrcoef(assemblies.T)
+    np.fill_diagonal(assembly_corr, 0)
+
+    ax = plt.subplot(gs[0])
+    im = ax.imshow(assembly_corr, cmap="jet")
+    ax.set_xlabel("Assembly index")
+    ax.set_ylabel("Assembly index")
+    plt.colorbar(im)
+# endregion
