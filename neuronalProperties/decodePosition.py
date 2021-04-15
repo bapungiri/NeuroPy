@@ -34,7 +34,7 @@ for sub, sess in enumerate(sessions):
 #%% Decoding pbe on openfield sprinkle vs no-sprinkle
 # region
 figure = Fig()
-fig, gs = figure.draw(num=1, grid=(2, 2))
+fig, gs = figure.draw(num=1, grid=(2, 2), style="Pres")
 sessions = subjects.Of().ratNday4
 for sub, sess in enumerate(sessions):
     spks = sess.spikes.pyr
@@ -77,7 +77,7 @@ for sub, sess in enumerate(sessions):
 
     ax = plt.subplot(gs[0])
     ax.plot(dist_bin[:-1], hist_pre_sprinkle / np.sum(hist_pre_sprinkle), "k")
-    ax.plot(dist_bin[:-1], hist_spfinkle / np.sum(hist_sprinkle), "r")
+    ax.plot(dist_bin[:-1], hist_sprinkle / np.sum(hist_sprinkle), "r")
     ax.set_yscale("log")
     ax.set_xlabel("Jump distance")
     ax.set_ylabel("Normalized counts")
