@@ -8,8 +8,8 @@ from scipy.ndimage import gaussian_filter
 import subjects
 import time
 
-# sessions = subjects.Tn().ratSday5
-sessions = subjects.Of().ratNday4
+sessions = subjects.Tn().ratSday5
+# sessions = subjects.Of().ratNday4
 
 #%% Generate _basics.npy files
 # region
@@ -117,3 +117,5 @@ for sub, sess in enumerate(sessions):
 
 
 # endregion
+
+#%% Detect ripples
