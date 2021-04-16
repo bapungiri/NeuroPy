@@ -622,6 +622,7 @@ figure.savefig("expvar_cellid_shuffle")
 
 #%% Two-novel expvar
 # region
+
 figure = Fig()
 fig, gs = figure.draw(num=1, grid=(2, 2))
 sessions = subjects.Tn().ratSday5
