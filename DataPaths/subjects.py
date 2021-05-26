@@ -1,4 +1,4 @@
-from callfunc import processData
+from ModulesPath.callfunc import processData
 from typing import List
 
 colors = {"sd": "#ff6b6b", "nsd": "#69c"}
