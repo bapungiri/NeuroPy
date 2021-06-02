@@ -45,7 +45,13 @@ class Sd:
     @property
     def allsess(self):
         pipelines: List[processData]
-        pipelines = self.ratJday1 + self.ratKday1 + self.ratNday1 + self.ratSday3
+        pipelines = (
+            self.ratJday1
+            + self.ratKday1
+            + self.ratNday1
+            + self.ratSday3
+            + self.ratRday2
+        )
         return pipelines
 
     @property
@@ -66,6 +72,11 @@ class Sd:
     @property
     def ratSday3(self):
         path = "/data/Clustering/SleepDeprivation/RatS/Day3SD/"
+        return [processData(path)]
+
+    @property
+    def ratRday2(self):
+        path = "/data/Clustering/SleepDeprivation/RatR/Day2SD"
         return [processData(path)]
 
     def __add__(self, other):
