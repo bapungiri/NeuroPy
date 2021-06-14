@@ -121,6 +121,11 @@ class Nsd:
         path = "/data/Clustering/SleepDeprivation/RatS/Day2NSD/"
         return [ProcessData(path)]
 
+    @property
+    def ratRday1(self):
+        path = "/data/Clustering/SleepDeprivation/RatR/Day1NSD/"
+        return [ProcessData(path)]
+
     def __add__(self, other):
         pipelines: List[ProcessData] = self.allsess + other.allsess
         return pipelines
@@ -139,6 +144,7 @@ class Tn:
         return [ProcessData(path)]
 
 
+sd = Sd()
 # def sd(indx=None):
 #     """Sleep deprivation sessions"""
 
