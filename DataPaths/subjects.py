@@ -1,4 +1,4 @@
-from ModulesPath import ProcessData
+from neuropy_loader import ProcessData
 from typing import List
 
 colors = {"sd": "#ff6b6b", "nsd": "#69c"}
