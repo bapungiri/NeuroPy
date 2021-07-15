@@ -59,6 +59,10 @@ class ProcessData:
             d = np.load(f, allow_pickle=True).item()
             self.mua = core.Mua.from_dict(d)
 
+        if (f := self.filePrefix.with_suffix(".position.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            self.position = core.Position.from_dict(d)
+
         # self.pf1d = sessobj.PF1d(self.recinfo)
         # self.pf2d = sessobj.PF2d(self.recinfo)
         # self.decode1D = sessobj.Decode1d(self.pf1d)
@@ -67,7 +71,7 @@ class ProcessData:
         # self.pbe = sessobj.Pbe(self.recinfo)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.recinfo.session.sessionName})"
+        return f"{self.__class__.__name__}({self.recinfo.source_file.name})"
 
 
 def allsess():
