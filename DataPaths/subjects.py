@@ -9,6 +9,8 @@ def file_loader(f):
     return np.load(f, allow_pickle=True).item()
 
 
+fig_folder = Path("/home/bapung/Documents/figures/")
+
 colors = {"sd": "#ff6b6b", "nsd": "#69c"}
 
 
