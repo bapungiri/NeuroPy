@@ -152,6 +152,11 @@ class Sd:
         return [ProcessData(path)]
 
     @property
+    def ratUday4(self):
+        path = "/data/Clustering/sessions/RatU/RatUDay4SD"
+        return [ProcessData(path)]
+
+    @property
     def utkuAG_day1(self):
         path = "/data/Clustering/sessions/Utku/AG_2019-12-22_SD_day1/"
         return [ProcessData(path)]
@@ -170,7 +175,13 @@ class Nsd:
     @property
     def allsess(self):
         pipelines: List[ProcessData]
-        pipelines = self.ratJday2 + self.ratKday2 + self.ratNday2 + self.ratSday2
+        pipelines = (
+            self.ratJday2
+            + self.ratKday2
+            + self.ratNday2
+            + self.ratSday2
+            + self.ratRday1
+        )
         return pipelines
 
     @property
