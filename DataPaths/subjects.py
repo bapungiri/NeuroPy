@@ -123,6 +123,7 @@ class Sd:
             + self.ratNday1
             + self.ratSday3
             + self.ratRday2
+            + self.ratUday4
         )
         return pipelines
 
