@@ -230,6 +230,8 @@ class Tn:
 
 sd = Sd()
 nsd = Nsd()
+of = Of()
+tn = Tn()
 # def sd(indx=None):
 #     """Sleep deprivation sessions"""
 
