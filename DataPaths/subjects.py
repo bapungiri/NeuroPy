@@ -77,7 +77,7 @@ class ProcessData:
 
 
 def allsess():
-    """all data folders together """
+    """all data folders together"""
     paths = [
         "/data/Clustering/sessions/RatJ/Day1/",
         "/data/Clustering/sessions/RatK/Day1/",
