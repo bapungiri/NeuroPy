@@ -216,6 +216,11 @@ class Nsd:
         path = "/data/Clustering/sessions/RatR/Day1NSD/"
         return [ProcessData(path)]
 
+    @property
+    def ratUday2(self):
+        path = "/data/Clustering/sessions/RatU/RatUDay2NSD/"
+        return [ProcessData(path)]
+
     def __add__(self, other):
         pipelines: List[ProcessData] = self.allsess + other.allsess
         return pipelines
