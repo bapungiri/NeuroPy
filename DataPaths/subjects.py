@@ -10,8 +10,23 @@ def file_loader(f):
 
 
 fig_folder = Path("/home/bapung/Documents/figures/")
+figpath_sd = Path("/home/bapung/Documents/figures/sleep_deprivation")
 
-colors = {"sd": "#ff6b6b", "nsd": "#69c"}
+# sd_colors = {"sd": "#ff6b6b", "nsd": "#69c"}
+sd_colors = {"sd": "#df670c", "nsd": "#633bb5"}
+sleep_colors = {
+    "nrem": "#667cfa",
+    "rem": "#eb9494",
+    "quiet": "#b6afaf",
+    "active": "#474343",
+}
+
+# sleep_colors = {
+#     "nrem": "#7a13c3",
+#     "rem": "#08af5f",
+#     "quiet": "#d67105",
+#     "active": "#b20a50",
+# }
 
 
 class ProcessData:
