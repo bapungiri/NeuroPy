@@ -62,6 +62,7 @@ class ProcessData:
         self.theta = core.Epoch.from_file(fp.with_suffix(".theta.npy"))
 
         self.pbe = core.Epoch.from_file(fp.with_suffix(".pbe.npy"))
+        self.mua = core.Mua.from_file(fp.with_suffix(".mua.npy"))
         # self.position = core.Position(
         #     filename=self.filePrefix.with_suffix(".position.npy")
         # )
@@ -203,6 +204,7 @@ class Nsd:
             + self.ratNday2
             + self.ratSday2
             + self.ratRday1
+            + self.ratUday2
         )
         return pipelines
 
