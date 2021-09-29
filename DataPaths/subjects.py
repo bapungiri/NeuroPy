@@ -81,6 +81,10 @@ class ProcessData:
             d = np.load(f, allow_pickle=True).item()
             self.position = core.Position.from_dict(d)
 
+        if (f := self.filePrefix.with_suffix(".linearized_maze.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            self.lin_maze = core.Position.from_dict(d)
+
         # self.pf1d = sessobj.PF1d(self.recinfo)
         # self.pf2d = sessobj.PF2d(self.recinfo)
         # self.decode1D = sessobj.Decode1d(self.pf1d)
