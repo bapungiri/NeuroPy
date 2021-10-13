@@ -144,7 +144,7 @@ class Sd:
             + self.ratSday3
             + self.ratRday2
             + self.ratUday4
-            + self.ratUday5
+            + self.ratVday2
         )
         return pipelines
 
@@ -179,9 +179,14 @@ class Sd:
         return [ProcessData(path)]
 
     @property
-    def ratUday5(self):
-        path = "/data/Clustering/sessions/RatU/RatUDay5OpenfieldSD/"
+    def ratVday2(self):
+        path = "/data/Clustering/sessions/RatV/RatVDay2SD/"
         return [ProcessData(path)]
+
+    # @property
+    # def ratUday5(self):
+    #     path = "/data/Clustering/sessions/RatU/RatUDay5OpenfieldSD/"
+    #     return [ProcessData(path)]
 
     @property
     def utkuAG_day1(self):
