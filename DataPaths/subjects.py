@@ -214,6 +214,7 @@ class Nsd:
             + self.ratSday2
             + self.ratRday1
             + self.ratUday2
+            + self.ratVday1
         )
         return pipelines
 
