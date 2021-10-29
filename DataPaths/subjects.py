@@ -58,6 +58,7 @@ class ProcessData:
         self.paradigm = core.Epoch.from_file(fp.with_suffix(".paradigm.npy"))
         self.artifact = core.Epoch.from_file(fp.with_suffix(".artifact.npy"))
         self.brainstates = core.Epoch.from_file(fp.with_suffix(".brainstates.npy"))
+        self.spindle = core.Epoch.from_file(fp.with_suffix(".spindle.npy"))
         self.ripple = core.Epoch.from_file(fp.with_suffix(".ripple.npy"))
         self.theta = core.Epoch.from_file(fp.with_suffix(".theta.npy"))
 
