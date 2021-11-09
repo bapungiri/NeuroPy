@@ -49,3 +49,32 @@ def view_signal(signal: Signal, probegroup: ProbeGroup):
     win.show()
 
     app.exec_()
+
+
+def view_multiple_signals(signal_list: list[Signal], names=None):
+    app = mkQApp()
+
+    n_sigs = len(signal_list)
+    if names is None:
+        names = [f"Signal{_}" for _ in range(n_sigs)]
+
+    assert len(names) == n_sigs, "names and signal_list should have same length"
+
+    win = MainViewer(debug=False, show_auto_scale=True)
+
+    for i, sig in enumerate(signal_list):
+        view1 = TraceViewer.from_numpy(
+            sig.traces.T, sig.sampling_rate, sig.t_start, name=names[i]
+        )
+
+        view1.params["scale_mode"] = "same_for_all"
+        view1.params["display_labels"] = True
+
+        view1.auto_scale()
+
+        # put this veiwer in the main window
+        win.add_view(view1)
+
+    # show main window and run Qapp
+    win.show()
+    app.exec_()
