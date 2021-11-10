@@ -56,7 +56,9 @@ def b64_image_files(images, colormap="hot"):
     return urls
 
 
-def plot_in_bokeh(x, y, img_arr, color_by=None, palette="jet", size=5):
+def plot_in_bokeh(
+    x, y, img_arr, color_by=None, palette="jet", size=5, width=1200, height=800
+):
 
     # info to show on images
     tooltips = """
@@ -91,8 +93,8 @@ def plot_in_bokeh(x, y, img_arr, color_by=None, palette="jet", size=5):
     )
 
     p = bplot.figure(
-        width=900,
-        height=500,
+        width=width,
+        height=height,
         tooltips=tooltips,
         x_axis_label="Time",
         y_axis_label="Replay score",
