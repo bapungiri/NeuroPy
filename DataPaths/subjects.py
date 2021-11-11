@@ -70,6 +70,10 @@ class ProcessData:
 
         # ---- neurons related ------------
 
+        if (f := self.filePrefix.with_suffix(".running.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            self.run = core.Epoch.from_dict(d)
+
         if (f := self.filePrefix.with_suffix(".neurons.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             self.neurons = core.Neurons.from_dict(d)
@@ -82,7 +86,7 @@ class ProcessData:
             d = np.load(f, allow_pickle=True).item()
             self.position = core.Position.from_dict(d)
 
-        if (f := self.filePrefix.with_suffix(".linearized_maze.npy")).is_file():
+        if (f := self.filePrefix.with_suffix(".maze.linear.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             self.lin_maze = core.Position.from_dict(d)
 
