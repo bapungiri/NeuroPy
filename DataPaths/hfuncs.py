@@ -10,6 +10,7 @@ from neuropy.utils import signal_process
 from PIL import Image
 from scipy import stats
 from skimage import img_as_ubyte
+from neuropy import core
 
 
 def wavelet_gamma_theta_phase(signal, theta_phase, binsize=9, frgamma=None, fs=1250):
@@ -102,3 +103,41 @@ def plot_in_bokeh(
     )
     p.circle("x", "y", size=size, source=source, color="colors")
     return p
+
+
+def linearize_using_shapely(position: core.Position):
+    from matplotlib.backend_bases import MouseButton
+    from shapely.geometry import LineString, Point
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots()
+    ax.plot(position.x, position.y)
+
+    global coord
+    coord = []
+    global flag
+    flag = 0
+
+    def on_click(event):
+        if (event.button is MouseButton.LEFT) and (event.inaxes):
+            global coord
+            coord.append((event.xdata, event.ydata))
+            x = event.xdata
+            y = event.ydata
+
+            ax.plot(x, y, "o", color="r")
+            fig.canvas.draw()  # redraw the figure
+
+        if event.button is MouseButton.RIGHT:
+            flag = 1
+            fig.disconnent()
+
+    fig.canvas.mpl_connect("button_press_event", on_click)
+
+    while flag != 0:
+        line = LineString(coord)
+        lin_pos = []
+        for x, y in zip(position.x, position.y):
+            lin_pos.append(line.project(Point(x, y)))
+
+        return lin_pos
