@@ -74,6 +74,10 @@ class ProcessData:
             d = np.load(f, allow_pickle=True).item()
             self.run = core.Epoch.from_dict(d)
 
+        if (f := self.filePrefix.with_suffix(".replay.pbe.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            self.replay_pbe = core.Epoch.from_dict(d)
+
         if (f := self.filePrefix.with_suffix(".neurons.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             self.neurons = core.Neurons.from_dict(d)
