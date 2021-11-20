@@ -1,4 +1,10 @@
-from ephyviewer import mkQApp, MainViewer, TraceViewer
+from ephyviewer import (
+    mkQApp,
+    MainViewer,
+    TraceViewer,
+    TimeFreqViewer,
+    InMemoryAnalogSignalSource,
+)
 import numpy as np
 from neuropy.core import Signal, ProbeGroup
 
@@ -74,6 +80,46 @@ def view_multiple_signals(signal_list: list[Signal], names=None):
 
         # put this veiwer in the main window
         win.add_view(view1)
+
+    # show main window and run Qapp
+    win.show()
+    app.exec_()
+
+
+def time_frequency_viewer(sig: Signal, freq_params=(3, 50, 0.1), cmap="jet"):
+    app = mkQApp()
+
+    win = MainViewer(debug=False, show_auto_scale=True)
+
+    source = InMemoryAnalogSignalSource(
+        sig.traces.T,
+        sig.sampling_rate,
+        sig.t_start,
+        channel_names=[f"ch{_}" for _ in sig.channel_id],
+    )
+
+    TraceViewer
+
+    view1 = TraceViewer(source=source)
+    # view1.params["scale_mode"] = "same_for_all"
+    view1.params["display_labels"] = True
+    # view1.auto_scale()
+
+    view2 = TimeFreqViewer(source=source, name="tfr")
+    view2.params["show_axis"] = True
+    view2.params["timefreq", "f_start"] = float(freq_params[0])
+    view2.params["timefreq", "f_stop"] = float(freq_params[1])
+    view2.params["timefreq", "deltafreq"] = float(freq_params[2])
+    view2.params["colormap"] = cmap
+    # view2.params["scale_mode"] = "same_for_all"
+    view2.params["nb_column"] = 1
+
+    if sig.n_channels > 1:
+        for i in range(1, sig.n_channels):
+            view2.by_channel_params[f"ch{i}", "visible"] = True
+
+    win.add_view(view1)
+    win.add_view(view2)
 
     # show main window and run Qapp
     win.show()
