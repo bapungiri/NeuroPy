@@ -30,13 +30,15 @@ sleep_colors = {
 
 
 class ProcessData:
-    def __init__(self, basepath):
+    def __init__(self, basepath, tag=None):
         basepath = Path(basepath)
         xml_files = sorted(basepath.glob("*.xml"))
         assert len(xml_files) == 1, "Found more than one .xml file"
 
         fp = xml_files[0].with_suffix("")
         self.filePrefix = fp
+        self.sub_name = fp.name[:4]
+        self.tag = tag
 
         self.recinfo = NeuroscopeIO(xml_files[0])
         self.eegfile = BinarysignalIO(
@@ -55,15 +57,25 @@ class ProcessData:
         self.probegroup = core.ProbeGroup.from_file(fp.with_suffix(".probegroup.npy"))
 
         # ----- epochs --------------
-        self.paradigm = core.Epoch.from_file(fp.with_suffix(".paradigm.npy"))
-        self.artifact = core.Epoch.from_file(fp.with_suffix(".artifact.npy"))
-        self.brainstates = core.Epoch.from_file(fp.with_suffix(".brainstates.npy"))
-        self.spindle = core.Epoch.from_file(fp.with_suffix(".spindle.npy"))
-        self.ripple = core.Epoch.from_file(fp.with_suffix(".ripple.npy"))
-        self.theta = core.Epoch.from_file(fp.with_suffix(".theta.npy"))
-
-        self.pbe = core.Epoch.from_file(fp.with_suffix(".pbe.npy"))
-        self.mua = core.Mua.from_file(fp.with_suffix(".mua.npy"))
+        epoch_names = [
+            "paradigm",
+            "artifact",
+            "brainstates",
+            "spindle",
+            "ripple",
+            "theta",
+            "pbe",
+        ]
+        for e in epoch_names:
+            setattr(self, e, core.Epoch.from_file(fp.with_suffix(f".{e}.npy")))
+        # self.paradigm = core.Epoch.from_file(fp.with_suffix(".paradigm.npy"))
+        # self.artifact = core.Epoch.from_file(fp.with_suffix(".artifact.npy"))
+        # self.brainstates = core.Epoch.from_file(fp.with_suffix(".brainstates.npy"))
+        # self.spindle = core.Epoch.from_file(fp.with_suffix(".spindle.npy"))
+        # self.ripple = core.Epoch.from_file(fp.with_suffix(".ripple.npy"))
+        # self.theta = core.Epoch.from_file(fp.with_suffix(".theta.npy"))
+        # self.pbe = core.Epoch.from_file(fp.with_suffix(".pbe.npy"))
+        # self.mua = core.Mua.from_file(fp.with_suffix(".mua.npy"))
         # self.position = core.Position(
         #     filename=self.filePrefix.with_suffix(".position.npy")
         # )
@@ -78,13 +90,17 @@ class ProcessData:
             d = np.load(f, allow_pickle=True).item()
             self.replay_pbe = core.Epoch.from_dict(d)
 
-        if (f := self.filePrefix.with_suffix(".neurons.npy")).is_file():
-            d = np.load(f, allow_pickle=True).item()
-            self.neurons = core.Neurons.from_dict(d)
+        # if (f := self.filePrefix.with_suffix(".neurons.npy")).is_file():
+        #     d = np.load(f, allow_pickle=True).item()
+        #     self.neurons = core.Neurons.from_dict(d)
 
-        if (f := self.filePrefix.with_suffix(".mua.npy")).is_file():
+        if (f := self.filePrefix.with_suffix(".neurons.iso.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
-            self.mua = core.Mua.from_dict(d)
+            self.neurons_iso = core.Neurons.from_dict(d)
+
+        # if (f := self.filePrefix.with_suffix(".mua.npy")).is_file():
+        #     d = np.load(f, allow_pickle=True).item()
+        #     self.mua = core.Mua.from_dict(d)
 
         if (f := self.filePrefix.with_suffix(".position.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
@@ -109,8 +125,19 @@ class ProcessData:
         # self.localsleep = sessobj.LocalSleep(self.recinfo)
         # self.pbe = sessobj.Pbe(self.recinfo)
 
+    @property
+    def neurons(self):
+        # it is relatively heavy on memory hence loaded only while required
+        if (f := self.filePrefix.with_suffix(".neurons.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            return core.Neurons.from_dict(d)
+
+    @property
+    def mua(self):
+        return core.Mua.from_file(self.filePrefix.with_suffix(".mua.npy"))
+
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.recinfo.source_file.name})"
+        return f"{self.__class__.__name__}({self.recinfo.source_file.name})\n"
 
 
 def allsess():
@@ -133,6 +160,13 @@ def allsess():
     return [ProcessData(_) for _ in paths]
 
 
+class Group:
+    tag = None
+
+    def _process(self, path):
+        return [ProcessData(path, self.tag)]
+
+
 class Of:
     @property
     def ratJday4(self):
@@ -150,7 +184,9 @@ class Of:
         return [ProcessData(path)]
 
 
-class Sd:
+class Sd(Group):
+    tag = "sd"
+
     @property
     def allsess(self):
         pipelines: List[ProcessData]
@@ -167,38 +203,31 @@ class Sd:
 
     @property
     def ratJday1(self):
-        path = "/data/Clustering/sessions/RatJ/Day1/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatJ/Day1/")
 
     @property
     def ratKday1(self):
-        path = "/data/Clustering/sessions/RatK/Day1/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatK/Day1/")
 
     @property
     def ratNday1(self):
-        path = "/data/Clustering/sessions/RatN/Day1/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatN/Day1/")
 
     @property
     def ratSday3(self):
-        path = "/data/Clustering/sessions/RatS/Day3SD/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatS/Day3SD/")
 
     @property
     def ratRday2(self):
-        path = "/data/Clustering/sessions/RatR/Day2SD"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatR/Day2SD")
 
     @property
     def ratUday4(self):
-        path = "/data/Clustering/sessions/RatU/RatUDay4SD"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatU/RatUDay4SD")
 
     @property
     def ratVday2(self):
-        path = "/data/Clustering/sessions/RatV/RatVDay2SD/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatV/RatVDay2SD/")
 
     # @property
     # def ratUday5(self):
@@ -220,7 +249,9 @@ class Sd:
         return pipelines
 
 
-class Nsd:
+class Nsd(Group):
+    tag = "nsd"
+
     @property
     def allsess(self):
         pipelines: List[ProcessData]
@@ -237,38 +268,31 @@ class Nsd:
 
     @property
     def ratJday2(self):
-        path = "/data/Clustering/sessions/RatJ/Day2/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatJ/Day2/")
 
     @property
     def ratKday2(self):
-        path = "/data/Clustering/sessions/RatK/Day2/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatK/Day2/")
 
     @property
     def ratNday2(self):
-        path = "/data/Clustering/sessions/RatN/Day2/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatN/Day2/")
 
     @property
     def ratSday2(self):
-        path = "/data/Clustering/sessions/RatS/Day2NSD/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatS/Day2NSD/")
 
     @property
     def ratRday1(self):
-        path = "/data/Clustering/sessions/RatR/Day1NSD/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatR/Day1NSD/")
 
     @property
     def ratUday2(self):
-        path = "/data/Clustering/sessions/RatU/RatUDay2NSD/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatU/RatUDay2NSD/")
 
     @property
     def ratVday1(self):
-        path = "/data/Clustering/sessions/RatV/RatVDay1NSD/"
-        return [ProcessData(path)]
+        return self._process("/data/Clustering/sessions/RatV/RatVDay1NSD/")
 
     def __add__(self, other):
         pipelines: List[ProcessData] = self.allsess + other.allsess
