@@ -57,24 +57,26 @@ class ProcessData:
         self.probegroup = core.ProbeGroup.from_file(fp.with_suffix(".probegroup.npy"))
 
         # ----- epochs --------------
-        epoch_names = [
-            "paradigm",
-            "artifact",
-            "brainstates",
-            "spindle",
-            "ripple",
-            "theta",
-            "pbe",
-        ]
-        for e in epoch_names:
-            setattr(self, e, core.Epoch.from_file(fp.with_suffix(f".{e}.npy")))
-        # self.paradigm = core.Epoch.from_file(fp.with_suffix(".paradigm.npy"))
-        # self.artifact = core.Epoch.from_file(fp.with_suffix(".artifact.npy"))
-        # self.brainstates = core.Epoch.from_file(fp.with_suffix(".brainstates.npy"))
-        # self.spindle = core.Epoch.from_file(fp.with_suffix(".spindle.npy"))
-        # self.ripple = core.Epoch.from_file(fp.with_suffix(".ripple.npy"))
-        # self.theta = core.Epoch.from_file(fp.with_suffix(".theta.npy"))
-        # self.pbe = core.Epoch.from_file(fp.with_suffix(".pbe.npy"))
+        # epoch_names = [
+        #     "paradigm",
+        #     "artifact",
+        #     "brainstates",
+        #     "spindle",
+        #     "ripple",
+        #     "theta",
+        #     "pbe",
+        # ]
+        # for e in epoch_names:
+        #     setattr(self, e, core.Epoch.from_file(fp.with_suffix(f".{e}.npy")))
+        self.paradigm = core.Epoch.from_file(fp.with_suffix(".paradigm.npy"))
+        self.artifact = core.Epoch.from_file(fp.with_suffix(".artifact.npy"))
+        self.brainstates = core.Epoch.from_file(fp.with_suffix(".brainstates.npy"))
+        self.spindle = core.Epoch.from_file(fp.with_suffix(".spindle.npy"))
+        self.ripple = core.Epoch.from_file(fp.with_suffix(".ripple.npy"))
+        self.theta = core.Epoch.from_file(fp.with_suffix(".theta.npy"))
+        self.theta_epochs = core.Epoch.from_file(fp.with_suffix(".theta.epochs.npy"))
+        self.pbe = core.Epoch.from_file(fp.with_suffix(".pbe.npy"))
+
         # self.mua = core.Mua.from_file(fp.with_suffix(".mua.npy"))
         # self.position = core.Position(
         #     filename=self.filePrefix.with_suffix(".position.npy")
