@@ -5,15 +5,28 @@ from pathlib import Path
 import numpy as np
 
 
+def adjust_lightness(color, amount=0.5):
+    import matplotlib.colors as mc
+    import colorsys
+
+    try:
+        c = mc.cnames[color]
+    except:
+        c = color
+    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+    return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
+
+
 def file_loader(f):
     return np.load(f, allow_pickle=True).item()
 
 
 fig_folder = Path("/home/bapung/Documents/figures/")
-figpath_sd = Path("/home/bapung/Documents/figures/sleep_deprivation")
+figpath_sd = Path(
+    "/home/bapung/Dropbox (University of Michigan)/figures/sleep_deprivation"
+)
 
 # sd_colors = {"sd": "#ff6b6b", "nsd": "#69c"}
-sd_colors = {"sd": "#df670c", "nsd": "#633bb5"}
 sleep_colors = {
     "nrem": "#667cfa",
     "rem": "#eb9494",
@@ -250,6 +263,9 @@ class Sd(Group):
         pipelines: List[ProcessData] = self.allsess + other.allsess
         return pipelines
 
+    def color(self, amount=1):
+        return adjust_lightness("#df670c", amount=amount)
+
 
 class Nsd(Group):
     tag = "nsd"
@@ -299,6 +315,9 @@ class Nsd(Group):
     def __add__(self, other):
         pipelines: List[ProcessData] = self.allsess + other.allsess
         return pipelines
+
+    def color(self, amount=1):
+        return adjust_lightness("#633bb5", amount=amount)
 
 
 class Tn:
