@@ -151,6 +151,9 @@ class ProcessData:
     def mua(self):
         return core.Mua.from_file(self.filePrefix.with_suffix(".mua.npy"))
 
+    def save_data(d, f):
+        np.save(f, arr=d)
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.recinfo.source_file.name})\n"
 
@@ -362,3 +365,31 @@ tn = Tn()
 #         paths = [paths[_] for _ in indx]
 
 #     return [ProcessData(_) for _ in paths]
+
+
+class GroupData:
+    def __init__(self) -> None:
+        self.path = Path("/home/bapung/Dropbox (University of Michigan)/ProcessedData")
+
+    def save(self, d, fp):
+        data = {"data": d}
+        np.save(self.path / fp, data)
+
+    def load(self, fp):
+        return np.load(self.path / f"{fp}.npy", allow_pickle=True).item()
+
+    @property
+    def ripple_psd(self):
+        return self.load("ripple_psd")["data"]
+
+    @property
+    def ripple_rate(self):
+        return self.load("ripple_rate")["data"]
+
+    @property
+    def ripple_peak_frequency(self):
+        return self.load("ripple_peak_frequency")["data"]
+
+    @property
+    def ev_pooled(self):
+        return self.load("ev_pooled")["data"]
