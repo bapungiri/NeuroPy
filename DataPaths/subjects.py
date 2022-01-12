@@ -336,37 +336,6 @@ class Tn:
         return [ProcessData(path)]
 
 
-sd = Sd()
-nsd = Nsd()
-of = Of()
-tn = Tn()
-# def sd(indx=None):
-#     """Sleep deprivation sessions"""
-
-#     paths = [
-#         "/data/Clustering/sessions/RatJ/Day1/",
-#         "/data/Clustering/sessions/RatK/Day1/",
-#         "/data/Clustering/sessions/RatN/Day1/",
-#         "/data/Clustering/sessions/RatS/Day3SD/",
-#     ]
-#     if indx is not None:
-#         paths = [paths[_] for _ in indx]
-#     return [ProcessData(_) for _ in paths]
-
-
-# def nsd(indx=None):
-#     """Control sessions for sleep deprivation """
-#     paths = [
-#         "/data/Clustering/sessions/RatJ/Day2/",
-#         "/data/Clustering/sessions/RatK/Day2/",
-#         "/data/Clustering/sessions/RatN/Day2/",
-#     ]
-#     if indx is not None:
-#         paths = [paths[_] for _ in indx]
-
-#     return [ProcessData(_) for _ in paths]
-
-
 class GroupData:
     def __init__(self) -> None:
         self.path = Path("/home/bapung/Dropbox (University of Michigan)/ProcessedData")
@@ -387,9 +356,27 @@ class GroupData:
         return self.load("ripple_rate")["data"]
 
     @property
+    def ripple_total_duration(self):
+        return self.load("ripple_total_duration")["data"]
+
+    @property
     def ripple_peak_frequency(self):
         return self.load("ripple_peak_frequency")["data"]
 
     @property
+    def frate_pyr_in_ripple(self):
+        return self.load("frate_pyr_in_ripple")["data"]
+
+    @property
+    def frate_inter_in_ripple(self):
+        return self.load("frate_inter_in_ripple")["data"]
+
+    @property
     def ev_pooled(self):
         return self.load("ev_pooled")["data"]
+
+
+sd = Sd()
+nsd = Nsd()
+of = Of()
+tn = Tn()
