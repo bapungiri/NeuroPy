@@ -141,3 +141,17 @@ def linearize_using_shapely(position: core.Position):
             lin_pos.append(line.project(Point(x, y)))
 
         return lin_pos
+
+
+def whiten_signal(signal: core.Signal):
+    from statsmodels.tsa.ar_model import AutoReg
+
+    trace = np.pad(signal.traces[0], (2, 0), "constant", constant_values=(0,))
+    model = AutoReg(trace, 2, old_names=False)
+    res = model.fit().predict(0, len(trace) - 1)[2:]
+
+    return core.Signal(
+        traces=(signal.traces[0] - res).reshape(1, -1),
+        sampling_rate=signal.sampling_rate,
+        t_start=signal.t_start,
+    )
