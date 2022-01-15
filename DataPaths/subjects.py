@@ -14,7 +14,8 @@ def adjust_lightness(color, amount=0.5):
     except:
         c = color
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
-    return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
+    c = colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
+    return mc.to_hex(c)
 
 
 def file_loader(f):
@@ -89,6 +90,7 @@ class ProcessData:
         self.theta = core.Epoch.from_file(fp.with_suffix(".theta.npy"))
         self.theta_epochs = core.Epoch.from_file(fp.with_suffix(".theta.epochs.npy"))
         self.pbe = core.Epoch.from_file(fp.with_suffix(".pbe.npy"))
+        self.off = core.Epoch.from_file(fp.with_suffix(".off.npy"))
 
         # self.mua = core.Mua.from_file(fp.with_suffix(".mua.npy"))
         # self.position = core.Position(
@@ -149,7 +151,9 @@ class ProcessData:
 
     @property
     def mua(self):
-        return core.Mua.from_file(self.filePrefix.with_suffix(".mua.npy"))
+        if (f := self.filePrefix.with_suffix(".mua.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            return core.Mua.from_dict(d)
 
     def save_data(d, f):
         np.save(f, arr=d)
@@ -362,6 +366,14 @@ class GroupData:
     @property
     def ripple_peak_frequency(self):
         return self.load("ripple_peak_frequency")["data"]
+
+    @property
+    def pbe_rate(self):
+        return self.load("pbe_rate")["data"]
+
+    @property
+    def pbe_total_duration(self):
+        return self.load("pbe_total_duration")["data"]
 
     @property
     def frate_pyr_in_ripple(self):
