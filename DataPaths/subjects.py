@@ -165,44 +165,45 @@ class ProcessData:
 def allsess():
     """all data folders together"""
     paths = [
-        "/data/Clustering/sessions/RatJ/Day1/",
-        "/data/Clustering/sessions/RatK/Day1/",
-        "/data/Clustering/sessions/RatN/Day1/",
-        "/data/Clustering/sessions/RatJ/Day2/",
-        "/data/Clustering/sessions/RatK/Day2/",
-        "/data/Clustering/sessions/RatN/Day2/",
-        "/data/Clustering/sessions/RatJ/Day3/",
-        "/data/Clustering/sessions/RatK/Day3/",
-        "/data/Clustering/sessions/RatN/Day3/",
-        "/data/Clustering/sessions/RatJ/Day4/",
-        "/data/Clustering/sessions/RatK/Day4/",
-        "/data/Clustering/sessions/RatN/Day4/",
-        "/data/Clustering/sessions/RatA14d1LP/Rollipram/",
+        "RatJ/Day1/",
+        "RatK/Day1/",
+        "RatN/Day1/",
+        "RatJ/Day2/",
+        "RatK/Day2/",
+        "RatN/Day2/",
+        "RatJ/Day3/",
+        "RatK/Day3/",
+        "RatN/Day3/",
+        "RatJ/Day4/",
+        "RatK/Day4/",
+        "RatN/Day4/",
+        "RatA14d1LP/Rollipram/",
     ]
     return [ProcessData(_) for _ in paths]
 
 
 class Group:
     tag = None
+    basedir = Path("/data/Clustering/sessions/")
 
-    def _process(self, path):
-        return [ProcessData(path, self.tag)]
+    def _process(self, rel_path):
+        return [ProcessData(self.basedir / rel_path, self.tag)]
 
 
 class Of:
     @property
     def ratJday4(self):
-        path = "/data/Clustering/sessions/RatJ/Day4/"
+        path = "RatJ/Day4/"
         return [ProcessData(path)]
 
     @property
     def ratKday4(self):
-        path = "/data/Clustering/sessions/RatK/Day4/"
+        path = "RatK/Day4/"
         return [ProcessData(path)]
 
     @property
     def ratNday4(self):
-        path = "/data/Clustering/sessions/RatN/Day4/"
+        path = "RatN/Day4/"
         return [ProcessData(path)]
 
 
@@ -224,32 +225,50 @@ class Sd(Group):
         return pipelines
 
     @property
+    def ripple_sess(self):
+        pipelines: List[ProcessData] = (
+            self.ratJday1
+            + self.ratKday1
+            + self.ratNday1
+            + self.ratSday3
+            + self.ratRday2
+            + self.ratUday1
+            + self.ratUday4
+            + self.ratVday2
+        )
+        return pipelines
+
+    @property
     def ratJday1(self):
-        return self._process("/data/Clustering/sessions/RatJ/Day1/")
+        return self._process("RatJ/Day1/")
 
     @property
     def ratKday1(self):
-        return self._process("/data/Clustering/sessions/RatK/Day1/")
+        return self._process("RatK/Day1/")
 
     @property
     def ratNday1(self):
-        return self._process("/data/Clustering/sessions/RatN/Day1/")
+        return self._process("RatN/Day1/")
 
     @property
     def ratSday3(self):
-        return self._process("/data/Clustering/sessions/RatS/Day3SD/")
+        return self._process("RatS/Day3SD/")
 
     @property
     def ratRday2(self):
-        return self._process("/data/Clustering/sessions/RatR/Day2SD")
+        return self._process("RatR/Day2SD")
+
+    @property
+    def ratUday1(self):
+        return self._process("RatU/RatUDay1SD")
 
     @property
     def ratUday4(self):
-        return self._process("/data/Clustering/sessions/RatU/RatUDay4SD")
+        return self._process("RatU/RatUDay4SD")
 
     @property
     def ratVday2(self):
-        return self._process("/data/Clustering/sessions/RatV/RatVDay2SD/")
+        return self._process("RatV/RatVDay2SD/")
 
     # @property
     # def ratUday5(self):
@@ -258,12 +277,12 @@ class Sd(Group):
 
     @property
     def utkuAG_day1(self):
-        path = "/data/Clustering/sessions/Utku/AG_2019-12-22_SD_day1/"
+        path = "Utku/AG_2019-12-22_SD_day1/"
         return [ProcessData(path)]
 
     @property
     def utkuAG_day2(self):
-        path = "/data/Clustering/sessions/Utku/AG_2019-12-26_SD_day2/"
+        path = "Utku/AG_2019-12-26_SD_day2/"
         return [ProcessData(path)]
 
     def __add__(self, other):
@@ -292,32 +311,50 @@ class Nsd(Group):
         return pipelines
 
     @property
+    def ripple_sess(self):
+        pipelines: List[ProcessData] = (
+            self.ratJday2
+            + self.ratKday2
+            + self.ratNday2
+            + self.ratSday2
+            + self.ratRday1
+            + self.ratUday2
+            + self.ratVday1
+            + self.ratVday3
+        )
+        return pipelines
+
+    @property
     def ratJday2(self):
-        return self._process("/data/Clustering/sessions/RatJ/Day2/")
+        return self._process("RatJ/Day2/")
 
     @property
     def ratKday2(self):
-        return self._process("/data/Clustering/sessions/RatK/Day2/")
+        return self._process("RatK/Day2/")
 
     @property
     def ratNday2(self):
-        return self._process("/data/Clustering/sessions/RatN/Day2/")
+        return self._process("RatN/Day2/")
 
     @property
     def ratSday2(self):
-        return self._process("/data/Clustering/sessions/RatS/Day2NSD/")
+        return self._process("RatS/Day2NSD/")
 
     @property
     def ratRday1(self):
-        return self._process("/data/Clustering/sessions/RatR/Day1NSD/")
+        return self._process("RatR/Day1NSD/")
 
     @property
     def ratUday2(self):
-        return self._process("/data/Clustering/sessions/RatU/RatUDay2NSD/")
+        return self._process("RatU/RatUDay2NSD/")
 
     @property
     def ratVday1(self):
-        return self._process("/data/Clustering/sessions/RatV/RatVDay1NSD/")
+        return self._process("RatV/RatVDay1NSD/")
+
+    @property
+    def ratVday3(self):
+        return self._process("RatV/RatVDay3NSD")
 
     def __add__(self, other):
         pipelines: List[ProcessData] = self.allsess + other.allsess
