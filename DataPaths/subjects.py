@@ -5,6 +5,28 @@ from pathlib import Path
 import numpy as np
 
 
+def sd_span(ax, s=2, w=2, h=0.05):
+    vis = {"alpha": 0.5, "zorder": 0, "ec": None}
+    sd_col, rs_col = Sd.color(1), Sd.rs_color(1)
+    ax.axvspan(s, s + w, 0, h, color=sd_col, **vis)
+    ax.axvspan(s + w, s + 2 * w, 0, h, color=rs_col, **vis)
+
+
+def nsd_span(ax, s=2, w=2, h=0.05):
+    vis = {"alpha": 0.5, "zorder": 0, "ec": None}
+    nsd_col = Nsd.color(1)
+    ax.axvspan(s, s + 2 * w, h, 2 * h, color=nsd_col, **vis)
+
+
+def grp_span(ax, s=2, w=2, h=0.05):
+    vis = {"alpha": 0.5, "zorder": 0, "ec": None}
+    sd_col, rs_col = Sd.color(1), Sd.rs_color(1)
+    nsd_col = Nsd.color(1)
+    ax.axvspan(s, s + w, 0, h, color=sd_col, **vis)
+    ax.axvspan(s + w, s + 2 * w, 0, h, color=rs_col, **vis)
+    ax.axvspan(s, s + 2 * w, h + 0.001, 2 * h, color=nsd_col, **vis)
+
+
 def adjust_lightness(color, amount=0.5):
     import matplotlib.colors as mc
     import colorsys
@@ -27,7 +49,11 @@ figpath_sd = Path(
     "/home/bapung/Dropbox (University of Michigan)/figures/sleep_deprivation"
 )
 
-# sd_colors = {"sd": "#ff6b6b", "nsd": "#69c"}
+
+def colors_sd(amount=1):
+    return [Nsd.color(amount), Sd.color(amount)]
+
+
 sleep_colors = {
     "nrem": "#667cfa",
     "rem": "#eb9494",
@@ -125,7 +151,11 @@ class ProcessData:
 
         if (f := self.filePrefix.with_suffix(".maze.linear.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
-            self.lin_maze = core.Position.from_dict(d)
+            self.maze = core.Position.from_dict(d)
+
+        if (f := self.filePrefix.with_suffix(".re-maze.linear.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            self.re_maze = core.Position.from_dict(d)
 
         if (f := self.filePrefix.with_suffix(".maze1.linear.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
@@ -134,13 +164,6 @@ class ProcessData:
         if (f := self.filePrefix.with_suffix(".maze2.linear.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             self.maze2 = core.Position.from_dict(d)
-
-        # self.pf1d = sessobj.PF1d(self.recinfo)
-        # self.pf2d = sessobj.PF2d(self.recinfo)
-        # self.decode1D = sessobj.Decode1d(self.pf1d)
-        # self.decode2D = sessobj.Decode2d(self.pf2d)
-        # self.localsleep = sessobj.LocalSleep(self.recinfo)
-        # self.pbe = sessobj.Pbe(self.recinfo)
 
     @property
     def neurons(self):
@@ -239,6 +262,17 @@ class Sd(Group):
         return pipelines
 
     @property
+    def pf_sess(self):
+        pipelines: List[ProcessData] = (
+            self.ratKday1
+            + self.ratNday1
+            + self.ratSday3
+            + self.ratUday4
+            + self.ratVday2
+        )
+        return pipelines
+
+    @property
     def ratJday1(self):
         return self._process("RatJ/Day1/")
 
@@ -289,8 +323,13 @@ class Sd(Group):
         pipelines: List[ProcessData] = self.allsess + other.allsess
         return pipelines
 
-    def color(self, amount=1):
+    @staticmethod
+    def color(amount=1):
         return adjust_lightness("#df670c", amount=amount)
+
+    @staticmethod
+    def rs_color(amount=1):
+        return adjust_lightness("#00B8D4", amount=amount)
 
 
 class Nsd(Group):
@@ -321,6 +360,17 @@ class Nsd(Group):
             + self.ratUday2
             + self.ratVday1
             + self.ratVday3
+        )
+        return pipelines
+
+    @property
+    def pf_sess(self):
+        pipelines: List[ProcessData] = (
+            self.ratKday2
+            + self.ratNday2
+            + self.ratSday2
+            + self.ratUday2
+            + self.ratVday1
         )
         return pipelines
 
@@ -360,7 +410,8 @@ class Nsd(Group):
         pipelines: List[ProcessData] = self.allsess + other.allsess
         return pipelines
 
-    def color(self, amount=1):
+    @staticmethod
+    def color(amount=1):
         return adjust_lightness("#633bb5", amount=amount)
 
 
@@ -423,6 +474,10 @@ class GroupData:
     @property
     def ev_pooled(self):
         return self.load("ev_pooled")["data"]
+
+    @property
+    def pf_norm_tuning(self):
+        return self.load("pf_norm_tuning")["data"]
 
 
 sd = Sd()
