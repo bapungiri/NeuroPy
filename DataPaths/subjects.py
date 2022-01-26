@@ -3,6 +3,7 @@ from neuropy.io import NeuroscopeIO, BinarysignalIO
 from neuropy import core
 from pathlib import Path
 import numpy as np
+import pandas as pd
 
 
 def sd_span(ax, s=2, w=2, h=0.05):
@@ -25,6 +26,19 @@ def grp_span(ax, s=2, w=2, h=0.05):
     ax.axvspan(s, s + w, 0, h, color=sd_col, **vis)
     ax.axvspan(s + w, s + 2 * w, 0, h, color=rs_col, **vis)
     ax.axvspan(s, s + 2 * w, h + 0.001, 2 * h, color=nsd_col, **vis)
+
+
+def light_cycle_span(ax, dark_start=-4.2, light_stop=9, dark_stop=0, light_start=0):
+    ax.axvspan(dark_start, dark_stop, 0, 0.05, color="#6d6d69")
+    ax.axvspan(light_start, light_stop, 0, 0.05, color="#e6e6a2")
+
+
+def epoch_span(ax, starts=(-4, -1, 0), stops=(-1, 0, 9), ymin=0.2, ymax=0.25, zorder=0):
+    kw = dict(ymin=ymin, ymax=ymax, alpha=0.5, zorder=zorder, ec=None)
+    labels, colors = ["PRE", "MAZE", "POST"], ["#cdd0cd", "#68c563", "#cdd0cd"]
+    for start, stop, l, c in zip(starts, stops, labels, colors):
+        ax.axvspan(start, stop, color=c, **kw)
+        ax.text((stop - start) / 2, -0.52, l, fontsize=8)
 
 
 def adjust_lightness(color, amount=0.5):
@@ -94,6 +108,10 @@ class ProcessData:
                 sampling_rate=self.recinfo.dat_sampling_rate,
             )
 
+        if (f := self.filePrefix.with_suffix(".animal.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            self.animal = core.Animal.from_dict(d)
+
         self.probegroup = core.ProbeGroup.from_file(fp.with_suffix(".probegroup.npy"))
 
         # ----- epochs --------------
@@ -118,11 +136,6 @@ class ProcessData:
         self.pbe = core.Epoch.from_file(fp.with_suffix(".pbe.npy"))
         self.off = core.Epoch.from_file(fp.with_suffix(".off.npy"))
 
-        # self.mua = core.Mua.from_file(fp.with_suffix(".mua.npy"))
-        # self.position = core.Position(
-        #     filename=self.filePrefix.with_suffix(".position.npy")
-        # )
-
         # ---- neurons related ------------
 
         if (f := self.filePrefix.with_suffix(".running.npy")).is_file():
@@ -133,17 +146,9 @@ class ProcessData:
             d = np.load(f, allow_pickle=True).item()
             self.replay_pbe = core.Epoch.from_dict(d)
 
-        # if (f := self.filePrefix.with_suffix(".neurons.npy")).is_file():
-        #     d = np.load(f, allow_pickle=True).item()
-        #     self.neurons = core.Neurons.from_dict(d)
-
         if (f := self.filePrefix.with_suffix(".neurons.iso.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             self.neurons_iso = core.Neurons.from_dict(d)
-
-        # if (f := self.filePrefix.with_suffix(".mua.npy")).is_file():
-        #     d = np.load(f, allow_pickle=True).item()
-        #     self.mua = core.Mua.from_dict(d)
 
         if (f := self.filePrefix.with_suffix(".position.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
@@ -178,6 +183,37 @@ class ProcessData:
             d = np.load(f, allow_pickle=True).item()
             return core.Mua.from_dict(d)
 
+    @property
+    def data_table(self):
+        files = [
+            "paradigm",
+            "artifact",
+            "brainstates",
+            "spindle",
+            "ripple",
+            "theta",
+            "pbe",
+            "neurons",
+            "position",
+            "maze.linear",
+            "re-maze.linear",
+            "maze1.linear",
+            "maze2.linear",
+        ]
+
+        df = pd.DataFrame(columns=files)
+        is_exist = []
+        for file in files:
+            if self.filePrefix.with_suffix(f".{file}.npy").is_file():
+                is_exist.append(True)
+            else:
+                is_exist.append(False)
+
+        df.loc[0] = is_exist
+        df.insert(0, "session", self.filePrefix.name)
+
+        return df
+
     def save_data(d, f):
         np.save(f, arr=d)
 
@@ -185,24 +221,13 @@ class ProcessData:
         return f"{self.__class__.__name__}({self.recinfo.source_file.name})\n"
 
 
-def allsess():
-    """all data folders together"""
-    paths = [
-        "RatJ/Day1/",
-        "RatK/Day1/",
-        "RatN/Day1/",
-        "RatJ/Day2/",
-        "RatK/Day2/",
-        "RatN/Day2/",
-        "RatJ/Day3/",
-        "RatK/Day3/",
-        "RatN/Day3/",
-        "RatJ/Day4/",
-        "RatK/Day4/",
-        "RatN/Day4/",
-        "RatA14d1LP/Rollipram/",
-    ]
-    return [ProcessData(_) for _ in paths]
+def data_table(sessions: list):
+
+    df = pd.DataFrame()
+    for sess in sessions:
+        df = df.append(sess.data_table, ignore_index=True)
+
+    return df
 
 
 class Group:
@@ -211,6 +236,9 @@ class Group:
 
     def _process(self, rel_path):
         return [ProcessData(self.basedir / rel_path, self.tag)]
+
+    def data_exist(self):
+        self.allsess
 
 
 class Of:
@@ -242,6 +270,7 @@ class Sd(Group):
             + self.ratNday1
             + self.ratSday3
             + self.ratRday2
+            + self.ratUday1
             + self.ratUday4
             + self.ratVday2
         )
@@ -258,6 +287,18 @@ class Sd(Group):
             + self.ratUday1
             + self.ratUday4
             + self.ratVday2
+        )
+        return pipelines
+
+    @property
+    def brainstates_sess(self):
+        pipelines: List[ProcessData] = (
+            self.ratJday1
+            + self.ratKday1
+            + self.ratNday1
+            + self.ratSday3
+            + self.ratRday2
+            + self.ratUday4
         )
         return pipelines
 
@@ -364,6 +405,17 @@ class Nsd(Group):
         return pipelines
 
     @property
+    def brainstates_sess(self):
+        pipelines: List[ProcessData] = (
+            self.ratJday2
+            + self.ratKday2
+            + self.ratNday2
+            + self.ratSday2
+            + self.ratUday2
+        )
+        return pipelines
+
+    @property
     def pf_sess(self):
         pipelines: List[ProcessData] = (
             self.ratKday2
@@ -429,6 +481,8 @@ class Tn:
 
 
 class GroupData:
+    # __slots__ = ["hello", "mellow"]
+
     def __init__(self) -> None:
         self.path = Path("/home/bapung/Dropbox (University of Michigan)/ProcessedData")
 
@@ -438,6 +492,10 @@ class GroupData:
 
     def load(self, fp):
         return np.load(self.path / f"{fp}.npy", allow_pickle=True).item()
+
+    @property
+    def brainstates_proportion(self):
+        return self.load("brainstates_proportion")["data"]
 
     @property
     def ripple_psd(self):
@@ -462,6 +520,22 @@ class GroupData:
     @property
     def pbe_total_duration(self):
         return self.load("pbe_total_duration")["data"]
+
+    @property
+    def frate_zscore(self):
+        return self.load("frate_zscore")["data"]
+
+    @property
+    def frate_change_1vs5(self):
+        return self.load("frate_change_1vs5")["data"]
+
+    @property
+    def frate_pre_to_maze_quantiles_in_POST(self):
+        return self.load("frate_pre_to_maze_quantiles_in_POST")["data"]
+
+    @property
+    def frate_pre_to_maze_quantiles_in_POST_shuffled(self):
+        return self.load("frate_pre_to_maze_quantiles_in_POST_shuffled")["data"]
 
     @property
     def frate_pyr_in_ripple(self):
