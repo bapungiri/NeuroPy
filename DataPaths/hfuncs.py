@@ -46,11 +46,14 @@ def to_png(arr):
     return out.getvalue()
 
 
-def b64_image_files(images, colormap="hot"):
+def b64_image_files(images, colormap="hot", conv=5):
     cmap = cm.get_cmap(colormap)
     urls = []
     for im in images:
-        im_ = np.flipud((im - np.min(im)) / np.max(im))
+        im = np.apply_along_axis(
+            np.convolve, axis=0, arr=im, v=np.ones(2 * conv + 1), mode="same"
+        )
+        im_ = np.flipud((im - np.nanmin(im)) / np.nanmax(im))
         png = to_png(img_as_ubyte(cmap(im_)))
         url = "data:image/png;base64," + b64encode(png).decode("utf-8")
         urls.append(url)
@@ -88,6 +91,69 @@ def plot_in_bokeh(
         data=dict(
             x=x,
             y=y,
+            imgs=arr_images,
+            colors=colors,
+        )
+    )
+
+    p = bplot.figure(
+        width=width,
+        height=height,
+        tooltips=tooltips,
+        x_axis_label="Time",
+        y_axis_label="Replay score",
+        title="Replay score over time, Hover to see posterior",
+    )
+    p.circle("x", "y", size=size, source=source, color="colors")
+    return p
+
+
+def plot_replay_in_bokeh(
+    data: core.Epoch, palette="jet_r", size=8, width=1200, height=800
+):
+    df = data.to_dataframe()
+    x = data.starts
+    y = df.score.values
+    is_replay = df["is_replay"]
+    img_arr = data.metadata["posterior"]
+    color_by = df["p_value"]
+    velocity = np.round(df.velocity.values, 2)
+    ind = df.index
+
+    # info to show on images
+    tooltips = """
+        <div>
+            <div>
+                <img
+                    src="@imgs" height="200" alt="@imgs" width="200"
+                    style="float: left; margin: 0px 15px 15px 0px;image-rendering: pixelated"
+                    border="2"
+                ></img>
+            </div>
+            <div>
+                <span style="font-size: 15px; color: #212121;">#@ind, </span>
+                <span style="font-size: 15px; color: #212121;">Score: @y, </span>
+                <span style="font-size: 15px; color: #212121;">V: @v</span>
+            </div>
+        </div>
+    """
+
+    arr_images = b64_image_files(img_arr)
+
+    if color_by is not None:
+        cmap = cm.get_cmap(palette)
+        color_by = color_by - np.min(color_by)
+        color_by /= np.max(color_by)
+        colors = cmap(color_by)
+    else:
+        colors = ["red"] * len(x)
+
+    source = bplot.ColumnDataSource(
+        data=dict(
+            ind=ind,
+            x=x,
+            y=y,
+            v=velocity,
             imgs=arr_images,
             colors=colors,
         )
@@ -155,3 +221,59 @@ def whiten_signal(signal: core.Signal):
         sampling_rate=signal.sampling_rate,
         t_start=signal.t_start,
     )
+
+
+def radon_transform_gpu(arr, nlines=10000, dt=1, dx=1, neighbours=1):
+    import cupy as cp
+
+    arr = cp.asarray(arr)
+    t = cp.arange(arr.shape[1])
+    nt = len(t)
+    tmid = (nt + 1) / 2 - 1
+
+    pos = cp.arange(arr.shape[0])
+    npos = len(pos)
+    pmid = (npos + 1) / 2 - 1
+
+    # using convolution to sum neighbours
+    arr = cp.apply_along_axis(
+        cp.convolve, axis=0, arr=arr, v=cp.ones(2 * neighbours + 1), mode="same"
+    )
+
+    # exclude stationary events by choosing phi little below 90 degree
+    # NOTE: angle of line is given by (90-phi), refer Kloosterman 2012
+    phi = cp.random.uniform(low=-np.pi / 2, high=np.pi / 2, size=nlines)
+    diag_len = cp.sqrt((nt - 1) ** 2 + (npos - 1) ** 2)
+    rho = cp.random.uniform(low=-diag_len / 2, high=diag_len / 2, size=nlines)
+
+    rho_mat = cp.tile(rho, (nt, 1)).T
+    phi_mat = cp.tile(phi, (nt, 1)).T
+    t_mat = cp.tile(t, (nlines, 1))
+    posterior = cp.zeros((nlines, nt))
+
+    y_line = ((rho_mat - (t_mat - tmid) * cp.cos(phi_mat)) / cp.sin(phi_mat)) + pmid
+    y_line = cp.rint(y_line).astype("int")
+
+    # if line falls outside of array in a given bin, replace that with median posterior value of that bin across all positions
+    t_out = cp.where((y_line < 0) | (y_line > npos - 1))
+    t_in = cp.where((y_line >= 0) & (y_line <= npos - 1))
+    posterior[t_out] = cp.median(arr[:, t_out[1]], axis=0)
+    posterior[t_in] = arr[y_line[t_in], t_in[1]]
+
+    # old_settings = np.seterr(all="ignore")
+    posterior_mean = cp.nanmean(posterior, axis=1)
+
+    best_line = cp.argmax(posterior_mean)
+    score = posterior_mean[best_line]
+    best_phi, best_rho = phi[best_line], rho[best_line]
+    time_mid, pos_mid = nt * dt / 2, npos * dx / 2
+
+    velocity = dx / (dt * cp.tan(best_phi))
+    intercept = (
+        (dx * time_mid) / (dt * cp.tan(best_phi))
+        + (best_rho / cp.sin(best_phi)) * dx
+        + pos_mid
+    )
+    # np.seterr(**old_settings)
+
+    return score, -velocity, intercept
