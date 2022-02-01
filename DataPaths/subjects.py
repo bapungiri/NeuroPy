@@ -54,10 +54,6 @@ def adjust_lightness(color, amount=0.5):
     return mc.to_hex(c)
 
 
-def file_loader(f):
-    return np.load(f, allow_pickle=True).item()
-
-
 fig_folder = Path("/home/bapung/Documents/figures/")
 figpath_sd = Path(
     "/home/bapung/Dropbox (University of Michigan)/figures/sleep_deprivation"
@@ -65,6 +61,8 @@ figpath_sd = Path(
 
 
 def colors_sd(amount=1):
+    # return ['#9575CD', '#FF80AB']
+    # return ["#9575CD", "#FF9100"]
     return [Nsd.color(amount), Sd.color(amount)]
 
 
@@ -223,11 +221,11 @@ class ProcessData:
 
 def data_table(sessions: list):
 
-    df = pd.DataFrame()
+    df = []
     for sess in sessions:
-        df = df.append(sess.data_table, ignore_index=True)
+        df.append(sess.data_table)
 
-    return df
+    return pd.concat(df, ignore_index=True)
 
 
 class Group:
@@ -366,7 +364,8 @@ class Sd(Group):
 
     @staticmethod
     def color(amount=1):
-        return adjust_lightness("#df670c", amount=amount)
+        # return adjust_lightness("#df670c", amount=amount)
+        return adjust_lightness("#F06292", amount=amount)
 
     @staticmethod
     def rs_color(amount=1):
@@ -464,7 +463,7 @@ class Nsd(Group):
 
     @staticmethod
     def color(amount=1):
-        return adjust_lightness("#633bb5", amount=amount)
+        return adjust_lightness("#815bcd", amount=amount)
 
 
 class Tn:
@@ -481,77 +480,44 @@ class Tn:
 
 
 class GroupData:
-    # __slots__ = ["hello", "mellow"]
+    __slots__ = (
+        "path",
+        "brainstates_proportion",
+        "ripple_psd",
+        "ripple_rate",
+        "ripple_total_duration",
+        "ripple_peak_frequency",
+        "pbe_rate",
+        "pbe_total_duration",
+        "frate_zscore",
+        "frate_change_1vs5",
+        "frate_pre_to_maze_quantiles_in_POST",
+        "frate_pre_to_maze_quantiles_in_POST_shuffled",
+        "frate_pyr_in_ripple",
+        "frate_inter_in_ripple",
+        "ev_pooled",
+        "pf_norm_tuning",
+        "replay_re_maze_score",
+        "replay_post_score",
+        "replay_pos_distribution",
+        "replay_re_maze_position_distribution",
+    )
 
     def __init__(self) -> None:
         self.path = Path("/home/bapung/Dropbox (University of Michigan)/ProcessedData")
+        # for f in self.path.iterdir():
+        #     setattr(self, f.name, self.load(f.stem))
 
     def save(self, d, fp):
         data = {"data": d}
         np.save(self.path / fp, data)
+        print(f"{fp} saved")
 
     def load(self, fp):
         return np.load(self.path / f"{fp}.npy", allow_pickle=True).item()
 
-    @property
-    def brainstates_proportion(self):
-        return self.load("brainstates_proportion")["data"]
-
-    @property
-    def ripple_psd(self):
-        return self.load("ripple_psd")["data"]
-
-    @property
-    def ripple_rate(self):
-        return self.load("ripple_rate")["data"]
-
-    @property
-    def ripple_total_duration(self):
-        return self.load("ripple_total_duration")["data"]
-
-    @property
-    def ripple_peak_frequency(self):
-        return self.load("ripple_peak_frequency")["data"]
-
-    @property
-    def pbe_rate(self):
-        return self.load("pbe_rate")["data"]
-
-    @property
-    def pbe_total_duration(self):
-        return self.load("pbe_total_duration")["data"]
-
-    @property
-    def frate_zscore(self):
-        return self.load("frate_zscore")["data"]
-
-    @property
-    def frate_change_1vs5(self):
-        return self.load("frate_change_1vs5")["data"]
-
-    @property
-    def frate_pre_to_maze_quantiles_in_POST(self):
-        return self.load("frate_pre_to_maze_quantiles_in_POST")["data"]
-
-    @property
-    def frate_pre_to_maze_quantiles_in_POST_shuffled(self):
-        return self.load("frate_pre_to_maze_quantiles_in_POST_shuffled")["data"]
-
-    @property
-    def frate_pyr_in_ripple(self):
-        return self.load("frate_pyr_in_ripple")["data"]
-
-    @property
-    def frate_inter_in_ripple(self):
-        return self.load("frate_inter_in_ripple")["data"]
-
-    @property
-    def ev_pooled(self):
-        return self.load("ev_pooled")["data"]
-
-    @property
-    def pf_norm_tuning(self):
-        return self.load("pf_norm_tuning")["data"]
+    def __getattr__(self, name: str):
+        return self.load(name)["data"]
 
 
 sd = Sd()
