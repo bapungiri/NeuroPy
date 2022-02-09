@@ -1,7 +1,7 @@
 {
     "python.pythonPath": "/home/bapung/miniconda3/envs/data_analysis/bin/python",
     "python.linting.pylintEnabled": false,
-    "python.linting.enabled": true,
+    "python.linting.enabled": false,
     "python.linting.banditEnabled": true,
     "jupyter.jupyterServerType": "local"
 }
