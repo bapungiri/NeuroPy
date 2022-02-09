@@ -312,6 +312,11 @@ class Sd(Group):
         return pipelines
 
     @property
+    def remaze_sess(self):
+        pipelines: List[ProcessData] = self.ratSday3 + self.ratUday4 + self.ratVday2
+        return pipelines
+
+    @property
     def ratJday1(self):
         return self._process("RatJ/Day1/")
 
@@ -365,7 +370,7 @@ class Sd(Group):
     @staticmethod
     def color(amount=1):
         # return adjust_lightness("#df670c", amount=amount)
-        return adjust_lightness("#F06292", amount=amount)
+        return adjust_lightness("#f06292", amount=amount)
 
     @staticmethod
     def rs_color(amount=1):
@@ -423,6 +428,11 @@ class Nsd(Group):
             + self.ratUday2
             + self.ratVday1
         )
+        return pipelines
+
+    @property
+    def remaze_sess(self):
+        pipelines: List[ProcessData] = self.ratSday2 + self.ratUday2 + self.ratVday1
         return pipelines
 
     @property
@@ -501,6 +511,9 @@ class GroupData:
         "replay_post_score",
         "replay_pos_distribution",
         "replay_re_maze_position_distribution",
+        "remaze_ev",
+        "remaze_temporal_bias",
+        "remaze_activation",
     )
 
     def __init__(self) -> None:
