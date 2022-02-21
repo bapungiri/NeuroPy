@@ -6,6 +6,18 @@ import numpy as np
 import pandas as pd
 
 
+def boxplot_kw(amount=1.3):
+    return dict(
+        palette=colors_sd(amount),
+        hue_order=["nsd", "sd"],
+        showfliers=False,
+        linewidth=1,
+        boxprops=dict(edgecolor="none"),
+        showcaps=False,
+        medianprops=dict(color="w", lw=2),
+    )
+
+
 def sd_span(ax, s=2, w=2, h=0.05):
     vis = {"alpha": 0.5, "zorder": 0, "ec": None}
     sd_col, rs_col = Sd.color(1), Sd.rs_color(1)
@@ -257,7 +269,7 @@ class Of:
 
 
 class Sd(Group):
-    tag = "sd"
+    tag = "SD"
 
     @property
     def allsess(self):
@@ -379,7 +391,7 @@ class Sd(Group):
 
 
 class Nsd(Group):
-    tag = "nsd"
+    tag = "NSD"
 
     @property
     def allsess(self):
@@ -499,6 +511,7 @@ class GroupData:
         "ripple_rate",
         "ripple_total_duration",
         "ripple_peak_frequency",
+        "ripple_autocorr",
         "pbe_rate",
         "pbe_total_duration",
         "frate_zscore",
@@ -515,7 +528,10 @@ class GroupData:
         "replay_re_maze_position_distribution",
         "remaze_ev",
         "remaze_temporal_bias",
-        "remaze_activation",
+        "remaze_activation_of_maze",
+        "remaze_temporal_bias_com_correlation_across_session",
+        "remaze_ensemble_corr_across_sess",
+        "remaze_ensemble_activation_across_sess",
     )
 
     def __init__(self) -> None:
