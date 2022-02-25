@@ -18,20 +18,20 @@ def boxplot_kw(amount=1.3):
     )
 
 
-def sd_span(ax, s=2, w=2, h=0.05):
+def sd_span(ax, s=2, w=2, h=0.03):
     vis = {"alpha": 0.5, "zorder": 0, "ec": None}
     sd_col, rs_col = Sd.color(1), Sd.rs_color(1)
     ax.axvspan(s, s + w, 0, h, color=sd_col, **vis)
     ax.axvspan(s + w, s + 2 * w, 0, h, color=rs_col, **vis)
 
 
-def nsd_span(ax, s=2, w=2, h=0.05):
+def nsd_span(ax, s=2, w=2, h=0.03):
     vis = {"alpha": 0.5, "zorder": 0, "ec": None}
     nsd_col = Nsd.color(1)
     ax.axvspan(s, s + 2 * w, h, 2 * h, color=nsd_col, **vis)
 
 
-def grp_span(ax, s=2, w=2, h=0.05):
+def grp_span(ax, s=2, w=2, h=0.03):
     vis = {"alpha": 0.5, "zorder": 0, "ec": None}
     sd_col, rs_col = Sd.color(1), Sd.rs_color(1)
     nsd_col = Nsd.color(1)
@@ -404,6 +404,7 @@ class Nsd(Group):
             + self.ratRday1
             + self.ratUday2
             + self.ratVday1
+            + self.ratVday3
         )
         return pipelines
 
@@ -508,9 +509,10 @@ class GroupData:
         "path",
         "brainstates_proportion",
         "ripple_psd",
-        "ripple_rate",
+        "ripple_examples" "ripple_rate",
         "ripple_total_duration",
         "ripple_peak_frequency",
+        "ripple_zscore",
         "ripple_autocorr",
         "pbe_rate",
         "pbe_total_duration",
@@ -518,9 +520,9 @@ class GroupData:
         "frate_change_1vs5",
         "frate_pre_to_maze_quantiles_in_POST",
         "frate_pre_to_maze_quantiles_in_POST_shuffled",
-        "frate_pyr_in_ripple",
-        "frate_inter_in_ripple",
+        "frate_in_ripple",
         "ev_pooled",
+        "ev_brainstates",
         "pf_norm_tuning",
         "replay_re_maze_score",
         "replay_post_score",
