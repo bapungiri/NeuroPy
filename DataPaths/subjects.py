@@ -6,16 +6,34 @@ import numpy as np
 import pandas as pd
 
 
-def boxplot_kw(amount=1.3):
-    return dict(
-        palette=colors_sd(amount),
-        hue_order=["nsd", "sd"],
-        showfliers=False,
-        linewidth=1,
-        boxprops=dict(edgecolor="none"),
-        showcaps=False,
-        medianprops=dict(color="w", lw=2),
-    )
+lineplot_kw = dict(
+    marker="o",
+    err_style="bars",
+    linewidth=1,
+    legend=None,
+    mew=0.2,
+    markersize=2,
+    err_kws=dict(elinewidth=1, zorder=-1, capsize=1),
+)
+
+errorbar_kw = dict(
+    marker="o",
+    capsize=1,
+    elinewidth=1,
+    mec="w",
+    markersize=2,
+    linewidth=1,
+    mew=0.2,
+)
+
+
+boxplot_kw = dict(
+    showfliers=False,
+    linewidth=1,
+    boxprops=dict(edgecolor="none"),
+    showcaps=False,
+    medianprops=dict(color="w", lw=2),
+)
 
 
 def sd_span(ax, s=2, w=2, h=0.03):
@@ -139,6 +157,7 @@ class ProcessData:
         self.paradigm = core.Epoch.from_file(fp.with_suffix(".paradigm.npy"))
         self.artifact = core.Epoch.from_file(fp.with_suffix(".artifact.npy"))
         self.brainstates = core.Epoch.from_file(fp.with_suffix(".brainstates.npy"))
+        self.sw = core.Epoch.from_file(fp.with_suffix(".sw.npy"))
         self.spindle = core.Epoch.from_file(fp.with_suffix(".spindle.npy"))
         self.ripple = core.Epoch.from_file(fp.with_suffix(".ripple.npy"))
         self.theta = core.Epoch.from_file(fp.with_suffix(".theta.npy"))
@@ -320,6 +339,7 @@ class Sd(Group):
             + self.ratSday3
             + self.ratUday4
             + self.ratVday2
+            + self.ratRday2
         )
         return pipelines
 
@@ -517,7 +537,7 @@ class GroupData:
         "pbe_rate",
         "pbe_total_duration",
         "frate_zscore",
-        "frate_change_1vs5",
+        "frate_interneuron_around_Zt5" "frate_change_1vs5",
         "frate_pre_to_maze_quantiles_in_POST",
         "frate_pre_to_maze_quantiles_in_POST_shuffled",
         "frate_in_ripple",
@@ -530,10 +550,15 @@ class GroupData:
         "replay_re_maze_position_distribution",
         "remaze_ev",
         "remaze_temporal_bias",
+        "remaze_maze_paircorr",
+        "remaze_first5_paircorr",
+        "remaze_last5_paircorr",
+        "remaze_corr_across_session",
         "remaze_activation_of_maze",
         "remaze_temporal_bias_com_correlation_across_session",
         "remaze_ensemble_corr_across_sess",
         "remaze_ensemble_activation_across_sess",
+        "post_first5_last5_paircorr",
     )
 
     def __init__(self) -> None:
