@@ -29,7 +29,7 @@ errorbar_kw = dict(
 
 boxplot_kw = dict(
     showfliers=False,
-    linewidth=1,
+    linewidth=2,
     boxprops=dict(edgecolor="none"),
     showcaps=False,
     medianprops=dict(color="w", lw=2),
@@ -558,6 +558,7 @@ class GroupData:
         "remaze_temporal_bias_com_correlation_across_session",
         "remaze_ensemble_corr_across_sess",
         "remaze_ensemble_activation_across_sess",
+        "remaze_ev_on_zt0to5",
         "post_first5_last5_paircorr",
     )
 
