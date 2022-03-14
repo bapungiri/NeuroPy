@@ -96,11 +96,11 @@ def colors_sd(amount=1):
     return [Nsd.color(amount), Sd.color(amount)]
 
 
-sleep_colors = {
-    "nrem": "#667cfa",
-    "rem": "#eb9494",
-    "quiet": "#b6afaf",
-    "active": "#474343",
+colors_sleep = {
+    "NREM": "#667cfa",
+    "REM": "#eb9494",
+    "QW": "#b6afaf",
+    "AW": "#474343",
 }
 
 # sleep_colors = {
