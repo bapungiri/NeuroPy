@@ -563,6 +563,7 @@ class GroupData:
         "remaze_ensemble_corr_across_sess",
         "remaze_ensemble_activation_across_sess",
         "remaze_ev_on_zt0to5",
+        "remaze_ev_on_POST_pooled",
         "post_first5_last5_paircorr",
     )
 
