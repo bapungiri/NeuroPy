@@ -306,6 +306,20 @@ class Sd(Group):
         return pipelines
 
     @property
+    def mua_sess(self):
+        pipelines: List[ProcessData]
+        pipelines = (
+            self.ratJday1
+            + self.ratKday1
+            + self.ratNday1
+            + self.ratSday3
+            + self.ratRday2
+            + self.ratUday4
+            + self.ratVday2
+        )
+        return pipelines
+
+    @property
     def ripple_sess(self):
         pipelines: List[ProcessData] = (
             self.ratJday1
@@ -425,6 +439,19 @@ class Nsd(Group):
             + self.ratUday2
             + self.ratVday1
             + self.ratVday3
+        )
+        return pipelines
+
+    @property
+    def mua_sess(self):
+        pipelines: List[ProcessData]
+        pipelines = (
+            self.ratJday2
+            + self.ratKday2
+            + self.ratNday2
+            + self.ratSday2
+            + self.ratUday2
+            + self.ratVday1
         )
         return pipelines
 
