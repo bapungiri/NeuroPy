@@ -1,10 +1,11 @@
-from typing import List
-from neuropy.io import NeuroscopeIO, BinarysignalIO
-from neuropy import core
 from pathlib import Path
+from typing import List
+
 import numpy as np
 import pandas as pd
-
+from neuropy import core
+from neuropy.io import BinarysignalIO, NeuroscopeIO
+from scipy.ndimage import gaussian_gradient_magnitude
 
 lineplot_kw = dict(
     marker="o",
@@ -36,28 +37,6 @@ boxplot_kw = dict(
 )
 
 
-def sd_span(ax, s=2, w=2, h=0.03):
-    vis = {"alpha": 0.5, "zorder": 0, "ec": None}
-    sd_col, rs_col = Sd.color(1), Sd.rs_color(1)
-    ax.axvspan(s, s + w, 0, h, color=sd_col, **vis)
-    ax.axvspan(s + w, s + 2 * w, 0, h, color=rs_col, **vis)
-
-
-def nsd_span(ax, s=2, w=2, h=0.03):
-    vis = {"alpha": 0.5, "zorder": 0, "ec": None}
-    nsd_col = Nsd.color(1)
-    ax.axvspan(s, s + 2 * w, h, 2 * h, color=nsd_col, **vis)
-
-
-def grp_span(ax, s=2, w=2, h=0.03):
-    vis = {"alpha": 0.5, "zorder": 0, "ec": None}
-    sd_col, rs_col = Sd.color(1), Sd.rs_color(1)
-    nsd_col = Nsd.color(1)
-    ax.axvspan(s, s + w, 0, h, color=sd_col, **vis)
-    ax.axvspan(s + w, s + 2 * w, 0, h, color=rs_col, **vis)
-    ax.axvspan(s, s + 2 * w, h + 0.001, 2 * h, color=nsd_col, **vis)
-
-
 def light_cycle_span(ax, dark_start=-4.2, light_stop=9, dark_stop=0, light_start=0):
     ax.axvspan(dark_start, dark_stop, 0, 0.05, color="#6d6d69")
     ax.axvspan(light_start, light_stop, 0, 0.05, color="#e6e6a2")
@@ -72,8 +51,9 @@ def epoch_span(ax, starts=(-4, -1, 0), stops=(-1, 0, 9), ymin=0.2, ymax=0.25, zo
 
 
 def adjust_lightness(color, amount=0.5):
-    import matplotlib.colors as mc
     import colorsys
+
+    import matplotlib.colors as mc
 
     try:
         c = mc.cnames[color]
@@ -97,10 +77,17 @@ def colors_sd(amount=1):
 
 
 colors_sleep = {
-    "NREM": "#667cfa",
-    "REM": "#eb9494",
-    "QW": "#b6afaf",
     "AW": "#474343",
+    "QW": "#b6afaf",
+    "REM": "#eb9494",
+    "NREM": "#667cfa",
+}
+
+colors_sleep_old = {
+    "active": "#474343",
+    "quiet": "#b6afaf",
+    "rem": "#eb9494",
+    "nrem": "#667cfa",
 }
 
 # sleep_colors = {
@@ -554,6 +541,7 @@ class Tn:
 class GroupData:
     __slots__ = (
         "path",
+        "swa_examples",
         "brainstates_proportion",
         "ripple_psd",
         "ripple_examples" "ripple_rate",
@@ -564,7 +552,9 @@ class GroupData:
         "pbe_rate",
         "pbe_total_duration",
         "frate_zscore",
-        "frate_interneuron_around_Zt5" "frate_change_1vs5",
+        "frate_interneuron_around_Zt5",
+        "frate_change_1vs5",
+        "frate_change_pre_to_post",
         "frate_pre_to_maze_quantiles_in_POST",
         "frate_pre_to_maze_quantiles_in_POST_shuffled",
         "frate_in_ripple",
@@ -615,3 +605,15 @@ sd = Sd()
 nsd = Nsd()
 of = Of()
 tn = Tn()
+
+
+def mua_sess():
+    return nsd.mua_sess + sd.mua_sess
+
+
+def pf_sess():
+    return nsd.pf_sess + sd.pf_sess
+
+
+def ripple_sess():
+    return nsd.ripple_sess + sd.ripple_sess
