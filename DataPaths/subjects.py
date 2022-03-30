@@ -28,13 +28,16 @@ errorbar_kw = dict(
 )
 
 
-boxplot_kw = dict(
-    showfliers=False,
-    linewidth=2,
-    boxprops=dict(edgecolor="none"),
-    showcaps=False,
-    medianprops=dict(color="w", lw=2),
-)
+def boxplot_kw(color, lw=1):
+    return dict(
+        showfliers=False,
+        linewidth=lw,
+        boxprops=dict(facecolor="none", edgecolor=color),
+        showcaps=True,
+        capprops=dict(color=color),
+        medianprops=dict(color=color, lw=lw),
+        whiskerprops=dict(color=color),
+    )
 
 
 def light_cycle_span(ax, dark_start=-4.2, light_stop=9, dark_stop=0, light_start=0):
@@ -152,11 +155,10 @@ class ProcessData:
         self.pbe = core.Epoch.from_file(fp.with_suffix(".pbe.npy"))
         self.off = core.Epoch.from_file(fp.with_suffix(".off.npy"))
 
-        # ---- neurons related ------------
+        self.maze_run = core.Epoch.from_file(fp.with_suffix(".maze.running.npy"))
+        self.remaze_run = core.Epoch.from_file(fp.with_suffix(".remaze.running.npy"))
 
-        if (f := self.filePrefix.with_suffix(".running.npy")).is_file():
-            d = np.load(f, allow_pickle=True).item()
-            self.run = core.Epoch.from_dict(d)
+        # ---- neurons related ------------
 
         if (f := self.filePrefix.with_suffix(".replay.pbe.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
@@ -176,7 +178,7 @@ class ProcessData:
 
         if (f := self.filePrefix.with_suffix(".re-maze.linear.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
-            self.re_maze = core.Position.from_dict(d)
+            self.remaze = core.Position.from_dict(d)
 
         if (f := self.filePrefix.with_suffix(".maze1.linear.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
