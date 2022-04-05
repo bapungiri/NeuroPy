@@ -61,21 +61,49 @@ def b64_image_files(images, colormap="hot", conv=5):
 
 
 def plot_in_bokeh(
-    x, y, img_arr, color_by=None, palette="jet", size=5, width=1200, height=800
+    x,
+    y,
+    img_arr,
+    annotate=None,
+    color_by=None,
+    palette="jet",
+    size=5,
+    width=1200,
+    height=800,
 ):
 
-    # info to show on images
-    tooltips = """
-        <div>
+    if annotate is not None:
+        assert len(annotate) == 2
+        annotate_keys = list(annotate.keys())
+
+        tooltips = f"""
             <div>
-                <img
-                    src="@imgs" height="100" alt="@imgs" width="100"
-                    style="float: left; margin: 0px 15px 15px 0px;image-rendering: pixelated"
-                    border="2"
-                ></img>
+                <div>
+                    <img
+                        src="@imgs" height="100" alt="@imgs" width="100"
+                        style="float: left; margin: 0px 15px 15px 0px;image-rendering: pixelated"
+                        border="2"
+                    ></img>
+                </div>
+                <div>
+                    <span style="font-size: 12px; color: #212121;">{annotate_keys[0]}: @{annotate_keys[0]}, </span>
+                    <span style="font-size: 12px; color: #212121;">{annotate_keys[1]}: @{annotate_keys[1]} </span>
+                </div>
             </div>
-        </div>
-    """
+        """
+
+    else:
+        tooltips = f"""
+            <div>
+                <div>
+                    <img
+                        src="@imgs" height="100" alt="@imgs" width="100"
+                        style="float: left; margin: 0px 15px 15px 0px;image-rendering: pixelated"
+                        border="2"
+                    ></img>
+                </div>
+            </div>
+        """
 
     arr_images = b64_image_files(img_arr)
 
@@ -87,14 +115,10 @@ def plot_in_bokeh(
     else:
         colors = ["red"] * len(x)
 
-    source = bplot.ColumnDataSource(
-        data=dict(
-            x=x,
-            y=y,
-            imgs=arr_images,
-            colors=colors,
-        )
-    )
+    data_dict = dict(x=x, y=y, imgs=arr_images, colors=colors)
+    data_dict = data_dict | annotate
+
+    source = bplot.ColumnDataSource(data_dict)
 
     p = bplot.figure(
         width=width,
@@ -114,7 +138,6 @@ def plot_replay_in_bokeh(
     df = data.to_dataframe()
     x = data.starts
     y = df.score.values
-    is_replay = df["is_replay"]
     img_arr = data.metadata["posterior"]
     color_by = df["p_value"]
     velocity = np.round(df.velocity.values, 2)
@@ -135,6 +158,7 @@ def plot_replay_in_bokeh(
                 <span style="font-size: 15px; color: #212121;">Score: @y, </span>
                 <span style="font-size: 15px; color: #212121;">V: @v</span>
             </div>
+
         </div>
     """
 
