@@ -160,10 +160,6 @@ class ProcessData:
 
         # ---- neurons related ------------
 
-        if (f := self.filePrefix.with_suffix(".replay.pbe.npy")).is_file():
-            d = np.load(f, allow_pickle=True).item()
-            self.replay_pbe = core.Epoch.from_dict(d)
-
         if (f := self.filePrefix.with_suffix(".neurons.iso.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             self.neurons_iso = core.Neurons.from_dict(d)
@@ -187,6 +183,12 @@ class ProcessData:
         if (f := self.filePrefix.with_suffix(".maze2.linear.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             self.maze2 = core.Position.from_dict(d)
+
+    @property
+    def replay_pbe(self):
+        if (f := self.filePrefix.with_suffix(".replay_pbe.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            return core.Epoch.from_dict(d)
 
     @property
     def neurons(self):
@@ -563,6 +565,9 @@ class GroupData:
         "ev_pooled",
         "ev_brainstates",
         "pf_norm_tuning",
+        "replay_examples",
+        "replay_sig_frames",
+        "replay_wcorr",
         "replay_re_maze_score",
         "replay_post_score",
         "replay_pos_distribution",
