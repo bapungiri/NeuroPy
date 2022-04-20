@@ -306,6 +306,7 @@ class Sd(Group):
             + self.ratSday3
             + self.ratRday2
             + self.ratUday4
+            + self.ratUday4
             + self.ratVday2
         )
         return pipelines
@@ -342,6 +343,7 @@ class Sd(Group):
             self.ratKday1
             + self.ratNday1
             + self.ratSday3
+            + self.ratUday1
             + self.ratUday4
             + self.ratVday2
             + self.ratRday2
@@ -350,7 +352,13 @@ class Sd(Group):
 
     @property
     def remaze(self):
-        pipelines: List[ProcessData] = self.ratSday3 + self.ratUday4 + self.ratVday2
+        pipelines: List[ProcessData] = (
+            self.ratSday3
+            + self.ratUday1
+            + self.ratUday4
+            + self.ratVday2
+            + self.ratRday2
+        )
         return pipelines
 
     @property
@@ -443,6 +451,7 @@ class Nsd(Group):
             + self.ratSday2
             + self.ratUday2
             + self.ratVday1
+            + self.ratVday3
         )
         return pipelines
 
@@ -479,12 +488,15 @@ class Nsd(Group):
             + self.ratSday2
             + self.ratUday2
             + self.ratVday1
+            + self.ratVday3
         )
         return pipelines
 
     @property
     def remaze(self):
-        pipelines: List[ProcessData] = self.ratSday2 + self.ratUday2 + self.ratVday1
+        pipelines: List[ProcessData] = (
+            self.ratSday2 + self.ratUday2 + self.ratVday1 + self.ratVday3
+        )
         return pipelines
 
     @property

@@ -3,52 +3,55 @@ import pandas as pd
 import subjects
 from neuropy.analyses import Pf1D
 from neuropy.analyses import Decode1d
+from neuropy.core import Epoch
 
-sessions = subjects.nsd.ratUday2 + subjects.sd.ratUday4
+sessions = subjects.pf_sess()
+
 
 for sub, sess in enumerate(sessions):
     print(sess.animal.name)
     maze = sess.paradigm["maze"].flatten()
     post = sess.paradigm["post"].flatten()
     neurons = sess.neurons.get_neuron_type(neuron_type="pyr")
-    pos = sess.maze
-    # run = sess.run
-    pf = Pf1D(
-        neurons=neurons,
-        position=pos,
-        speed_thresh=4,
-        sigma=4,
-        grid_bin=2,
-        # epochs=run,
-        frate_thresh=1,
-    )
-    pf_neurons = neurons.get_by_id(pf.neuron_ids)
-    epochs = sess.pbe.time_slice(post[0], post[0] + 2 * 3600)
-    decode = Decode1d(
-        neurons=pf_neurons,
-        ratemap=pf,
-        epochs=epochs,
-        bin_size=0.02,
-        decode_margin=15,
-        nlines=5000,
-    )
-    decode.n_jobs = 5
-    decode.calculate_shuffle_score(method="neuron_id", n_iter=200)
+    position = sess.maze
+    pbe_epochs = sess.pbe.time_slice(maze[0], post[0] + 7.5 * 3600)
+    print(f"#Epochs: {len(pbe_epochs)}")
+    metadata = {"score_method": "wcorr"}
 
-    df = pd.DataFrame(
-        {
-            "is_replay": decode.p_value < 0.05,
-            "is_forward": decode.velocity > 0,
-            "is_reverse": decode.velocity < 0,
-            "p_value": decode.p_value,
-            "score": decode.score,
-            "velocity": decode.velocity,
-            "intercept": decode.intercept,
-        }
-    )
-    new_epochs = epochs.add_dataframe(df)
-    new_epochs.metadata = {
-        "posterior": decode.posterior,
-        "shuffle_score": decode.shuffle_score,
-    }
-    new_epochs.save(sess.filePrefix.with_suffix(".replay.pbe"))
+    score_df = []
+    for direction in ["up", "down"]:
+        pf = Pf1D(
+            neurons=neurons,
+            position=position,
+            sigma=4,
+            grid_bin=2,
+            epochs=sess.maze_run[direction],
+            frate_thresh=0.5,
+        )
+        pf_neurons = neurons.get_by_id(pf.neuron_ids)
+        decode = Decode1d(
+            neurons=pf_neurons,
+            ratemap=pf,
+            epochs=pbe_epochs,
+            bin_size=0.02,
+            score_method="wcorr",
+            n_jobs=6,
+        )
+        decode.calculate_shuffle_score(method="neuron_id", n_iter=1000)
+        df = pd.DataFrame(
+            dict(
+                score=decode.score,
+                percentile_score=decode.percentile_score,
+                sequence_score=decode.sequence_score,
+                replay_order=np.where(decode.score >= 0, "f", "r"),
+            )
+        )
+
+        score_df.append(df.add_prefix(direction + "_"))
+        metadata[direction + "_posterior"] = decode.posterior
+        metadata[direction + "_shuffle_score"] = decode.shuffle_score
+
+    score_df = pd.concat(score_df, axis=1)
+    new_epochs = pbe_epochs.add_dataframe(score_df)
+    new_epochs.metadata = metadata
+    new_epochs.save(sess.filePrefix.with_suffix(".replay_pbe"))
