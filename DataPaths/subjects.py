@@ -191,6 +191,12 @@ class ProcessData:
             return core.Epoch.from_dict(d)
 
     @property
+    def remaze_replay_pbe(self):
+        if (f := self.filePrefix.with_suffix(".remaze_replay_pbe.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            return core.Epoch.from_dict(d)
+
+    @property
     def neurons(self):
         # it is relatively heavy on memory hence loaded only while required
         if (f := self.filePrefix.with_suffix(".neurons.npy")).is_file():
@@ -636,3 +642,7 @@ def pf_sess():
 
 def ripple_sess():
     return nsd.ripple_sess + sd.ripple_sess
+
+
+def remaze_sess():
+    return nsd.remaze + sd.remaze
