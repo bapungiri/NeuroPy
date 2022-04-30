@@ -6,15 +6,17 @@ from neuropy.analyses import Decode1d
 from neuropy.core import Epoch
 
 sessions = subjects.pf_sess()
+# sessions = subjects.nsd.ratVday3 + subjects.sd.ratUday1
 
 
 for sub, sess in enumerate(sessions):
     print(sess.animal.name)
+    pre = sess.paradigm["pre"].flatten()
     maze = sess.paradigm["maze"].flatten()
     post = sess.paradigm["post"].flatten()
     neurons = sess.neurons.get_neuron_type(neuron_type="pyr")
     position = sess.maze
-    pbe_epochs = sess.pbe.time_slice(maze[0], post[0] + 7.5 * 3600)
+    pbe_epochs = sess.pbe.time_slice(pre[0], pre[1])
     print(f"#Epochs: {len(pbe_epochs)}")
     metadata = {"score_method": "wcorr"}
 
@@ -54,4 +56,4 @@ for sub, sess in enumerate(sessions):
     score_df = pd.concat(score_df, axis=1)
     new_epochs = pbe_epochs.add_dataframe(score_df)
     new_epochs.metadata = metadata
-    new_epochs.save(sess.filePrefix.with_suffix(".replay_pbe"))
+    new_epochs.save(sess.filePrefix.with_suffix(".pre_replay_pbe"))

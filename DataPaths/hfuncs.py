@@ -11,6 +11,7 @@ from PIL import Image
 from scipy import stats
 from skimage import img_as_ubyte
 from neuropy import core
+from neuropy.utils.ccg import correlograms
 
 
 def wavelet_gamma_theta_phase(signal, theta_phase, binsize=9, frgamma=None, fs=1250):
@@ -301,3 +302,21 @@ def radon_transform_gpu(arr, nlines=10000, dt=1, dx=1, neighbours=1):
     # np.seterr(**old_settings)
 
     return score, -velocity, intercept
+
+
+def get_ccg(arr1, arr2, bin_size=0.001, window_size=0.8, fs=1250):
+
+    times = np.concatenate((arr1, arr2))
+    ids = np.concatenate([np.ones(len(arr1)), 2 * np.ones(len(arr2))]).astype("int")
+    sort_indx = np.argsort(times)
+
+    ccgs = correlograms(
+        times[sort_indx],
+        ids[sort_indx],
+        sample_rate=fs,
+        bin_size=bin_size,
+        window_size=window_size,
+    )
+    t = np.linspace(-window_size / 2, window_size / 2, ccgs.shape[-1])
+
+    return t, ccgs[0, 1, :]

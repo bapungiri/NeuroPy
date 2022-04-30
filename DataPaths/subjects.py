@@ -204,6 +204,13 @@ class ProcessData:
             return core.Neurons.from_dict(d)
 
     @property
+    def neurons_stable(self):
+        # it is relatively heavy on memory hence loaded only while required
+        if (f := self.filePrefix.with_suffix(".neurons_stable.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            return core.Neurons.from_dict(d)
+
+    @property
     def mua(self):
         if (f := self.filePrefix.with_suffix(".mua.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
@@ -311,7 +318,7 @@ class Sd(Group):
             + self.ratNday1
             + self.ratSday3
             + self.ratRday2
-            + self.ratUday4
+            + self.ratUday1
             + self.ratUday4
             + self.ratVday2
         )
@@ -555,6 +562,11 @@ class Tn:
     ]
 
     @property
+    def ratKday3(self):
+        path = "/data/Clustering/sessions/RatK/Day3/"
+        return [ProcessData(path)]
+
+    @property
     def ratSday5(self):
         path = "/data/Clustering/sessions/RatS/Day5TwoNovel/"
         return [ProcessData(path)]
@@ -574,6 +586,7 @@ class GroupData:
         "pbe_rate",
         "pbe_total_duration",
         "frate_zscore",
+        "frate_ratio_nsd_vs_sd",
         "frate_interneuron_around_Zt5",
         "frate_change_1vs5",
         "frate_change_pre_to_post",
