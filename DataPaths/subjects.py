@@ -7,6 +7,28 @@ from neuropy import core
 from neuropy.io import BinarysignalIO, NeuroscopeIO
 from scipy.ndimage import gaussian_gradient_magnitude
 
+
+def adjust_lightness(color, amount=0.5):
+    import colorsys
+
+    import matplotlib.colors as mc
+
+    try:
+        c = mc.cnames[color]
+    except:
+        c = color
+    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+    c = colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
+    return mc.to_hex(c)
+
+
+def colors_sd(amount=1):
+    return [
+        adjust_lightness("#bdbdbd", amount=amount),
+        adjust_lightness("#ff8080", amount=amount),
+    ]
+
+
 lineplot_kw = dict(
     marker="o",
     err_style="bars",
@@ -40,6 +62,28 @@ def boxplot_kw(color, lw=1):
     )
 
 
+stat_kw = dict(
+    text_format="star",
+    loc="inside",
+    verbose=True,
+    fontsize=7,
+    line_width=0.8,
+)
+
+sns_boxplot_kw = dict(
+    linewidth=0.8,
+    palette=colors_sd(1),
+    saturation=1,
+    showfliers=False,
+    # linewidth=lw,
+    boxprops=dict(edgecolor="k"),
+    showcaps=True,
+    capprops=dict(color="k"),
+    medianprops=dict(color="k"),
+    whiskerprops=dict(color="k"),
+)
+
+
 def light_cycle_span(ax, dark_start=-4.2, light_stop=9, dark_stop=0, light_start=0):
     ax.axvspan(dark_start, dark_stop, 0, 0.05, color="#6d6d69")
     ax.axvspan(light_start, light_stop, 0, 0.05, color="#e6e6a2")
@@ -53,30 +97,10 @@ def epoch_span(ax, starts=(-4, -1, 0), stops=(-1, 0, 9), ymin=0.2, ymax=0.25, zo
         ax.text((stop - start) / 2, -0.52, l, fontsize=8)
 
 
-def adjust_lightness(color, amount=0.5):
-    import colorsys
-
-    import matplotlib.colors as mc
-
-    try:
-        c = mc.cnames[color]
-    except:
-        c = color
-    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
-    c = colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
-    return mc.to_hex(c)
-
-
 fig_folder = Path("/home/bapung/Documents/figures/")
 figpath_sd = Path(
     "/home/bapung/Dropbox (University of Michigan)/figures/sleep_deprivation"
 )
-
-
-def colors_sd(amount=1):
-    # return ['#9575CD', '#FF80AB']
-    # return ["#9575CD", "#FF9100"]
-    return [Nsd.color(amount), Sd.color(amount)]
 
 
 colors_sleep = {
@@ -172,7 +196,7 @@ class ProcessData:
             d = np.load(f, allow_pickle=True).item()
             self.maze = core.Position.from_dict(d)
 
-        if (f := self.filePrefix.with_suffix(".re-maze.linear.npy")).is_file():
+        if (f := self.filePrefix.with_suffix(".remaze.linear.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             self.remaze = core.Position.from_dict(d)
 
@@ -183,6 +207,12 @@ class ProcessData:
         if (f := self.filePrefix.with_suffix(".maze2.linear.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             self.maze2 = core.Position.from_dict(d)
+
+    @property
+    def pre_replay_pbe(self):
+        if (f := self.filePrefix.with_suffix(".pre_replay_pbe.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            return core.Epoch.from_dict(d)
 
     @property
     def replay_pbe(self):
@@ -206,7 +236,7 @@ class ProcessData:
     @property
     def neurons_stable(self):
         # it is relatively heavy on memory hence loaded only while required
-        if (f := self.filePrefix.with_suffix(".neurons_stable.npy")).is_file():
+        if (f := self.filePrefix.with_suffix(".neurons_stable2.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             return core.Neurons.from_dict(d)
 
@@ -429,7 +459,8 @@ class Sd(Group):
     def color(amount=1):
         # return adjust_lightness("#df670c", amount=amount)
         # return adjust_lightness("#f06292", amount=amount)
-        return adjust_lightness("#ff0000", amount=amount)
+        # return adjust_lightness("#ff0000", amount=amount)
+        return adjust_lightness("#ff8080", amount=amount)
 
     @staticmethod
     def rs_color(amount=1):
@@ -551,7 +582,8 @@ class Nsd(Group):
     @staticmethod
     def color(amount=1):
         # return adjust_lightness("#815bcd", amount=amount)
-        return adjust_lightness("#424242", amount=amount)
+        # return adjust_lightness("#424242", amount=amount)
+        return adjust_lightness("#bdbdbd", amount=amount)
 
 
 class Tn:
@@ -594,6 +626,7 @@ class GroupData:
         "frate_pre_to_maze_quantiles_in_POST_shuffled",
         "frate_in_ripple",
         "ev_pooled",
+        "ev_in_chunks",
         "ev_brainstates",
         "pf_norm_tuning",
         "replay_examples",

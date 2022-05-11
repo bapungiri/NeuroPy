@@ -12,6 +12,12 @@ from scipy import stats
 from skimage import img_as_ubyte
 from neuropy import core
 from neuropy.utils.ccg import correlograms
+from neuropy.io import OptitrackIO
+from pathlib import Path
+from datetime import datetime
+from neuropy.core import Position, Signal
+from typing import Union
+from neuropy.utils.mathutil import min_max_scaler
 
 
 def wavelet_gamma_theta_phase(signal, theta_phase, binsize=9, frgamma=None, fs=1250):
@@ -320,3 +326,65 @@ def get_ccg(arr1, arr2, bin_size=0.001, window_size=0.8, fs=1250):
     t = np.linspace(-window_size / 2, window_size / 2, ccgs.shape[-1])
 
     return t, ccgs[0, 1, :]
+
+
+def position_alignment(
+    opti_data: OptitrackIO, datetime_csv: Path, ttl_signal: Signal = None, fs=30000
+):
+    rec_datetime = pd.read_csv(datetime_csv)
+    n_chunks = len(rec_datetime)
+    nframes_chunk = rec_datetime.nFrames.values
+    total_frames = np.sum(nframes_chunk)
+    total_duration = total_frames / fs
+
+    # --- starts,stops relative to start of .dat/.eeg file
+    stops = np.cumsum(nframes_chunk) / fs
+    starts = np.insert(stops[:-1], 0, 0)
+
+    opti_datetime_starts = opti_data.datetime_starts
+    opti_start = None
+    if ttl_signal is not None:
+        assert int(total_duration) == int(ttl_signal.duration)
+        time = ttl_signal.time
+        ttl = np.where((min_max_scaler(ttl_signal.traces[0])) > 0.5, 1, 0)
+        ttl_diff = np.diff(np.insert(ttl, 0, 0))
+        ttl_starts = time[ttl_diff == 1]
+        ttl_stops = time[ttl_diff == -1]
+
+    # ---- startimes of concatenated .dat files -------
+    tracking_sRate = opti_data.sampling_rate
+    data_time = []
+    for i, file_time in enumerate(rec_datetime["StartTime"]):
+        tbegin = datetime.strptime(file_time, "%Y-%m-%d_%H-%M-%S")
+        datfile_start = starts[i]
+        time_diff = ttl_starts - datfile_start
+        closest_ttl_dist = np.where(time_diff > 0, time_diff, np.inf).min()
+
+        datetime_diff = np.array(
+            [(t - tbegin).total_seconds() for t in opti_datetime_starts]
+        )
+        closest_opti_dist = np.where(datetime_diff > 0, datetime_diff, np.inf).min()
+
+        tbegin_error = closest_opti_dist - closest_ttl_dist
+
+        assert tbegin_error > 0
+
+        if tbegin_error < 1:
+            tbegin = tbegin + pd.Timedelta(tbegin_error, unit="sec")
+
+        nframes = nframes_chunk[i]
+        duration = pd.Timedelta(nframes / fs, unit="sec")
+        tend = tbegin + duration
+        trange = pd.date_range(
+            start=tbegin,
+            end=tend,
+            periods=int(duration.total_seconds() * tracking_sRate),
+            inclusive="left",
+        )
+        data_time.extend(trange)
+    data_time = pd.to_datetime(data_time)
+
+    x, y, z = opti_data.get_position_at_datetimes(data_time)
+    traces = np.vstack((z, x, y))
+
+    return Position(traces=traces, t_start=0, sampling_rate=opti_data.sampling_rate)
