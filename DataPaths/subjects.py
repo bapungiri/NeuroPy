@@ -64,10 +64,15 @@ def boxplot_kw(color, lw=1):
 
 stat_kw = dict(
     text_format="star",
-    loc="inside",
+    loc="outside",
     verbose=True,
-    fontsize=7,
-    line_width=0.8,
+    fontsize=5,
+    line_width=0.5,
+    line_height=0.01,
+    text_offset=0.5,
+    line_offset=0.5,
+    line_offset_to_group=0.5,
+    # use_fixed_offset=True,
 )
 
 sns_boxplot_kw = dict(
@@ -83,18 +88,40 @@ sns_boxplot_kw = dict(
     whiskerprops=dict(color="k"),
 )
 
+sns_violin_kw = dict(
+    palette=colors_sd(1),
+    saturation=1,
+    linewidth=0.4,
+    cut=True,
+    split=False,
+    inner="box",
+    showextrema=False,
+    # showmeans=True,
+)
+
 
 def light_cycle_span(ax, dark_start=-4.2, light_stop=9, dark_stop=0, light_start=0):
     ax.axvspan(dark_start, dark_stop, 0, 0.05, color="#6d6d69")
     ax.axvspan(light_start, light_stop, 0, 0.05, color="#e6e6a2")
+    return ax
 
 
-def epoch_span(ax, starts=(-4, -1, 0), stops=(-1, 0, 9), ymin=0.2, ymax=0.25, zorder=0):
-    kw = dict(ymin=ymin, ymax=ymax, alpha=0.5, zorder=zorder, ec=None)
-    labels, colors = ["PRE", "MAZE", "POST"], ["#cdd0cd", "#68c563", "#cdd0cd"]
-    for start, stop, l, c in zip(starts, stops, labels, colors):
-        ax.axvspan(start, stop, color=c, **kw)
-        ax.text((stop - start) / 2, -0.52, l, fontsize=8)
+def epoch_span(ax, tag, ymin=0, ymax=1, zorder=0):
+    kw = dict(ymin=ymin, ymax=ymax, alpha=1, zorder=zorder, ec=None)
+    common_clr = colors_sd(1.2)[0]
+
+    match tag:
+        case 'NSD':
+            starts,stops = (-3.5,0),(-1,8)
+            colors = [common_clr,common_clr]
+            for start, stop, c in zip(starts, stops, colors):
+                ax.axvspan(start, stop, color=c, **kw)
+
+        case 'SD':
+            starts,stops = (-3.5,0,5),(-1,5,8)
+            colors = [common_clr, colors_sd(1.2)[1],'#d5e5ff']
+            for start, stop, c in zip(starts, stops, colors):
+                ax.axvspan(start, stop, color=c, **kw)
 
 
 fig_folder = Path("/home/bapung/Documents/figures/")
@@ -618,6 +645,7 @@ class GroupData:
         "pbe_rate",
         "pbe_total_duration",
         "frate_zscore",
+        "frate_post_chunks",
         "frate_ratio_nsd_vs_sd",
         "frate_interneuron_around_Zt5",
         "frate_change_1vs5",
