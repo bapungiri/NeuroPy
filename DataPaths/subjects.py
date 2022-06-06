@@ -22,11 +22,49 @@ def adjust_lightness(color, amount=0.5):
     return mc.to_hex(c)
 
 
+# def colors_sd(amount=1):
+#     return [
+#         adjust_lightness("#bdbdbd", amount=amount),
+#         adjust_lightness("#ff8080", amount=amount),
+#     ]
+
 def colors_sd(amount=1):
     return [
-        adjust_lightness("#bdbdbd", amount=amount),
-        adjust_lightness("#ff8080", amount=amount),
+        adjust_lightness("#424242", amount=amount),
+        adjust_lightness("#eb4034", amount=amount),
     ]
+
+def colors_sd(amount=1):
+    return [
+        adjust_lightness("#424242", amount=amount),
+        adjust_lightness("#eb4034", amount=amount),
+    ]
+
+colors_sleep = {
+    "AW": "#f759d2",
+    "QW": "#fca4e8",
+    "REM": "#a4b1fc",
+    "NREM": "#667cfa",
+}
+
+# colors_sleep_old = {
+#     "active": "#474343",
+#     "quiet": "#b6afaf",
+#     "rem": "#eb9494",
+#     "nrem": "#667cfa",
+# }
+
+colors_sleep_old = {
+    "nrem": "#667cfa",
+    "rem": "#a4b1fc",
+    "quiet": "#fca4e8",
+    "active": "#f759d2",
+
+}
+
+
+hypno_kw = dict(labels_order=['NREM','REM','QW','AW'],colors=colors_sleep)
+
 
 
 lineplot_kw = dict(
@@ -69,9 +107,26 @@ stat_kw = dict(
     fontsize=5,
     line_width=0.5,
     line_height=0.01,
-    text_offset=0.5,
-    line_offset=0.5,
-    line_offset_to_group=0.5,
+    text_offset=0.2,
+    line_offset=0.2,
+    line_offset_to_group=0.9,
+    # pvalue_thresholds= [[0.05, "*"],[1, "ns"]]
+    # pvalue_format={'star':[[0.05, "*"],[1, "ns"]]},
+    # pvalue_format= {'correction_format': '{star} ({suffix})',
+    #                           'fontsize': 'small',
+    #                           'pvalue_format_string': '{:.3e}',
+    #                           'show_test_name': True,
+    #                         #   'simple_format_string': '{:.2f}',
+    #                           'text_format': 'star',
+    #                           'pvalue_thresholds': [
+    #                               [1e-4, "*"],
+    #                               [1e-3, "*"],
+    #                               [1e-2, "*"],
+    #                               [0.05, "*"],
+    #                               [1, "ns"]]
+    #                           },
+    # color= 'r',
+    # line_offset_to_box=0.2,
     # use_fixed_offset=True,
 )
 
@@ -107,8 +162,8 @@ def light_cycle_span(ax, dark_start=-4.2, light_stop=9, dark_stop=0, light_start
 
 
 def epoch_span(ax, tag, ymin=0, ymax=1, zorder=0):
-    kw = dict(ymin=ymin, ymax=ymax, alpha=1, zorder=zorder, ec=None)
-    common_clr = colors_sd(1.2)[0]
+    kw = dict(ymin=ymin, ymax=ymax, alpha=0.3, zorder=zorder, ec=None)
+    common_clr = colors_sd(1)[0]
 
     match tag:
         case 'NSD':
@@ -119,7 +174,7 @@ def epoch_span(ax, tag, ymin=0, ymax=1, zorder=0):
 
         case 'SD':
             starts,stops = (-3.5,0,5),(-1,5,8)
-            colors = [common_clr, colors_sd(1.2)[1],'#d5e5ff']
+            colors = [common_clr, colors_sd(1.2)[1],'#5599ff']
             for start, stop, c in zip(starts, stops, colors):
                 ax.axvspan(start, stop, color=c, **kw)
 
@@ -130,26 +185,6 @@ figpath_sd = Path(
 )
 
 
-colors_sleep = {
-    "AW": "#474343",
-    "QW": "#b6afaf",
-    "REM": "#eb9494",
-    "NREM": "#667cfa",
-}
-
-colors_sleep_old = {
-    "active": "#474343",
-    "quiet": "#b6afaf",
-    "rem": "#eb9494",
-    "nrem": "#667cfa",
-}
-
-# sleep_colors = {
-#     "nrem": "#7a13c3",
-#     "rem": "#08af5f",
-#     "quiet": "#d67105",
-#     "active": "#b20a50",
-# }
 
 
 class ProcessData:
@@ -272,6 +307,33 @@ class ProcessData:
         if (f := self.filePrefix.with_suffix(".mua.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             return core.Mua.from_dict(d)
+
+    def get_zt_epochs(self, include_pre=True, include_maze=True):
+
+        post = self.paradigm["post"].flatten()
+        zts = np.array([0, 2.5, 5])
+        post_starts = zts * 3600 + post[0]
+        post_stops = post_starts + 2.5 * 3600
+
+        labels = ["0-2.5", "2.5-5", "5-7.5"]
+
+        if include_maze:
+            maze = self.paradigm["maze"].flatten()
+            post_starts = np.insert(post_starts, 0, maze[0])
+            post_stops = np.insert(post_stops, 0, maze[1])
+            labels = ["MAZE"] + labels
+
+        if include_pre:
+            pre = self.paradigm["pre"].flatten()
+            pre = [np.max([pre[0], pre[1] - 2.5 * 3600]), pre[1]]
+
+            post_starts = np.insert(post_starts, 0, pre[0])
+            post_stops = np.insert(post_stops, 0, pre[1])
+            labels = ["PRE"] + labels
+
+        return core.Epoch.from_array(post_starts, post_stops, labels)
+
+
 
     @property
     def data_table(self):
@@ -520,6 +582,7 @@ class Nsd(Group):
             + self.ratKday2
             + self.ratNday2
             + self.ratSday2
+            + self.ratRday1
             + self.ratUday2
             + self.ratVday1
             + self.ratVday3
@@ -639,8 +702,7 @@ class GroupData:
         "ripple_psd",
         "ripple_examples" "ripple_rate",
         "ripple_total_duration",
-        "ripple_peak_frequency",
-        "ripple_zscore",
+        "ripple_features",
         "ripple_autocorr",
         "pbe_rate",
         "pbe_total_duration",

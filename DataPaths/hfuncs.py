@@ -388,3 +388,29 @@ def position_alignment(
     traces = np.vstack((z, x, y))
 
     return Position(traces=traces, t_start=0, sampling_rate=opti_data.sampling_rate)
+
+
+def get_post_epochs(paradigm: core.Epoch, include_pre=True, include_maze=True):
+
+    post = paradigm["post"].flatten()
+    zts = np.array([0, 2.5, 5])
+    post_starts = zts * 3600 + post[0]
+    post_stops = post_starts + 2.5 * 3600
+
+    labels = ["0-2.5", "2.5-5", "5-7.5"]
+
+    if include_maze:
+        maze = paradigm["maze"].flatten()
+        post_starts = np.insert(post_starts, 0, maze[0])
+        post_stops = np.insert(post_stops, 0, maze[1])
+        labels = ["MAZE"] + labels
+
+    if include_pre:
+        pre = paradigm["pre"].flatten()
+        pre = [np.max([pre[0], pre[1] - 2.5 * 3600]), pre[1]]
+
+        post_starts = np.insert(post_starts, 0, pre[0])
+        post_stops = np.insert(post_stops, 0, pre[1])
+        labels = ["PRE"] + labels
+
+    return core.Epoch.from_array(post_starts, post_stops, labels)
