@@ -41,11 +41,19 @@ def colors_sd(amount=1):
     ]
 
 colors_sleep = {
-    "AW": "#f759d2",
-    "QW": "#fca4e8",
-    "REM": "#a4b1fc",
-    "NREM": "#667cfa",
+    "AW": "#a3a3a3",
+    "QW": "#a3a3a3",
+    "REM": "#a3a3a3",
+    "NREM": "#a3a3a3",
 }
+
+# colors_sleep = {
+#     "AW": "#f759d2",
+#     "QW": "#fca4e8",
+#     "REM": "#a4b1fc",
+#     "NREM": "#667cfa",
+# }
+
 
 # colors_sleep_old = {
 #     "active": "#474343",
@@ -55,10 +63,10 @@ colors_sleep = {
 # }
 
 colors_sleep_old = {
-    "nrem": "#667cfa",
-    "rem": "#a4b1fc",
-    "quiet": "#fca4e8",
-    "active": "#f759d2",
+    "nrem": "#a3a3a3",
+    "rem": "#a3a3a3",
+    "quiet": "#a3a3a3",
+    "active": "#a3a3a3",
 
 }
 
@@ -278,7 +286,22 @@ class ProcessData:
 
     @property
     def replay_pbe(self):
-        if (f := self.filePrefix.with_suffix(".replay_pbe.npy")).is_file():
+        # if (f := self.filePrefix.with_suffix(".replay_pbe.npy")).is_file():
+        if (f := self.filePrefix.with_suffix(".pbe.replay.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            return core.Epoch.from_dict(d)
+
+    @property
+    def replay_radon(self):
+        # if (f := self.filePrefix.with_suffix(".replay_pbe.npy")).is_file():
+        if (f := self.filePrefix.with_suffix(".pbe.radon.npy")).is_file():
+            d = np.load(f, allow_pickle=True).item()
+            return core.Epoch.from_dict(d)
+
+    @property
+    def replay_spearman(self):
+        # if (f := self.filePrefix.with_suffix(".replay_pbe.npy")).is_file():
+        if (f := self.filePrefix.with_suffix(".pbe.replay.spearman.npy")).is_file():
             d = np.load(f, allow_pickle=True).item()
             return core.Epoch.from_dict(d)
 
@@ -700,7 +723,8 @@ class GroupData:
         "swa_examples",
         "brainstates_proportion",
         "ripple_psd",
-        "ripple_examples" "ripple_rate",
+        "ripple_examples",
+        "ripple_rate",
         "ripple_total_duration",
         "ripple_features",
         "ripple_autocorr",
