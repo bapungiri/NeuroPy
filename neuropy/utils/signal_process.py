@@ -379,7 +379,7 @@ class WaveletSg(Spectrogram):
 
         sigma = ncycles / (2 * np.pi * freqs)
         A = (sigma * np.sqrt(np.pi)) ** -0.5
-        real_part = np.exp(-(t_wavelet ** 2) / (2 * sigma ** 2))
+        real_part = np.exp(-(t_wavelet**2) / (2 * sigma**2))
         img_part = np.exp(2j * np.pi * (t_wavelet * freqs))
         wavelets = A * real_part * img_part
 
@@ -496,7 +496,6 @@ def hilbertfast(arr, ax=-1):
 
 @dataclass
 class bicoherence:
-
     """Generate bicoherence matrix for signal
 
     Attributes:
@@ -1332,7 +1331,7 @@ def irasa(
 
         def func(t, a, b):
             # See https://github.com/fooof-tools/fooof
-            return a + np.log(t ** b)
+            return a + np.log(t**b)
 
         for y in np.atleast_2d(psd_aperiodic):
             y_log = np.log(y)
@@ -1345,7 +1344,7 @@ def irasa(
             slopes.append(popt[1])
             # Calculate R^2: https://stackoverflow.com/q/19189362/10581531
             residuals = y_log - func(freqs, *popt)
-            ss_res = np.sum(residuals ** 2)
+            ss_res = np.sum(residuals**2)
             ss_tot = np.sum((y_log - np.mean(y_log)) ** 2)
             r_squared.append(1 - (ss_res / ss_tot))
 
@@ -1368,7 +1367,7 @@ def plot_miniscope_noise(
     block_sec=10,
     interval_sec=60,
     remove_disconnects=False,
-    disconnect_thresh = 20000,
+    disconnect_thresh=20000,
     EWLnoise_range=(4835, 4855),
 ):
     assert isinstance(signal, core.Signal)
@@ -1438,6 +1437,7 @@ def plot_miniscope_noise(
 
 if __name__ == "__main__":
     import DataPaths.subjects as subjects
+
     sess = subjects.sd.ratKday1[0]
     post = sess.paradigm["post"].flatten()
     period = [post[0] + 5 * 3600, post[0] + 6 * 3600]
